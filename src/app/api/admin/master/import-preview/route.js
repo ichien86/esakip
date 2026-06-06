@@ -42,6 +42,8 @@ async function getDiff(rows) {
     const subkegInfo = parseField(row['SUBKEGIATAN']);
     const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '';
     const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '';
+    const urusanVal = row['BIDANG'] ? String(row['BIDANG']).trim() : '';
+    const bidangVal = row['PELAKSANA'] ? String(row['PELAKSANA']).trim() : '';
 
     if (progInfo) {
       const { id, nama } = progInfo;
@@ -52,14 +54,17 @@ async function getDiff(rows) {
           newPrograms.push({
             id,
             nama,
-            actionData: { id, nama }
+            urusan: urusanVal,
+            actionData: { id, nama, urusan: urusanVal }
           });
-        } else if (existing.nama !== nama) {
+        } else if (existing.nama !== nama || existing.urusan !== urusanVal) {
           updatedPrograms.push({
             id,
             oldNama: existing.nama,
             newNama: nama,
-            actionData: { id, nama }
+            oldUrusan: existing.urusan || '',
+            newUrusan: urusanVal,
+            actionData: { id, nama, urusan: urusanVal }
           });
         }
       }
@@ -102,13 +107,15 @@ async function getDiff(rows) {
             nama,
             indikator: indikatorVal,
             satuan: satuanVal,
-            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal }
+            bidang: bidangVal,
+            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal }
           });
         } else if (
           existing.nama !== nama ||
           existing.kegiatanId !== kegInfo.id ||
           existing.indikator !== indikatorVal ||
-          existing.satuan !== satuanVal
+          existing.satuan !== satuanVal ||
+          existing.bidang !== bidangVal
         ) {
           updatedSubkegiatans.push({
             id,
@@ -118,7 +125,9 @@ async function getDiff(rows) {
             newIndikator: indikatorVal,
             oldSatuan: existing.satuan,
             newSatuan: satuanVal,
-            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal }
+            oldBidang: existing.bidang || '',
+            newBidang: bidangVal,
+            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal }
           });
         }
       }

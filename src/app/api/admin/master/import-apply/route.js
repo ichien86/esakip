@@ -21,7 +21,7 @@ export async function POST(request) {
         const programOps = programs.map(p => ({
           updateOne: {
             filter: { id: p.id },
-            update: { $set: { nama: p.nama } },
+            update: { $set: { nama: p.nama, urusan: p.urusan || '' } },
             upsert: true
           }
         }));
@@ -35,7 +35,7 @@ export async function POST(request) {
         const subkegiatanOps = subkegiatans.map(s => ({
           updateOne: {
             filter: { id: s.id },
-            update: { $set: { kegiatanId: s.kegiatanId, nama: s.nama, indikator: s.indikator, satuan: s.satuan } },
+            update: { $set: { kegiatanId: s.kegiatanId, nama: s.nama, indikator: s.indikator, satuan: s.satuan, bidang: s.bidang || '' } },
             upsert: true
           }
         }));
@@ -72,14 +72,14 @@ export async function POST(request) {
         }
 
         if (type === 'program') {
-          const { id, nama } = actionData;
-          await MasterProgram.updateOne({ id }, { $set: { nama } }, { upsert: true });
+          const { id, nama, urusan } = actionData;
+          await MasterProgram.updateOne({ id }, { $set: { nama, urusan: urusan || '' } }, { upsert: true });
         } else if (type === 'kegiatan') {
           const { id, programId, nama } = actionData;
           await MasterKegiatan.updateOne({ id }, { $set: { programId, nama } }, { upsert: true });
         } else if (type === 'subkegiatan') {
-          const { id, kegiatanId, nama, indikator, satuan } = actionData;
-          await MasterSubkegiatan.updateOne({ id }, { $set: { kegiatanId, nama, indikator, satuan } }, { upsert: true });
+          const { id, kegiatanId, nama, indikator, satuan, bidang } = actionData;
+          await MasterSubkegiatan.updateOne({ id }, { $set: { kegiatanId, nama, indikator, satuan, bidang: bidang || '' } }, { upsert: true });
         } else {
           return NextResponse.json({ error: 'Tipe data master tidak valid.' }, { status: 400 });
         }
@@ -127,6 +127,8 @@ export async function POST(request) {
       const subkegInfo = parseField(row['SUBKEGIATAN']);
       const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '';
       const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '';
+      const urusanVal = row['BIDANG'] ? String(row['BIDANG']).trim() : '';
+      const bidangVal = row['PELAKSANA'] ? String(row['PELAKSANA']).trim() : '';
 
       if (progInfo) {
         const { id, nama } = progInfo;
@@ -135,7 +137,7 @@ export async function POST(request) {
           programOps.push({
             updateOne: {
               filter: { id },
-              update: { $set: { nama } },
+              update: { $set: { nama, urusan: urusanVal } },
               upsert: true
             }
           });
@@ -163,7 +165,7 @@ export async function POST(request) {
           subkegiatanOps.push({
             updateOne: {
               filter: { id },
-              update: { $set: { kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal } },
+              update: { $set: { kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal } },
               upsert: true
             }
           });
