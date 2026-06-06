@@ -35,7 +35,7 @@ export async function POST(request) {
         const subkegiatanOps = subkegiatans.map(s => ({
           updateOne: {
             filter: { id: s.id },
-            update: { $set: { kegiatanId: s.kegiatanId, nama: s.nama, indikator: s.indikator, satuan: s.satuan, bidang: s.bidang || '' } },
+            update: { $set: { kegiatanId: s.kegiatanId, nama: s.nama, indikator: s.indikator, satuan: s.satuan, bidang: s.bidang || '', kinerja: s.kinerja || '' } },
             upsert: true
           }
         }));
@@ -78,8 +78,8 @@ export async function POST(request) {
           const { id, programId, nama } = actionData;
           await MasterKegiatan.updateOne({ id }, { $set: { programId, nama } }, { upsert: true });
         } else if (type === 'subkegiatan') {
-          const { id, kegiatanId, nama, indikator, satuan, bidang } = actionData;
-          await MasterSubkegiatan.updateOne({ id }, { $set: { kegiatanId, nama, indikator, satuan, bidang: bidang || '' } }, { upsert: true });
+          const { id, kegiatanId, nama, indikator, satuan, bidang, kinerja } = actionData;
+          await MasterSubkegiatan.updateOne({ id }, { $set: { kegiatanId, nama, indikator, satuan, bidang: bidang || '', kinerja: kinerja || '' } }, { upsert: true });
         } else {
           return NextResponse.json({ error: 'Tipe data master tidak valid.' }, { status: 400 });
         }
@@ -125,8 +125,9 @@ export async function POST(request) {
       const progInfo = parseField(row['PROGRAM']);
       const kegInfo = parseField(row['KEGIATAN']);
       const subkegInfo = parseField(row['SUBKEGIATAN']);
-      const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '';
-      const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '';
+      const kinerjaVal = row['KINERJA'] ? String(row['KINERJA']).trim() : '';
+      const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '-';
+      const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '-';
       const urusanVal = row['BIDANG'] ? String(row['BIDANG']).trim() : '';
       const bidangVal = row['PELAKSANA'] ? String(row['PELAKSANA']).trim() : '';
 
@@ -165,7 +166,7 @@ export async function POST(request) {
           subkegiatanOps.push({
             updateOne: {
               filter: { id },
-              update: { $set: { kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal } },
+              update: { $set: { kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal, kinerja: kinerjaVal } },
               upsert: true
             }
           });

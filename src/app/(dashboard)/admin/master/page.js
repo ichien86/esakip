@@ -20,6 +20,8 @@ export default function AdminMasterPage() {
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedSubkegDetails, setSelectedSubkegDetails] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
 
@@ -797,12 +799,19 @@ export default function AdminMasterPage() {
                                                   <div style={{ display: 'flex', gap: '16px', marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                                                     <span>Indikator Default: <strong style={{ color: '#9ca3af' }}>{s.indikator}</strong></span>
                                                     <span>Satuan: <strong style={{ color: '#9ca3af' }}>{s.satuan}</strong></span>
-                                                    {s.bidang && (
-                                                      <span>Pelaksana: <span className="badge badge-score" style={{ fontSize: '9.5px', background: 'rgba(16,185,129,0.15)', color: '#34D399', padding: '1px 5px' }}>{s.bidang}</span></span>
-                                                    )}
                                                   </div>
                                                 </div>
-                                                <div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                  <button
+                                                    className="btn btn-sm btn-secondary"
+                                                    style={{ padding: '3px 8px', fontSize: '10px', width: 'auto', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }}
+                                                    onClick={() => {
+                                                      setSelectedSubkegDetails(s);
+                                                      setShowDetailModal(true);
+                                                    }}
+                                                  >
+                                                    <i className="fa-solid fa-circle-info mr-1"></i> Detail
+                                                  </button>
                                                   <button className="btn btn-sm btn-danger" style={{ padding: '3px 8px', fontSize: '10px', width: 'auto' }} onClick={() => handleDeleteItem('subkegiatan', s.id)}>Hapus</button>
                                                 </div>
                                               </div>
@@ -826,6 +835,85 @@ export default function AdminMasterPage() {
           </div>
         </div>
       </div>
+
+      {/* Subkegiatan Detail Modal */}
+      {showDetailModal && selectedSubkegDetails && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '600px',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,107,0,0.3)'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3 style={{ fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-circle-info text-orange"></i> Detail Subkegiatan
+              </h3>
+              <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+            
+            <div className="panel-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kode Subkegiatan</span>
+                <div style={{ fontSize: '13px', color: 'white', fontWeight: 'bold', marginTop: '3px', fontFamily: 'monospace' }}>
+                  {selectedSubkegDetails.id}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nama Subkegiatan</span>
+                <div style={{ fontSize: '14px', color: '#f3f4f6', fontWeight: 600, marginTop: '3px', lineHeight: '1.4' }}>
+                  {selectedSubkegDetails.nama}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kinerja (Sasaran Subkegiatan)</span>
+                  <div style={{ fontSize: '13px', color: '#34D399', fontWeight: 600, marginTop: '4px', lineHeight: '1.4' }}>
+                    {selectedSubkegDetails.kinerja || '-'}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px' }}>
+                  <div>
+                    <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Indikator</span>
+                    <div style={{ fontSize: '13px', color: 'white', marginTop: '4px', fontWeight: 600 }}>
+                      {selectedSubkegDetails.indikator || '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Satuan</span>
+                    <div style={{ fontSize: '13px', color: 'white', marginTop: '4px', fontWeight: 600 }}>
+                      {selectedSubkegDetails.satuan || '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.2)' }}>
+              <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)} style={{ width: 'auto', padding: '6px 16px', fontSize: '13px' }}>Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

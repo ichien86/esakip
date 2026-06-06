@@ -40,8 +40,9 @@ async function getDiff(rows) {
     const progInfo = parseField(row['PROGRAM']);
     const kegInfo = parseField(row['KEGIATAN']);
     const subkegInfo = parseField(row['SUBKEGIATAN']);
-    const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '';
-    const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '';
+    const kinerjaVal = row['KINERJA'] ? String(row['KINERJA']).trim() : '';
+    const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '-';
+    const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '-';
     const urusanVal = row['BIDANG'] ? String(row['BIDANG']).trim() : '';
     const bidangVal = row['PELAKSANA'] ? String(row['PELAKSANA']).trim() : '';
 
@@ -108,14 +109,16 @@ async function getDiff(rows) {
             indikator: indikatorVal,
             satuan: satuanVal,
             bidang: bidangVal,
-            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal }
+            kinerja: kinerjaVal,
+            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal, kinerja: kinerjaVal }
           });
         } else if (
           existing.nama !== nama ||
           existing.kegiatanId !== kegInfo.id ||
           existing.indikator !== indikatorVal ||
           existing.satuan !== satuanVal ||
-          existing.bidang !== bidangVal
+          existing.bidang !== bidangVal ||
+          existing.kinerja !== kinerjaVal
         ) {
           updatedSubkegiatans.push({
             id,
@@ -127,7 +130,9 @@ async function getDiff(rows) {
             newSatuan: satuanVal,
             oldBidang: existing.bidang || '',
             newBidang: bidangVal,
-            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal }
+            oldKinerja: existing.kinerja || '',
+            newKinerja: kinerjaVal,
+            actionData: { id, kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal, kinerja: kinerjaVal }
           });
         }
       }
