@@ -121,18 +121,36 @@ export async function POST(request) {
     const processedKegiatans = new Set();
     const processedSubkegiatans = new Set();
 
+    let lastProgInfo = null;
+    let lastKegInfo = null;
+    let lastUrusanVal = '';
+
     for (const row of rows) {
+      const jenisPemda = row['JENIS PEMDA'] ? String(row['JENIS PEMDA']).trim().toUpperCase() : '';
+      if (jenisPemda !== 'KABKOT') continue;
+
       const progInfo = parseField(row['PROGRAM']);
+      if (progInfo) {
+        lastProgInfo = progInfo;
+        if (row['BIDANG']) {
+          lastUrusanVal = String(row['BIDANG']).trim();
+        }
+      }
+
       const kegInfo = parseField(row['KEGIATAN']);
+      if (kegInfo) {
+        lastKegInfo = kegInfo;
+      }
+
       const subkegInfo = parseField(row['SUBKEGIATAN']);
       const kinerjaVal = row['KINERJA'] ? String(row['KINERJA']).trim() : '';
       const indikatorVal = row['INDIKATOR'] ? String(row['INDIKATOR']).trim() : '-';
       const satuanVal = row['SATUAN'] ? String(row['SATUAN']).trim() : '-';
-      const urusanVal = row['BIDANG'] ? String(row['BIDANG']).trim() : '';
+      const urusanVal = lastUrusanVal;
       const bidangVal = row['PELAKSANA'] ? String(row['PELAKSANA']).trim() : '';
 
-      if (progInfo) {
-        const { id, nama } = progInfo;
+      if (lastProgInfo) {
+        const { id, nama } = lastProgInfo;
         if (!processedPrograms.has(id)) {
           processedPrograms.add(id);
           programOps.push({
@@ -145,28 +163,28 @@ export async function POST(request) {
         }
       }
 
-      if (kegInfo && progInfo) {
-        const { id, nama } = kegInfo;
+      if (lastKegInfo && lastProgInfo) {
+        const { id, nama } = lastKegInfo;
         if (!processedKegiatans.has(id)) {
           processedKegiatans.add(id);
           kegiatanOps.push({
             updateOne: {
               filter: { id },
-              update: { $set: { programId: progInfo.id, nama } },
+              update: { $set: { programId: lastProgInfo.id, nama } },
               upsert: true
             }
           });
         }
       }
 
-      if (subkegInfo && kegInfo) {
+      if (subkegInfo && lastKegInfo) {
         const { id, nama } = subkegInfo;
         if (!processedSubkegiatans.has(id)) {
           processedSubkegiatans.add(id);
           subkegiatanOps.push({
             updateOne: {
               filter: { id },
-              update: { $set: { kegiatanId: kegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal, kinerja: kinerjaVal } },
+              update: { $set: { kegiatanId: lastKegInfo.id, nama, indikator: indikatorVal, satuan: satuanVal, bidang: bidangVal, kinerja: kinerjaVal } },
               upsert: true
             }
           });
