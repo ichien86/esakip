@@ -136,7 +136,7 @@ export default function DashboardLayout({ children }) {
                 <i className="fa-solid fa-database"></i> Data Master
               </Link>
               <Link href="/admin/cascading-5years" className={`nav-item ${isLinkActive('/admin/cascading-5years') ? 'active' : ''}`}>
-                <i className="fa-solid fa-layer-group"></i> Rencana 5 Tahunan
+                <i className="fa-solid fa-layer-group"></i> Renstra 5 Tahunan
               </Link>
               <Link href="/admin/operational-definition" className={`nav-item ${isLinkActive('/admin/operational-definition') ? 'active' : ''}`}>
                 <i className="fa-solid fa-book-bookmark"></i> Definisi Operasional
@@ -148,7 +148,7 @@ export default function DashboardLayout({ children }) {
                 <i className="fa-solid fa-calendar-check"></i> Jadwal Realisasi
               </Link>
               <Link href="/admin/monitoring-5years" className={`nav-item ${isLinkActive('/admin/monitoring-5years') ? 'active' : ''}`}>
-                <i className="fa-solid fa-chart-bar"></i> Monitoring 5 Tahunan
+                <i className="fa-solid fa-chart-bar"></i> Monitoring Renstra
               </Link>
             </>
           )}
