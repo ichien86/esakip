@@ -1,0 +1,268 @@
+{
+  "employees": [
+    {
+      "id": "admin",
+      "nama": "Administrator Sistem",
+      "nip": "000000000000000000",
+      "jabatan": "Admin Perencana",
+      "role": "admin",
+      "parentId": null,
+      "bidang": "Sekretariat"
+    },
+    {
+      "id": "1",
+      "nama": "Drs. Suratno, M.Si.",
+      "nip": "197108151997031004",
+      "jabatan": "Kepala Pelaksana (Kalaksa)",
+      "role": "kalaksa",
+      "parentId": null,
+      "bidang": "Pimpinan"
+    },
+    {
+      "id": "2",
+      "nama": "Rina Adriyana, S.E., M.Si.",
+      "nip": "197605122002122003",
+      "jabatan": "Sekretaris BPBD",
+      "role": "sekretaris",
+      "parentId": "1",
+      "bidang": "Sekretariat"
+    },
+    {
+      "id": "3",
+      "nama": "Bambang S., S.Sos.",
+      "nip": "197804022006041010",
+      "jabatan": "Kabid Pencegahan & Kesiapsiagaan",
+      "role": "kabid",
+      "parentId": "1",
+      "bidang": "Pencegahan & Kesiapsiagaan"
+    },
+    {
+      "id": "4",
+      "nama": "Kurniawan J., S.T.",
+      "nip": "198009112009031005",
+      "jabatan": "Kabid Kedaruratan & Logistik",
+      "role": "kabid",
+      "parentId": "1",
+      "bidang": "Kedaruratan & Logistik"
+    },
+    {
+      "id": "5",
+      "nama": "Dwi Handayani, S.P.",
+      "nip": "198203202010012015",
+      "jabatan": "Kabid Rehabilitasi & Rekonstruksi",
+      "role": "kabid",
+      "parentId": "1",
+      "bidang": "Rehabilitasi & Rekonstruksi"
+    },
+    {
+      "id": "6",
+      "nama": "Sri Mulyani, S.E.",
+      "nip": "198511052011012008",
+      "jabatan": "Kasubag Umum & Kepegawaian",
+      "role": "admin_bidang",
+      "parentId": "2",
+      "bidang": "Sekretariat"
+    },
+    {
+      "id": "7",
+      "nama": "Joko Susilo, A.Md.",
+      "nip": "198807242014021001",
+      "jabatan": "Kasubag Keuangan & Perencanaan",
+      "role": "kasi",
+      "parentId": "2",
+      "bidang": "Sekretariat"
+    },
+    {
+      "id": "10",
+      "nama": "Siti Rahayu, S.E.",
+      "nip": "199201152020122012",
+      "jabatan": "Staf Subag Umum & Kepegawaian",
+      "role": "staff",
+      "parentId": "6",
+      "bidang": "Sekretariat"
+    },
+    {
+      "id": "13",
+      "nama": "Budi Prasetyo, S.Sos.",
+      "nip": "198909282015031006",
+      "jabatan": "Staf Bidang Pencegahan",
+      "role": "staff",
+      "parentId": "3",
+      "bidang": "Pencegahan & Kesiapsiagaan"
+    }
+  ],
+  "cascading": [
+    {
+      "id": "tuj_1",
+      "level": "tujuan",
+      "text": "Meningkatkan kapasitas daerah dalam penanggulangan bencana",
+      "indikator": "Indeks Ketahanan Daerah",
+      "target": "75",
+      "satuan": "skor",
+      "tipeTarget": "Kondisi Akhir Naik",
+      "parentId": null,
+      "bidangPengampu": "Pimpinan"
+    },
+    {
+      "id": "sas_1",
+      "level": "sasaran",
+      "text": "Menurunnya indeks risiko bencana pada kawasan rawan bencana",
+      "indikator": "Persentase penurunan indeks risiko bencana",
+      "target": "15",
+      "satuan": "%",
+      "tipeTarget": "Kondisi Akhir Naik",
+      "parentId": "tuj_1",
+      "bidangPengampu": "Pimpinan"
+    },
+    {
+      "id": "prog_1",
+      "level": "program",
+      "text": "Program Pelayanan Pencegahan dan Kesiapsiagaan Bencana",
+      "indikator": "Persentase cakupan pelayanan mitigasi bencana",
+      "target": "90",
+      "satuan": "%",
+      "tipeTarget": "Kondisi Akhir Naik",
+      "parentId": "sas_1",
+      "bidangPengampu": "Pencegahan & Kesiapsiagaan"
+    },
+    {
+      "id": "keg_1",
+      "level": "kegiatan",
+      "text": "Penyusunan Rencana Penanggulangan Bencana",
+      "indikator": "Jumlah dokumen rencana kontinjensi yang disusun",
+      "target": "2",
+      "satuan": "dokumen",
+      "tipeTarget": "Akumulatif",
+      "parentId": "prog_1",
+      "bidangPengampu": "Pencegahan & Kesiapsiagaan"
+    },
+    {
+      "id": "subkeg_1",
+      "level": "subkegiatan",
+      "text": "Sosialisasi, Komunikasi, Informasi dan Edukasi (KIE) Rawan Bencana",
+      "indikator": "Jumlah sosialisasi mitigasi bencana di daerah rawan",
+      "target": "12",
+      "satuan": "kali",
+      "tipeTarget": "Akumulatif",
+      "parentId": "keg_1",
+      "bidangPengampu": "Pencegahan & Kesiapsiagaan"
+    },
+    {
+      "id": "akt_1",
+      "level": "aktivitas",
+      "text": "Penyelenggaraan simulasi evakuasi mandiri di sekolah sungai",
+      "indikator": "Jumlah peserta edukasi kebencanaan terlayani",
+      "target": "150",
+      "satuan": "orang",
+      "tipeTarget": "Akumulatif",
+      "parentId": "subkeg_1",
+      "bidangPengampu": "Pencegahan & Kesiapsiagaan"
+    }
+  ],
+  "cascading5Years": [
+    {
+      "id": "5y_tuj_1",
+      "level": "tujuan",
+      "text": "Meningkatkan kapasitas daerah dalam penanggulangan bencana",
+      "indikator": "Indeks Ketahanan Daerah",
+      "satuan": "skor",
+      "tipeTarget": "Kondisi Akhir Naik",
+      "parentId": null,
+      "bidangPengampu": "Pimpinan",
+      "target2025": "60",
+      "target2026": "63",
+      "target2027": "66",
+      "target2028": "69",
+      "target2029": "72",
+      "target2030": "75",
+      "targetAkhir": "75"
+    },
+    {
+      "id": "5y_sas_1",
+      "level": "sasaran",
+      "text": "Menurunnya indeks risiko bencana pada kawasan rawan bencana",
+      "indikator": "Persentase penurunan indeks risiko bencana",
+      "satuan": "%",
+      "tipeTarget": "Akumulatif",
+      "parentId": "5y_tuj_1",
+      "bidangPengampu": "Pimpinan",
+      "target2025": "2",
+      "target2026": "3",
+      "target2027": "3",
+      "target2028": "3",
+      "target2029": "2",
+      "target2030": "2",
+      "targetAkhir": "15"
+    },
+    {
+      "id": "5y_sas_2",
+      "level": "sasaran",
+      "text": "Meningkatnya kecepatan respons dan kualitas penanganan darurat bencana",
+      "indikator": "Persentase kejadian bencana yang ditangani dalam 24 jam",
+      "satuan": "%",
+      "tipeTarget": "Kondisi Akhir Naik",
+      "parentId": "5y_tuj_1",
+      "bidangPengampu": "Kedaruratan & Logistik",
+      "target2025": "70",
+      "target2026": "75",
+      "target2027": "80",
+      "target2028": "85",
+      "target2029": "88",
+      "target2030": "90",
+      "targetAkhir": "90"
+    }
+  ],
+  "masterProgram": [
+    { "id": "mp_1", "nama": "Program Penanggulangan Bencana" },
+    { "id": "mp_2", "nama": "Program Pelayanan Administrasi Perkantoran" }
+  ],
+  "masterKegiatan": [
+    { "id": "mk_1", "programId": "mp_1", "nama": "Pencegahan dan Kesiapsiagaan Bencana" },
+    { "id": "mk_2", "programId": "mp_1", "nama": "Penanganan Darurat Bencana" }
+  ],
+  "masterSubkegiatan": [
+    { "id": "msk_1", "kegiatanId": "mk_1", "nama": "Penyusunan Rencana Penanggulangan Bencana", "indikator": "Dokumen Rencana Penanggulangan Bencana Tersusun", "satuan": "Dokumen" },
+    { "id": "msk_2", "kegiatanId": "mk_2", "nama": "Penyaluran Logistik Bencana", "indikator": "Persentase logistik bencana yang tersalurkan", "satuan": "%" }
+  ],
+  "selections": [
+    {
+      "employeeId": "13",
+      "tahun": 2026,
+      "selectedIndicators": ["subkeg_1", "akt_1"]
+    }
+  ],
+  "renaksi": [
+    {
+      "id": "rx_13_subkeg_1_1",
+      "employeeId": "13",
+      "tahun": 2026,
+      "indicatorId": "subkeg_1",
+      "bulan": 1,
+      "targetBulanan": 1,
+      "realisasiBulanan": 1,
+      "tanggalRealisasi": "2026-02-01T08:00:00.000Z",
+      "buktiDukung": "https://drive.google.com/file/d/bukti-januari/view",
+      "kendala": "",
+      "solusi": "",
+      "faktorPendorong": "Dukungan penuh dari komunitas relawan setempat",
+      "inovasi": "Penyuluhan berbasis aplikasi audio visual",
+      "status": "Disetujui"
+    },
+    {
+      "id": "rx_13_subkeg_1_2",
+      "employeeId": "13",
+      "tahun": 2026,
+      "indicatorId": "subkeg_1",
+      "bulan": 2,
+      "targetBulanan": 1,
+      "realisasiBulanan": 0,
+      "tanggalRealisasi": "2026-03-02T09:15:00.000Z",
+      "buktiDukung": "https://drive.google.com/file/d/bukti-februari/view",
+      "kendala": "Cuaca buruk yang mengakibatkan akses jalan desa terputus",
+      "solusi": "Sosialisasi ditunda minggu pertama Maret menggunakan zoom meeting koordinasi",
+      "faktorPendorong": "",
+      "inovasi": "",
+      "status": "Diajukan"
+    }
+  ]
+}
