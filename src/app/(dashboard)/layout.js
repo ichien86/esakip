@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSimulation } from '@/context/SimulationContext';
@@ -8,6 +8,21 @@ import { useSimulation } from '@/context/SimulationContext';
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebar-collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar-collapsed', String(next));
+      return next;
+    });
+  };
   const {
     user,
     simulatedUser,
@@ -76,7 +91,7 @@ export default function DashboardLayout({ children }) {
       <div className="background-glow"></div>
 
       {/* Sidebar */}
-      <aside className="sidebar print-exclude">
+      <aside className={`sidebar print-exclude ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
           <div className="logo-wrapper">
             <i className="fa-solid fa-triangle-exclamation orange-glow"></i>
@@ -195,8 +210,30 @@ export default function DashboardLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="main-content">
-        <header className="top-header print-exclude">
+      <main className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <header className="top-header print-exclude" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            onClick={toggleSidebar} 
+            className="sidebar-toggle-btn"
+            title={isSidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '6px',
+              color: 'white',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '16px',
+              transition: 'background 0.2s',
+              flexShrink: 0
+            }}
+          >
+            <i className={`fa-solid ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'}`}></i>
+          </button>
           <div className="header-title">
             <h1>E-AKIP BPBD Boyolali</h1>
             <p className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
