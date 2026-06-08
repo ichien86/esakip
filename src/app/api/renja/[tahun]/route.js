@@ -13,11 +13,13 @@ export async function GET(request, { params }) {
     const fiveYearNodes = await Cascading5Years.find({});
 
     const enrichedData = annualNodes.map(node => {
-      const fiveYearMatch = fiveYearNodes.find(c5 =>
-        c5.indikator === node.indikator &&
-        c5.bidangPengampu.some(b => node.bidangPengampu.includes(b))
-      );
-      
+      const fiveYearMatch = fiveYearNodes.find(c5 => {
+        if (node.level === 'tujuan' || node.level === 'sasaran') {
+          return c5.level === node.level && c5.text === node.text;
+        }
+        return c5.level === node.level && c5.masterId === node.masterId;
+      });
+
       return {
         ...node.toObject(),
         target5Tahun: fiveYearMatch ? fiveYearMatch[`target${tahun}`] : null,

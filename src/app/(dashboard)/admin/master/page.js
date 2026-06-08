@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminMasterPage() {
@@ -22,6 +22,33 @@ export default function AdminMasterPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedSubkegDetails, setSelectedSubkegDetails] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (showImportModal || showDetailModal) return;
+
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.isContentEditable
+      )) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showImportModal, showDetailModal]);
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
 
@@ -450,7 +477,7 @@ export default function AdminMasterPage() {
               {(importPreview.summary.updatedProgramsCount > 0 || importPreview.summary.updatedKegiatansCount > 0 || importPreview.summary.updatedSubkegiatansCount > 0) && (
                 <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', padding: '12px', borderRadius: '8px', color: '#EF4444', fontSize: '11px', lineHeight: '1.4' }}>
                   <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '6px' }}></i>
-                  <strong>Perhatian:</strong> Perubahan nama/indikator pada data master yang sedang digunakan di cascading tahunan (Renja) atau 5 tahunan akan memicu peringatan pemutakhiran data pada dashboard Admin Bidang pengampu.
+                  <strong>Perhatian:</strong> Perubahan nama/indikator pada data master yang sedang digunakan di Indikator Renja atau Indikator Renstra akan memicu peringatan pemutakhiran data pada dashboard Admin Bidang pengampu.
                 </div>
               )}
 
@@ -676,12 +703,13 @@ export default function AdminMasterPage() {
             <div style={{ position: 'relative', flexGrow: 1, maxWidth: '500px' }}>
               <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}></i>
               <input
+                ref={searchInputRef}
                 type="text"
                 className="form-control"
                 style={{ paddingLeft: '35px', margin: 0 }}
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Cari Urusan, Program, Kegiatan, Subkegiatan, Indikator, atau Pengampu..."
+                placeholder="Cari Urusan, Program, Kegiatan, Subkegiatan, Indikator... (Tekan '/')"
               />
               {globalSearch && (
                 <button

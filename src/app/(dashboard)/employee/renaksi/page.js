@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeRenaksiPage() {
@@ -15,7 +15,7 @@ export default function EmployeeRenaksiPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // 1. Fetch selection list
       const selRes = await fetch(`/api/selections/${currentUser.id}`);
@@ -62,13 +62,16 @@ export default function EmployeeRenaksiPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {
-      loadData();
+      const timer = setTimeout(() => {
+        loadData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [currentUser]);
+  }, [currentUser, loadData]);
 
   const handleInputChange = (indicatorId, month, value) => {
     if (systemSettings?.planning_locked) return;
@@ -140,7 +143,7 @@ export default function EmployeeRenaksiPage() {
 
   const getTargetStatusText = () => {
     if (renaksiRecords.length === 0) return 'Draft';
-    const hasPending = renaksiRecords.some(r => r.status === 'Target_Diajukan');
+    const hasPending = renaksiRecords.some(r => ['Target_Diajukan', 'Target_ACC_Admin'].includes(r.status));
     if (hasPending) return 'Menunggu Persetujuan';
     
     const hasApproved = renaksiRecords.some(r => r.status === 'Target_Disetujui');
@@ -172,6 +175,7 @@ export default function EmployeeRenaksiPage() {
   };
 
   const targetStatus = getTargetStatusText();
+  const isTargetEditable = targetStatus === 'Draft' && !systemSettings?.planning_locked;
 
   const months = [
     { num: 1, label: 'Jan' },
@@ -195,7 +199,7 @@ export default function EmployeeRenaksiPage() {
         <div className="panel-header justify-between">
           <div>
             <h3><i className="fa-solid fa-table text-orange"></i> Penyusunan Matriks Target Renaksi (Spreadsheet Model)</h3>
-            <p className="text-muted">Masukkan target sasaran per bulan. Jumlah target bulanan untuk tipe 'Akumulatif' wajib bernilai persis sama dengan target tahunan.</p>
+            <p className="text-muted">Masukkan target sasaran per bulan. Jumlah target bulanan untuk tipe &quot;Akumulatif&quot; wajib bernilai persis sama dengan target tahunan.</p>
           </div>
         </div>
         <div className="panel-body">
@@ -288,9 +292,9 @@ export default function EmployeeRenaksiPage() {
                                     padding: '4px 6px',
                                     textAlign: 'center',
                                     fontSize: '11px',
-                                    cursor: systemSettings?.planning_locked ? 'not-allowed' : 'text'
+                                    cursor: !isTargetEditable ? 'not-allowed' : 'text'
                                   }}
-                                  disabled={systemSettings?.planning_locked}
+                                  disabled={!isTargetEditable}
                                   value={val}
                                   onChange={(e) => handleInputChange(node.id, m.num, e.target.value)}
                                 />
@@ -312,7 +316,7 @@ export default function EmployeeRenaksiPage() {
                 </table>
               </div>
 
-              {!systemSettings?.planning_locked && (
+              {isTargetEditable && (
                 <div style={{ marginTop: '20px' }}>
                   <button className="btn btn-orange" onClick={handleSaveTargets}>
                     <i className="fa-solid fa-floppy-disk"></i> Simpan Semua Target

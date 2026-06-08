@@ -1,19 +1,96 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeSelectIndicatorsPage() {
-  const { fetchWithAuth, currentUser, activeBidang, systemSettings } = useSimulation();
+  const { fetchWithAuth, currentUser, activeRole, activeBidang, systemSettings, allEmployees } = useSimulation();
 
   const [annualNodes, setAnnualNodes] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [assignments, setAssignments] = useState({});
   const [loading, setLoading] = useState(true);
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const loadData = async () => {
+  const isAdminUnitKerja = activeRole === 'admin_bidang';
+
+  const getOfficialLeaderJabatan = (bidang) => {
+    const map = {
+      'Badan': 'Kepala Pelaksana',
+      'Sekretariat': 'Sekretaris',
+      'Tata Usaha': 'Kepala Sub Bagian Tata Usaha',
+      'Bidang Pencegahan dan Kesiapsiagaan': 'Kepala Bidang Pencegahan dan Kesiapsiagaan',
+      'Bidang Kedaruratan dan Logistik': 'Kepala Bidang Kedaruratan dan Logistik',
+      'Bidang Rehabilitasi dan Rekonstruksi': 'Kepala Bidang Rehabilitasi dan Rekonstruksi'
+    };
+    return map[bidang] || `Kepala ${bidang}`;
+  };
+
+  const getPenanggungJawabOptionsForNode = (node) => {
+    const options = [];
+
+    // 1. Level Tujuan & Sasaran: Only Kepala Badan (Kepala Pelaksana)
+    if (node.level === 'tujuan' || node.level === 'sasaran') {
+      const kb = allEmployees.find(e => 
+        e.isActive !== false && 
+        (e.jabatan === 'Kepala Pelaksana' || (e.roles.includes('pemimpin') && e.bidangs.includes('Badan')))
+      );
+      options.push({ value: 'jabatan:Kepala Pelaksana', label: 'Jabatan: Kepala Pelaksana', type: 'jabatan' });
+      if (kb) {
+        options.push({ value: kb.id, label: `${kb.nama} (Kepala Pelaksana)`, type: 'staff' });
+      }
+    }
+    // 2. Level Program: Only Sekretaris or Kepala Bidang
+    else if (node.level === 'program' || node.level === 'sasaran_program') {
+      const officialJab = getOfficialLeaderJabatan(activeBidang);
+      if (officialJab === 'Sekretaris' || officialJab.startsWith('Kepala Bidang')) {
+        options.push({ value: `jabatan:${officialJab}`, label: `Jabatan: ${officialJab}`, type: 'jabatan' });
+      }
+      
+      const unitLeaders = allEmployees.filter(e => 
+        e.isActive !== false && 
+        e.roles.includes('pemimpin') && 
+        e.bidangs.includes(activeBidang) &&
+        (e.jabatan.includes('Sekretaris') || e.jabatan.includes('Kepala Bidang') || e.jabatan.includes('Kabid'))
+      );
+      unitLeaders.forEach(l => {
+        options.push({ value: l.id, label: `${l.nama} (${l.jabatan})`, type: 'staff' });
+      });
+    }
+    // 3. Level Kegiatan, Subkegiatan, & Aktivitas: Pemimpin Tata Usaha (Kasi/Kasubag TU) or Staf
+    else {
+      if (activeBidang === 'Tata Usaha') {
+        const officialJab = getOfficialLeaderJabatan('Tata Usaha');
+        options.push({ value: `jabatan:${officialJab}`, label: `Jabatan: ${officialJab}`, type: 'jabatan' });
+        
+        const tuLeaders = allEmployees.filter(e => 
+          e.isActive !== false && 
+          e.roles.includes('pemimpin') && 
+          e.bidangs.includes('Tata Usaha')
+        );
+        tuLeaders.forEach(l => {
+          options.push({ value: l.id, label: `${l.nama} (${l.jabatan})`, type: 'staff' });
+        });
+      }
+
+      // Add all active staff in this unit
+      const staffInUnit = allEmployees.filter(e => 
+        e.isActive !== false && 
+        e.id !== 'admin' &&
+        !e.roles.includes('pemimpin') &&
+        e.bidangs.includes(activeBidang)
+      );
+      staffInUnit.forEach(s => {
+        options.push({ value: s.id, label: `${s.nama} (${s.jabatan})`, type: 'staff' });
+      });
+    }
+
+    return options;
+  };
+
+  const loadData = useCallback(async () => {
     try {
       const res = await fetch('/api/renja/2026'); // Load Renja 2026
       if (res.ok) {
@@ -24,6 +101,13 @@ export default function EmployeeSelectIndicatorsPage() {
           activeBidang === 'Pimpinan'
         );
         setAnnualNodes(filtered);
+
+        // Populate assignments map for Admin Unit Kerja
+        const initialAssignments = {};
+        filtered.forEach(n => {
+          initialAssignments[n.id] = n.penanggungJawab || '';
+        });
+        setAssignments(initialAssignments);
       }
 
       if (currentUser) {
@@ -34,26 +118,27 @@ export default function EmployeeSelectIndicatorsPage() {
         }
       }
     } catch (e) {
-      console.error('Failed to load indicators for selection', e);
+      console.error('Failed to load indicators', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, activeBidang]);
 
   useEffect(() => {
     if (currentUser) {
-      loadData();
+      const timer = setTimeout(() => {
+        loadData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [currentUser, activeBidang]);
+  }, [currentUser, loadData]);
 
-  const handleCheckboxChange = (id) => {
+  const handleAssignmentChange = (nodeId, val) => {
     if (systemSettings?.planning_locked) return;
-
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(item => item !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
+    setAssignments(prev => ({
+      ...prev,
+      [nodeId]: val
+    }));
   };
 
   const handleSave = async (e) => {
@@ -62,26 +147,27 @@ export default function EmployeeSelectIndicatorsPage() {
     setSuccess('');
 
     try {
+      const payload = isAdminUnitKerja 
+        ? { assignments } 
+        : { employeeId: currentUser.id, selectedIndicators: selectedIds };
+
       const res = await fetchWithAuth('/api/selections', {
         method: 'POST',
-        body: JSON.stringify({
-          employeeId: currentUser.id,
-          selectedIndicators: selectedIds
-        })
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        setSuccess('Pilihan indikator IKU berhasil disimpan.');
+        setSuccess(isAdminUnitKerja ? 'Penanggung jawab indikator berhasil disimpan.' : 'Pilihan indikator IKU berhasil disimpan.');
+        loadData();
       } else {
         const err = await res.json();
-        setError(err.error || 'Gagal menyimpan pilihan.');
+        setError(err.error || 'Gagal menyimpan.');
       }
     } catch (e) {
       setError('Kesalahan jaringan.');
     }
   };
 
-  // Group nodes by level for clean rendering
   const getGroupedNodes = (level) => {
     return annualNodes.filter(n => n.level === level);
   };
@@ -100,11 +186,29 @@ export default function EmployeeSelectIndicatorsPage() {
     return labels[lvl] || lvl;
   };
 
+  const resolvePenanggungJawabLabel = (val) => {
+    if (!val) return 'Belum ditentukan';
+    if (val.startsWith('jabatan:')) {
+      const pos = val.replace('jabatan:', '');
+      return `Jabatan Melekat: ${pos}`;
+    }
+    const emp = allEmployees.find(e => e.id === val);
+    return emp ? `${emp.nama} (${emp.jabatan})` : val;
+  };
+
   return (
     <div className="glass-panel">
       <div className="panel-header">
-        <h3><i className="fa-solid fa-square-check text-orange"></i> Pemilihan Indikator Kinerja yang Diampu</h3>
-        <p className="text-muted">Centang indikator di bawah ini yang menjadi tugas tanggung jawab Anda untuk tahun anggaran 2026.</p>
+        <h3>
+          <i className="fa-solid fa-square-check text-orange"></i> 
+          {isAdminUnitKerja ? ' Pengaturan Penanggung Jawab IKU Unit Kerja' : ' Daftar Indikator Kinerja yang Diampu (IKU)'}
+        </h3>
+        <p className="text-muted">
+          {isAdminUnitKerja 
+            ? `Tentukan penanggung jawab (PIC) untuk indikator kinerja di unit kerja ${activeBidang}.` 
+            : `Berikut adalah indikator kinerja Anda untuk tahun anggaran 2026 di unit ${activeBidang}.`
+          }
+        </p>
         
         {systemSettings?.planning_locked && (
           <div style={{
@@ -117,14 +221,16 @@ export default function EmployeeSelectIndicatorsPage() {
             marginTop: '12px'
           }}>
             <i className="fa-solid fa-lock" style={{ marginRight: '8px' }}></i>
-            Masa perencanaan telah dikunci. Anda tidak dapat mengubah pilihan indikator IKU.
+            Masa perencanaan telah dikunci. Pengaturan penanggung jawab tidak dapat diubah.
           </div>
         )}
       </div>
 
       <div className="panel-body">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}><i className="fa-solid fa-circle-notch fa-spin"></i> Memuat data indikator...</div>
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <i className="fa-solid fa-circle-notch fa-spin"></i> Memuat data indikator...
+          </div>
         ) : (
           <form onSubmit={handleSave}>
             {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
@@ -133,7 +239,13 @@ export default function EmployeeSelectIndicatorsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {levels.map(level => {
                 const groupNodes = getGroupedNodes(level);
-                if (groupNodes.length === 0) return null;
+                
+                // For non-admin unit kerja, filter list to show only their assigned indicators
+                const filteredGroupNodes = isAdminUnitKerja 
+                  ? groupNodes 
+                  : groupNodes.filter(node => selectedIds.includes(node.id));
+
+                if (filteredGroupNodes.length === 0) return null;
 
                 return (
                   <div key={level} style={{
@@ -142,42 +254,74 @@ export default function EmployeeSelectIndicatorsPage() {
                     borderRadius: '8px',
                     padding: '16px'
                   }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-orange)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '6px', marginBottom: '10px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-orange)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '6px', marginBottom: '12px' }}>
                       {getLevelLabel(level)}
                     </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {groupNodes.map(node => (
-                        <label key={node.id} style={{
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {filteredGroupNodes.map(node => (
+                        <div key={node.id} style={{
                           display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '12px',
-                          fontSize: '13px',
-                          cursor: (systemSettings?.planning_locked || node.level === 'program') ? 'not-allowed' : 'pointer',
-                          margin: 0,
-                          padding: '6px',
-                          borderRadius: '4px',
-                          transition: 'background 0.2s',
-                          background: selectedIds.includes(node.id) ? 'rgba(255,107,0,0.04)' : ''
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '20px',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          background: 'rgba(15,23,42,0.3)',
+                          border: '1px solid var(--glass-border)',
+                          flexWrap: 'wrap'
                         }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(node.id)}
-                            disabled={systemSettings?.planning_locked || node.level === 'program'}
-                            onChange={() => handleCheckboxChange(node.id)}
-                            style={{ marginTop: '3px', cursor: (systemSettings?.planning_locked || node.level === 'program') ? 'not-allowed' : 'pointer' }}
-                          />
-                          <div style={{ flex: 1 }}>
-                            <strong>{node.text}</strong>
-                            <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>
+                          <div style={{ flex: 1, minWidth: '250px' }}>
+                            <strong style={{ fontSize: '13.5px', color: 'white' }}>{node.text}</strong>
+                            <div className="text-muted" style={{ fontSize: '11px', marginTop: '4px' }}>
                               Indikator: <strong>{node.indikator}</strong> | Target: <strong>{node.target} {node.satuan}</strong>
-                              {node.bidangPengampu.length > 1 && (
-                                <span className="badge badge-score" style={{ fontSize: '8px', marginLeft: '6px', padding: '1px 5px' }}>
-                                  Cross-cutting ({node.crossCuttingType === 'split' ? `Porsi Bidang: ${node.splitTargets[activeBidang] || '-'}` : 'Shared'})
-                                </span>
-                              )}
                             </div>
                           </div>
-                        </label>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {isAdminUnitKerja ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 'bold', margin: 0 }}>
+                                  Penanggung Jawab:
+                                </label>
+                                <select
+                                  className="select-sim"
+                                  value={assignments[node.id] || ''}
+                                  disabled={systemSettings?.planning_locked || node.level === 'program'}
+                                  onChange={(e) => handleAssignmentChange(node.id, e.target.value)}
+                                  style={{ minWidth: '220px', fontSize: '12px', background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'white' }}
+                                >
+                                  <option value="">-- Pilih Penanggung Jawab --</option>
+                                  {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').length > 0 && (
+                                    <optgroup label="Nama Pegawai (Staf/Pimpinan)">
+                                      {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                  {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').length > 0 && (
+                                    <optgroup label="Jabatan Pemimpin (Melekat)">
+                                      {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+                                  {assignments[node.id] && !getPenanggungJawabOptionsForNode(node).some(opt => opt.value === assignments[node.id]) && (
+                                    <optgroup label="Aktif Saat Ini">
+                                      <option value={assignments[node.id]}>
+                                        {resolvePenanggungJawabLabel(assignments[node.id])}
+                                      </option>
+                                    </optgroup>
+                                  )}
+                                </select>
+                              </div>
+                            ) : (
+                              <div style={{ background: 'rgba(255, 107, 0, 0.08)', border: '1px solid rgba(255, 107, 0, 0.2)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>
+                                <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
+                                Penanggung Jawab: <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -185,9 +329,9 @@ export default function EmployeeSelectIndicatorsPage() {
               })}
             </div>
 
-            {!systemSettings?.planning_locked && (
-              <button type="submit" className="btn btn-orange mt-4" style={{ display: 'flex', alignItems: 'center' }}>
-                <i className="fa-solid fa-floppy-disk"></i> Simpan Pilihan Indikator
+            {isAdminUnitKerja && !systemSettings?.planning_locked && (
+              <button type="submit" className="btn btn-orange mt-4" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}>
+                <i className="fa-solid fa-floppy-disk"></i> Simpan Penanggung Jawab
               </button>
             )}
           </form>

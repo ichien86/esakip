@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Cascading5Years from '@/models/Cascading5Years';
+import { checkPlanningLock } from '@/lib/lock-check';
 
 export async function DELETE(request, { params }) {
   try {
     await dbConnect();
+    const lockResponse = await checkPlanningLock(request);
+    if (lockResponse) return lockResponse;
+
     const { id } = await params;
     
     const requesterRole = request.headers.get('x-requester-role') || '';
@@ -49,6 +53,9 @@ export async function DELETE(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     await dbConnect();
+    const lockResponse = await checkPlanningLock(request);
+    if (lockResponse) return lockResponse;
+
     const { id } = await params;
     const body = await request.json();
     const {

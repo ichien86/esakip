@@ -12,6 +12,9 @@ const Cascading5YearsSchema = new mongoose.Schema({
   crossCuttingType: { type: String, default: 'shared' }, // shared, split
   splitTargets: { type: mongoose.Schema.Types.Mixed, default: {} }, // { "Bidang A": 40, "Bidang B": 60 }
   masterId: { type: String, default: null },
+  sasaran: { type: String, default: '' },
+  nomenklatur: { type: String, default: '' },
+  indicators: { type: [mongoose.Schema.Types.Mixed], default: [] },
   
   // Target per year
   target2025: { type: String, default: '0' },

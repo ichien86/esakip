@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function LaporanAkipPage() {
@@ -22,12 +22,15 @@ export default function LaporanAkipPage() {
       // Default to first employee (non-admin)
       const nonAdmin = allEmployees.filter(e => e.id !== 'admin' && e.isActive !== false);
       if (nonAdmin.length > 0) {
-        setSelectedEmpId(nonAdmin[0].id);
+        const timer = setTimeout(() => {
+          setSelectedEmpId(nonAdmin[0].id);
+        }, 0);
+        return () => clearTimeout(timer);
       }
     }
   }, [allEmployees]);
 
-  const loadReportData = async (empId) => {
+  const loadReportData = useCallback(async (empId) => {
     if (!empId) return;
     setLoading(true);
     const emp = allEmployees.find(e => e.id === empId);
@@ -76,13 +79,16 @@ export default function LaporanAkipPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [allEmployees]);
 
   useEffect(() => {
     if (selectedEmpId) {
-      loadReportData(selectedEmpId);
+      const timer = setTimeout(() => {
+        loadReportData(selectedEmpId);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [selectedEmpId]);
+  }, [selectedEmpId, loadReportData]);
 
   // Calculate indicator achievement percentage
   const calculateCapaian = (nodeId) => {

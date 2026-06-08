@@ -1,13 +1,14 @@
 'use client';
+/* eslint-disable react-hooks/set-state-in-effect */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function OperationalDefinitionPage() {
   const { fetchWithAuth, activeRole } = useSimulation();
 
   const [nodes, setNodes] = useState([]);
-  const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedIndicator, setSelectedIndicator] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // Editor States
@@ -21,6 +22,7 @@ export default function OperationalDefinitionPage() {
   const [filterLevel, setFilterLevel] = useState('Semua');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const searchInputRef = useRef(null);
 
   const loadNodes = async () => {
     setLoading(true);
@@ -41,25 +43,48 @@ export default function OperationalDefinitionPage() {
     loadNodes();
   }, []);
 
-  const handleSelectNode = (node) => {
-    setSelectedNode(node);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.isContentEditable
+      )) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleSelectIndicator = (ind) => {
+    setSelectedIndicator(ind);
     setSuccess('');
     setError('');
     
-    setDefinisiOperasional(node.definisiOperasional || '');
-    // Ensure we fallback to 'Jumlah' if a deprecated method like 'Lainnya' was used previously
-    const method = (node.metodePenghitungan === 'Persentase' || node.metodePenghitungan === 'Jumlah') 
-                   ? node.metodePenghitungan 
+    setDefinisiOperasional(ind.definisiOperasional || '');
+    const method = (ind.metodePenghitungan === 'Persentase' || ind.metodePenghitungan === 'Jumlah') 
+                   ? ind.metodePenghitungan 
                    : 'Jumlah';
     setMetodePenghitungan(method);
-    setVariabelJumlah(node.variabelJumlah || '');
-    setVariabelPembilang(node.variabelPembilang || '');
-    setVariabelPenyebut(node.variabelPenyebut || '');
+    setVariabelJumlah(ind.variabelJumlah || '');
+    setVariabelPembilang(ind.variabelPembilang || '');
+    setVariabelPenyebut(ind.variabelPenyebut || '');
   };
 
   const handleAutoSuggest = () => {
-    if (!selectedNode || !selectedNode.indikator) return;
-    const textVal = selectedNode.indikator;
+    if (!selectedIndicator || !selectedIndicator.indikator) return;
+    const textVal = selectedIndicator.indikator;
     const lower = textVal.toLowerCase();
     const isPercent = lower.includes('persen') || lower.includes('%') || lower.includes('persentase');
 
@@ -85,11 +110,19 @@ export default function OperationalDefinitionPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!selectedNode) return;
+    if (!selectedIndicator) return;
     setSuccess('');
     setError('');
 
-    const payload = {
+    const originalNode = nodes.find(n => n.id === selectedIndicator.nodeId);
+    if (!originalNode) {
+      setError('Node tidak ditemukan.');
+      return;
+    }
+
+    const updatedIndicators = [...(originalNode.indicators || [])];
+    updatedIndicators[selectedIndicator.indicatorIndex] = {
+      ...updatedIndicators[selectedIndicator.indicatorIndex],
       definisiOperasional,
       metodePenghitungan,
       variabelJumlah: metodePenghitungan === 'Jumlah' ? variabelJumlah : '',
@@ -97,19 +130,31 @@ export default function OperationalDefinitionPage() {
       variabelPenyebut: metodePenghitungan === 'Persentase' ? variabelPenyebut : ''
     };
 
+    const payload = {
+      ...originalNode,
+      indicators: updatedIndicators,
+      requesterRole: activeRole
+    };
+
     try {
-      const res = await fetchWithAuth(`/api/cascading5years/${selectedNode.id}`, {
-        method: 'PATCH',
+      const res = await fetchWithAuth('/api/cascading5years', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (res.ok) {
         setSuccess('Definisi operasional indikator berhasil diperbarui.');
+        await loadNodes();
         
-        // Update local list state
-        setNodes(nodes.map(n => n.id === selectedNode.id ? { ...n, ...payload } : n));
-        setSelectedNode({ ...selectedNode, ...payload });
+        setSelectedIndicator({
+          ...selectedIndicator,
+          definisiOperasional,
+          metodePenghitungan,
+          variabelJumlah: metodePenghitungan === 'Jumlah' ? variabelJumlah : '',
+          variabelPembilang: metodePenghitungan === 'Persentase' ? variabelPembilang : '',
+          variabelPenyebut: metodePenghitungan === 'Persentase' ? variabelPenyebut : ''
+        });
       } else {
         const err = await res.json();
         setError(err.error || 'Gagal menyimpan perubahan.');
@@ -123,18 +168,34 @@ export default function OperationalDefinitionPage() {
     const labels = {
       tujuan: 'Tujuan Strategis',
       sasaran: 'Sasaran Strategis',
-      program: 'Program',
-      kegiatan: 'Kegiatan',
-      subkegiatan: 'Subkegiatan',
-      aktivitas: 'Aktivitas'
+      sasaran_program: 'Sasaran Program',
+      sasaran_kegiatan: 'Sasaran Kegiatan',
+      sasaran_subkegiatan: 'Sasaran Subkegiatan',
+      sasaran_aktivitas: 'Sasaran Aktivitas'
     };
     return labels[level] || level;
   };
 
-  const filteredNodes = nodes.filter(node => {
-    const matchesSearch = node.indikator.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          node.text.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLevel = filterLevel === 'Semua' || node.level === filterLevel;
+  // Extract all indicators
+  const allIndicators = [];
+  nodes.forEach(node => {
+    if (node.indicators && Array.isArray(node.indicators)) {
+      node.indicators.forEach((ind, index) => {
+        allIndicators.push({
+          nodeId: node.id,
+          nodeText: node.text,
+          nodeLevel: node.level,
+          indicatorIndex: index,
+          ...ind
+        });
+      });
+    }
+  });
+
+  const filteredIndicators = allIndicators.filter(ind => {
+    const matchesSearch = (ind.indikator || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (ind.nodeText || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLevel = filterLevel === 'Semua' || ind.nodeLevel === filterLevel;
     return matchesSearch && matchesLevel;
   });
 
@@ -158,7 +219,7 @@ export default function OperationalDefinitionPage() {
         <div className="glass-panel">
           <div className="panel-header">
             <h3>
-              <i className="fa-solid fa-list text-orange"></i> Indikator Strategis 5 Tahunan
+              <i className="fa-solid fa-list text-orange"></i> Indikator Strategis Renstra
             </h3>
           </div>
           <div className="panel-body">
@@ -166,9 +227,10 @@ export default function OperationalDefinitionPage() {
             {/* Search & Filter */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               <input
+                ref={searchInputRef}
                 type="text"
                 className="form-control"
-                placeholder="Cari indikator/deskripsi..."
+                placeholder="Cari indikator/deskripsi... (Tekan '/')"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ flex: 1 }}
@@ -182,10 +244,10 @@ export default function OperationalDefinitionPage() {
                 <option value="Semua">Semua Level</option>
                 <option value="tujuan">Tujuan</option>
                 <option value="sasaran">Sasaran</option>
-                <option value="program">Program</option>
-                <option value="kegiatan">Kegiatan</option>
-                <option value="subkegiatan">Subkegiatan</option>
-                <option value="aktivitas">Aktivitas</option>
+                <option value="sasaran_program">Program</option>
+                <option value="sasaran_kegiatan">Kegiatan</option>
+                <option value="sasaran_subkegiatan">Subkegiatan</option>
+                <option value="sasaran_aktivitas">Aktivitas</option>
               </select>
             </div>
 
@@ -193,53 +255,56 @@ export default function OperationalDefinitionPage() {
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
                 <i className="fa-solid fa-circle-notch fa-spin"></i> Memuat data indikator...
               </div>
-            ) : filteredNodes.length === 0 ? (
+            ) : filteredIndicators.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0' }}>
                 Tidak ada indikator yang cocok.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
-                {filteredNodes.map(node => (
-                  <div
-                    key={node.id}
-                    onClick={() => handleSelectNode(node)}
-                    style={{
-                      background: selectedNode?.id === node.id ? 'rgba(255, 107, 0, 0.12)' : 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid',
-                      borderColor: selectedNode?.id === node.id ? 'var(--primary-orange)' : 'var(--glass-border)',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'var(--transition-smooth)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                      <span style={{
-                        fontSize: '9px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontWeight: 600,
-                        textTransform: 'uppercase',
-                        color: 'var(--text-muted)'
-                      }}>{getLevelLabel(node.level)}</span>
+                {filteredIndicators.map((ind, index) => {
+                  const isSelected = selectedIndicator?.nodeId === ind.nodeId && selectedIndicator?.indicatorIndex === ind.indicatorIndex;
+                  return (
+                    <div
+                      key={`${ind.nodeId}_${ind.indicatorIndex}_${index}`}
+                      onClick={() => handleSelectIndicator(ind)}
+                      style={{
+                        background: isSelected ? 'rgba(255, 107, 0, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid',
+                        borderColor: isSelected ? 'var(--primary-orange)' : 'var(--glass-border)',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'var(--transition-smooth)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{
+                          fontSize: '9px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          color: 'var(--text-muted)'
+                        }}>{getLevelLabel(ind.nodeLevel)}</span>
+                        
+                        {ind.definisiOperasional ? (
+                          <span className="badge badge-finished" style={{ fontSize: '9px', padding: '2px 6px' }}>Terdefinisi</span>
+                        ) : (
+                          <span className="badge badge-none" style={{ fontSize: '9px', padding: '2px 6px' }}>Belum Diisi</span>
+                        )}
+                      </div>
                       
-                      {node.definisiOperasional ? (
-                        <span className="badge badge-finished" style={{ fontSize: '9px', padding: '2px 6px' }}>Terdefinisi</span>
-                      ) : (
-                        <span className="badge badge-none" style={{ fontSize: '9px', padding: '2px 6px' }}>Belum Diisi</span>
-                      )}
+                      <h4 style={{ fontSize: '13px', fontWeight: 600, marginTop: '8px' }}>
+                        {ind.indikator}
+                      </h4>
+                      
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        Induk: {ind.nodeText}
+                      </p>
                     </div>
-                    
-                    <h4 style={{ fontSize: '13px', fontWeight: 600, marginTop: '8px' }}>
-                      {node.indikator}
-                    </h4>
-                    
-                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      Uraian: {node.text}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -256,7 +321,7 @@ export default function OperationalDefinitionPage() {
             {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
             {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
 
-            {!selectedNode ? (
+            {!selectedIndicator ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
                 <i className="fa-solid fa-hand-pointer fa-3x text-muted" style={{ marginBottom: '16px', display: 'block' }}></i>
                 <h4>Pilih Indikator di Sebelah Kiri</h4>
@@ -267,16 +332,16 @@ export default function OperationalDefinitionPage() {
                 {/* Node Details (Read-only Context) */}
                 <div style={{ background: 'rgba(15, 23, 42, 0.4)', padding: '14px', borderRadius: '8px', border: '1px solid var(--glass-border)', marginBottom: '20px' }}>
                   <span style={{ fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 700, textTransform: 'uppercase' }}>
-                    {getLevelLabel(selectedNode.level)}
+                    {getLevelLabel(selectedIndicator.nodeLevel)}
                   </span>
                   <h4 style={{ fontSize: '15px', fontWeight: 600, margin: '4px 0 8px 0' }}>
-                    {selectedNode.indikator}
+                    {selectedIndicator.indikator}
                   </h4>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px' }}>
-                    <strong>Deskripsi Rencana:</strong> {selectedNode.text}
+                    <strong>Deskripsi Rencana Induk:</strong> {selectedIndicator.nodeText}
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    <strong>Satuan:</strong> {selectedNode.satuan} | <strong>Tipe Target:</strong> {selectedNode.tipeTarget}
+                    <strong>Satuan:</strong> {selectedIndicator.satuan} | <strong>Tipe Target:</strong> {selectedIndicator.tipeTarget}
                   </p>
                 </div>
 

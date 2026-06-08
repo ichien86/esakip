@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeRealisasiPage() {
@@ -8,6 +8,7 @@ export default function EmployeeRealisasiPage() {
 
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
+  const [monthlySchedules, setMonthlySchedules] = useState([]);
 
   // Selections
   const [selectedId, setSelectedId] = useState('');
@@ -33,7 +34,8 @@ export default function EmployeeRealisasiPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (!currentUser) return;
     try {
       // 1. Fetch selection list
       const selRes = await fetch(`/api/selections/${currentUser.id}`);
@@ -60,18 +62,27 @@ export default function EmployeeRealisasiPage() {
       if (rxRes.ok) {
         setRenaksiRecords(await rxRes.json());
       }
+
+      // 4. Fetch monthly realization schedules
+      const schedRes = await fetch('/api/admin/settings/realisasi-schedule?tahun=2026');
+      if (schedRes.ok) {
+        setMonthlySchedules(await schedRes.json());
+      }
     } catch (e) {
       console.error('Failed to load realisasi data sources', e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {
-      loadData();
+      const timer = setTimeout(() => {
+        loadData();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [currentUser]);
+  }, [currentUser, loadData]);
 
   // Load existing realization values when indicator or month changes
   const activeRecord = renaksiRecords.find(
@@ -80,53 +91,81 @@ export default function EmployeeRealisasiPage() {
 
   const activeNode = selectedIndicators.find(n => n.id === selectedId);
 
-  useEffect(() => {
-    if (activeRecord) {
-      setRealisasiValue(activeRecord.realisasiBulanan !== null ? activeRecord.realisasiBulanan.toString() : '');
-      setVariabelJumlahVal(activeRecord.variabelJumlahVal !== null ? activeRecord.variabelJumlahVal.toString() : '');
-      setVariabelPembilangVal(activeRecord.variabelPembilangVal !== null ? activeRecord.variabelPembilangVal.toString() : '');
-      setVariabelPenyebutVal(activeRecord.variabelPenyebutVal !== null ? activeRecord.variabelPenyebutVal.toString() : '');
-      setBuktiDukung(activeRecord.buktiDukung || '');
-      setKendala(activeRecord.kendala || '');
-      setSolusi(activeRecord.solusi || '');
-      setPendorong(activeRecord.faktorPendorong || '');
-      setInovasi(activeRecord.inovasi || '');
-      setVerifyStatus(null);
-    } else {
-      setRealisasiValue('');
-      setVariabelJumlahVal('');
-      setVariabelPembilangVal('');
-      setVariabelPenyebutVal('');
-      setBuktiDukung('');
-      setKendala('');
-      setSolusi('');
-      setPendorong('');
-      setInovasi('');
-      setVerifyStatus(null);
+  const currentSchedule = monthlySchedules.find(s => s.bulan === parseInt(selectedBulan));
+  let isMonthLocked = currentSchedule ? currentSchedule.isLocked : false;
+  let lockReason = '';
+  if (currentSchedule && currentSchedule.deadline) {
+    const now = new Date();
+    const deadlineDate = new Date(currentSchedule.deadline);
+    deadlineDate.setHours(23, 59, 59, 999);
+    if (now > deadlineDate) {
+      isMonthLocked = true;
+      lockReason = `Batas pengisian telah berakhir pada ${currentSchedule.deadline}.`;
+    } else if (isMonthLocked) {
+      lockReason = 'Bulan ini telah dikunci oleh Administrator.';
     }
-  }, [selectedId, selectedBulan, renaksiRecords]);
+  } else if (isMonthLocked) {
+    lockReason = 'Bulan ini telah dikunci oleh Administrator.';
+  }
+
+  const isRealisasiEditable = activeRecord && 
+    activeRecord.status !== 'ACC_Admin' && 
+    activeRecord.status !== 'Disetujui' && 
+    !isMonthLocked;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeRecord) {
+        setRealisasiValue(activeRecord.realisasiBulanan !== null ? activeRecord.realisasiBulanan.toString() : '');
+        setVariabelJumlahVal(activeRecord.variabelJumlahVal !== null ? activeRecord.variabelJumlahVal.toString() : '');
+        setVariabelPembilangVal(activeRecord.variabelPembilangVal !== null ? activeRecord.variabelPembilangVal.toString() : '');
+        setVariabelPenyebutVal(activeRecord.variabelPenyebutVal !== null ? activeRecord.variabelPenyebutVal.toString() : '');
+        setBuktiDukung(activeRecord.buktiDukung || '');
+        setKendala(activeRecord.kendala || '');
+        setSolusi(activeRecord.solusi || '');
+        setPendorong(activeRecord.faktorPendorong || '');
+        setInovasi(activeRecord.inovasi || '');
+        setVerifyStatus(null);
+      } else {
+        setRealisasiValue('');
+        setVariabelJumlahVal('');
+        setVariabelPembilangVal('');
+        setVariabelPenyebutVal('');
+        setBuktiDukung('');
+        setKendala('');
+        setSolusi('');
+        setPendorong('');
+        setInovasi('');
+        setVerifyStatus(null);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [selectedId, selectedBulan, renaksiRecords, activeRecord]);
 
   // Dynamic automatic calculation of Realisasi on the fly
   useEffect(() => {
-    if (activeNode) {
-      if (activeNode.metodePenghitungan === 'Persentase') {
-        const p = parseFloat(variabelPembilangVal);
-        const y = parseFloat(variabelPenyebutVal);
-        if (!isNaN(p) && !isNaN(y) && y !== 0) {
-          const calc = ((p / y) * 100).toFixed(2);
-          setRealisasiValue(parseFloat(calc).toString());
-        } else {
-          setRealisasiValue('');
-        }
-      } else if (activeNode.metodePenghitungan === 'Jumlah') {
-        const v = parseFloat(variabelJumlahVal);
-        if (!isNaN(v)) {
-          setRealisasiValue(v.toString());
-        } else {
-          setRealisasiValue('');
+    const timer = setTimeout(() => {
+      if (activeNode) {
+        if (activeNode.metodePenghitungan === 'Persentase') {
+          const p = parseFloat(variabelPembilangVal);
+          const y = parseFloat(variabelPenyebutVal);
+          if (!isNaN(p) && !isNaN(y) && y !== 0) {
+            const calc = ((p / y) * 100).toFixed(2);
+            setRealisasiValue(parseFloat(calc).toString());
+          } else {
+            setRealisasiValue('');
+          }
+        } else if (activeNode.metodePenghitungan === 'Jumlah') {
+          const v = parseFloat(variabelJumlahVal);
+          if (!isNaN(v)) {
+            setRealisasiValue(v.toString());
+          } else {
+            setRealisasiValue('');
+          }
         }
       }
-    }
+    }, 0);
+    return () => clearTimeout(timer);
   }, [variabelJumlahVal, variabelPembilangVal, variabelPenyebutVal, activeNode]);
 
   // Google Drive link verification
@@ -287,6 +326,14 @@ export default function EmployeeRealisasiPage() {
           </div>
         ) : (
           <form onSubmit={handleSaveRealisasi}>
+            {isMonthLocked && (
+              <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fa-solid fa-lock text-orange"></i>
+                <div>
+                  <strong>Pengisian Realisasi Terkunci:</strong> {lockReason || 'Akses pengisian bulan ini telah ditutup.'}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
               <div className="form-group">
                 <label>1. Pilih Indikator:</label>
@@ -323,9 +370,19 @@ export default function EmployeeRealisasiPage() {
                     <span className="badge badge-score" style={{ marginLeft: '10px' }}>Tipe: Target Menurun</span>
                   )}
                 </p>
+                {activeRecord.status === 'Diajukan' && (
+                  <p style={{ marginTop: '6px', color: '#F59E0B', fontSize: '12px' }}>
+                    <i className="fa-solid fa-clock"></i> Laporan ini telah diajukan dan menunggu persetujuan (ACC) dari Admin Unit Kerja.
+                  </p>
+                )}
+                {activeRecord.status === 'ACC_Admin' && (
+                  <p style={{ marginTop: '6px', color: '#3B82F6', fontSize: '12px' }}>
+                    <i className="fa-solid fa-circle-check"></i> Laporan ini telah di-ACC oleh Admin Unit Kerja dan sedang menunggu validasi oleh Pemimpin.
+                  </p>
+                )}
                 {activeRecord.status === 'Disetujui' && (
                   <p style={{ marginTop: '6px', color: 'var(--success)', fontSize: '12px' }}>
-                    <i className="fa-solid fa-circle-check"></i> Laporan ini telah disetujui oleh atasan langsung Anda.
+                    <i className="fa-solid fa-circle-check"></i> Laporan ini telah divalidasi dan disetujui secara permanen oleh Pemimpin.
                   </p>
                 )}
               </div>
@@ -351,7 +408,7 @@ export default function EmployeeRealisasiPage() {
                         type="number"
                         step="0.01"
                         className="form-control"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={variabelPembilangVal}
                         onChange={(e) => setVariabelPembilangVal(e.target.value)}
                         required
@@ -366,7 +423,7 @@ export default function EmployeeRealisasiPage() {
                         type="number"
                         step="0.01"
                         className="form-control"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={variabelPenyebutVal}
                         onChange={(e) => setVariabelPenyebutVal(e.target.value)}
                         required
@@ -387,7 +444,7 @@ export default function EmployeeRealisasiPage() {
                       type="number"
                       step="0.01"
                       className="form-control"
-                      disabled={activeRecord.status === 'Disetujui'}
+                      disabled={!isRealisasiEditable}
                       value={variabelJumlahVal}
                       onChange={(e) => setVariabelJumlahVal(e.target.value)}
                       required
@@ -401,7 +458,7 @@ export default function EmployeeRealisasiPage() {
                       type="number"
                       step="0.01"
                       className="form-control"
-                      disabled={activeRecord.status === 'Disetujui'}
+                      disabled={!isRealisasiEditable}
                       value={realisasiValue}
                       onChange={(e) => setRealisasiValue(e.target.value)}
                       required
@@ -416,7 +473,7 @@ export default function EmployeeRealisasiPage() {
                     <input
                       type="text"
                       className="form-control"
-                      disabled={activeRecord.status === 'Disetujui'}
+                      disabled={!isRealisasiEditable}
                       value={buktiDukung}
                       onChange={(e) => handleVerifyLink(e.target.value)}
                       placeholder="Contoh: https://drive.google.com/file/d/.../view"
@@ -446,7 +503,7 @@ export default function EmployeeRealisasiPage() {
                       <textarea
                         className="form-control"
                         rows="2"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={kendala}
                         onChange={(e) => setKendala(e.target.value)}
                         required
@@ -458,7 +515,7 @@ export default function EmployeeRealisasiPage() {
                       <textarea
                         className="form-control"
                         rows="2"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={solusi}
                         onChange={(e) => setSolusi(e.target.value)}
                         required
@@ -488,7 +545,7 @@ export default function EmployeeRealisasiPage() {
                       <textarea
                         className="form-control"
                         rows="2"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={pendorong}
                         onChange={(e) => setPendorong(e.target.value)}
                         required
@@ -500,7 +557,7 @@ export default function EmployeeRealisasiPage() {
                       <textarea
                         className="form-control"
                         rows="2"
-                        disabled={activeRecord.status === 'Disetujui'}
+                        disabled={!isRealisasiEditable}
                         value={inovasi}
                         onChange={(e) => setInovasi(e.target.value)}
                         required
@@ -510,7 +567,7 @@ export default function EmployeeRealisasiPage() {
                   </div>
                 )}
 
-                {activeRecord.status !== 'Disetujui' && (
+                {isRealisasiEditable && (
                   <button type="submit" className="btn btn-orange w-full" style={{ marginTop: '10px' }}>
                     <i className="fa-solid fa-paper-plane"></i> Ajukan Laporan Realisasi
                   </button>

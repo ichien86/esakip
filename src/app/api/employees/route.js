@@ -8,19 +8,7 @@ export async function GET() {
     const employees = await Employee.find({}).sort({ id: 1 });
 
     const enriched = employees.map(emp => {
-      let bidangs = emp.bidangs;
-      if (emp.roles.includes('admin') || emp.roles.includes('perencana')) {
-        bidangs = ['Sekretariat', 'Pencegahan & Kesiapsiagaan', 'Kedaruratan & Logistik', 'Rehabilitasi & Rekonstruksi', 'Pimpinan'];
-      } else if (emp.parentId) {
-        const supervisor = employees.find(e => e.id === emp.parentId);
-        if (supervisor) {
-          bidangs = supervisor.bidangs;
-        }
-      }
-      return {
-        ...emp.toObject(),
-        bidangs
-      };
+      return emp.toObject();
     });
 
     return NextResponse.json(enriched);

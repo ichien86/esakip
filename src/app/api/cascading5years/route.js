@@ -1,16 +1,52 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Cascading5Years from '@/models/Cascading5Years';
+import { checkPlanningLock } from '@/lib/lock-check';
 
 export async function GET() {
   await dbConnect();
   const data = await Cascading5Years.find({});
-  return NextResponse.json(data);
+  const mapped = data.map(node => {
+    let lvl = node.level;
+    if (lvl === 'program') lvl = 'sasaran_program';
+    else if (lvl === 'kegiatan') lvl = 'sasaran_kegiatan';
+    else if (lvl === 'subkegiatan') lvl = 'sasaran_subkegiatan';
+    else if (lvl === 'aktivitas') lvl = 'sasaran_aktivitas';
+
+    let indicators = node.indicators || [];
+    if (indicators.length === 0 && node.indikator && node.indikator !== '-') {
+      indicators = [{
+        id: `ind_mig_${node.id}`,
+        indikator: node.indikator,
+        satuan: node.satuan || '-',
+        tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
+        target2025: node.target2025 || '0',
+        target2026: node.target2026 || '0',
+        target2027: node.target2027 || '0',
+        target2028: node.target2028 || '0',
+        target2029: node.target2029 || '0',
+        target2030: node.target2030 || '0',
+        targetAkhir: node.targetAkhir || '0'
+      }];
+    }
+
+    return {
+      ...node.toObject(),
+      level: lvl,
+      indicators,
+      sasaran: node.sasaran || node.sasaranSubkegiatan || '',
+      nomenklatur: node.nomenklatur || (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(lvl) ? node.text : '')
+    };
+  });
+  return NextResponse.json(mapped);
 }
 
 export async function POST(request) {
   try {
     await dbConnect();
+    const lockResponse = await checkPlanningLock(request);
+    if (lockResponse) return lockResponse;
+
     const body = await request.json();
     const {
       id, level, text, indikator, satuan, tipeTarget, parentId, bidangPengampu,
@@ -18,12 +54,13 @@ export async function POST(request) {
       target2025, target2026, target2027, target2028, target2029, target2030, targetAkhir,
       anggaran2025, anggaran2026, anggaran2027, anggaran2028, anggaran2029, anggaran2030, anggaranAkhir,
       requesterRole, requesterBidang,
-      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut
+      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut,
+      sasaran, nomenklatur, indicators, masterId
     } = body;
 
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
 
-    if (!level || !text || !indikator || !satuan || finalBidang.length === 0 || !tipeTarget) {
+    if (!level || !text || finalBidang.length === 0) {
       return NextResponse.json({ error: 'Data cascading 5 tahunan tidak lengkap' }, { status: 400 });
     }
 
@@ -39,14 +76,27 @@ export async function POST(request) {
 
     const itemId = id || `5y_${level.substring(0, 3)}_${Date.now()}`;
 
+    // Validate global uniqueness for subkegiatan masterId
+    if (level === 'sasaran_subkegiatan' || level === 'subkegiatan') {
+      if (masterId) {
+        const existingSubkeg = await Cascading5Years.findOne({
+          masterId: masterId,
+          id: { $ne: itemId }
+        });
+        if (existingSubkeg) {
+          return NextResponse.json({ error: 'Subkegiatan ini sudah digunakan di bagian lain dan tidak boleh diduplikasi.' }, { status: 400 });
+        }
+      }
+    }
+
     let item = await Cascading5Years.findOne({ id: itemId });
     const updateObj = {
       id: itemId,
       level,
       text,
-      indikator,
-      satuan,
-      tipeTarget,
+      indikator: indikator || '-',
+      satuan: satuan || '-',
+      tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
       parentId: parentId || null,
       bidangPengampu: finalBidang,
       crossCuttingType: crossCuttingType || 'shared',
@@ -70,7 +120,11 @@ export async function POST(request) {
       metodePenghitungan: metodePenghitungan || 'Jumlah',
       variabelJumlah: variabelJumlah || '',
       variabelPembilang: variabelPembilang || '',
-      variabelPenyebut: variabelPenyebut || ''
+      variabelPenyebut: variabelPenyebut || '',
+      sasaran: sasaran || '',
+      nomenklatur: nomenklatur || '',
+      indicators: indicators || [],
+      masterId: masterId || null
     };
 
     if (item) {

@@ -1,9 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
 const SimulationContext = createContext();
+
+const getDefaultActiveRole = (roles) => {
+  if (!roles || roles.length === 0) return '';
+  const rolePriority = ['staff', 'pemimpin', 'admin_bidang', 'perencana', 'admin'];
+  for (const r of rolePriority) {
+    if (roles.includes(r)) return r;
+  }
+  return roles[0];
+};
 
 export function SimulationProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -26,29 +35,37 @@ export function SimulationProvider({ children }) {
 
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      
-      if (savedSimulatedUser) {
-        setSimulatedUser(JSON.parse(savedSimulatedUser));
-      }
-      if (savedRole) {
-        setActiveRole(savedRole);
-      } else {
-        setActiveRole(parsedUser.roles[0] || '');
-      }
-      if (savedBidang) {
-        setActiveBidang(savedBidang);
-      } else {
-        setActiveBidang(parsedUser.bidangs[0] || '');
-      }
-      if (savedYear) {
-        setActiveYear(parseInt(savedYear));
-      }
+      const timer = setTimeout(() => {
+        setUser(parsedUser);
+        
+        if (savedSimulatedUser) {
+          setSimulatedUser(JSON.parse(savedSimulatedUser));
+        }
+        if (savedRole) {
+          setActiveRole(savedRole);
+        } else {
+          setActiveRole(getDefaultActiveRole(parsedUser.roles));
+        }
+        if (savedBidang) {
+          setActiveBidang(savedBidang);
+        } else {
+          setActiveBidang(parsedUser.bidangs[0] || '');
+        }
+        if (savedYear) {
+          setActiveYear(parseInt(savedYear));
+        }
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-    setLoading(false);
   }, []);
 
-  const refreshMetadata = async () => {
+  const refreshMetadata = useCallback(async () => {
     try {
       const empRes = await fetch('/api/employees');
       if (empRes.ok) {
@@ -63,13 +80,16 @@ export function SimulationProvider({ children }) {
     } catch (e) {
       console.error('Failed to load metadata', e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (user) {
-      refreshMetadata();
+      const timer = setTimeout(() => {
+        refreshMetadata();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [user]);
+  }, [user, refreshMetadata]);
 
   const login = async (nip, password) => {
     const res = await fetch('/api/auth/login', {
@@ -80,11 +100,12 @@ export function SimulationProvider({ children }) {
     
     if (res.ok) {
       const data = await res.json();
+      const defaultRole = getDefaultActiveRole(data.user.roles);
       setUser(data.user);
-      setActiveRole(data.user.roles[0] || '');
+      setActiveRole(defaultRole);
       setActiveBidang(data.user.bidangs[0] || '');
       localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('activeRole', data.user.roles[0] || '');
+      localStorage.setItem('activeRole', defaultRole);
       localStorage.setItem('activeBidang', data.user.bidangs[0] || '');
       
       router.push('/dashboard');
@@ -110,20 +131,22 @@ export function SimulationProvider({ children }) {
   const simulate = (employeeId) => {
     if (!user) return;
     if (!employeeId || employeeId === user.id) {
+      const defaultRole = getDefaultActiveRole(user.roles);
       setSimulatedUser(null);
       localStorage.removeItem('simulatedUser');
-      setActiveRole(user.roles[0] || '');
+      setActiveRole(defaultRole);
       setActiveBidang(user.bidangs[0] || '');
-      localStorage.setItem('activeRole', user.roles[0] || '');
+      localStorage.setItem('activeRole', defaultRole);
       localStorage.setItem('activeBidang', user.bidangs[0] || '');
     } else {
       const emp = allEmployees.find(e => e.id === employeeId);
       if (emp) {
         setSimulatedUser(emp);
         localStorage.setItem('simulatedUser', JSON.stringify(emp));
-        setActiveRole(emp.roles[0] || '');
+        const defaultRole = getDefaultActiveRole(emp.roles);
+        setActiveRole(defaultRole);
         setActiveBidang(emp.bidangs[0] || '');
-        localStorage.setItem('activeRole', emp.roles[0] || '');
+        localStorage.setItem('activeRole', defaultRole);
         localStorage.setItem('activeBidang', emp.bidangs[0] || '');
       }
     }
@@ -139,6 +162,19 @@ export function SimulationProvider({ children }) {
     localStorage.setItem('activeBidang', bidang);
   };
 
+  const updateCurrentUserBidang = (newBidang) => {
+    if (simulatedUser) {
+      const updated = { ...simulatedUser, bidangs: [newBidang] };
+      setSimulatedUser(updated);
+      localStorage.setItem('simulatedUser', JSON.stringify(updated));
+    } else if (user) {
+      const updated = { ...user, bidangs: [newBidang] };
+      setUser(updated);
+      localStorage.setItem('user', JSON.stringify(updated));
+    }
+    switchBidang(newBidang);
+  };
+
   const switchYear = (year) => {
     setActiveYear(parseInt(year));
     localStorage.setItem('activeYear', year);
@@ -148,12 +184,16 @@ export function SimulationProvider({ children }) {
     const activeUser = simulatedUser || user;
     const headers = {
       ...(options.headers || {}),
-      'Content-Type': 'application/json',
       'x-requester-id': activeUser ? activeUser.id : '',
       'x-requester-role': activeRole,
       'x-requester-bidang': activeBidang,
       'x-requester-year': activeYear.toString()
     };
+    if (options.body && options.body instanceof FormData) {
+      // Let browser set content-type with boundary automatically
+    } else {
+      headers['Content-Type'] = 'application/json';
+    }
     return fetch(url, {
       ...options,
       headers
@@ -171,7 +211,7 @@ export function SimulationProvider({ children }) {
         router.push('/dashboard');
       }
     }
-  }, [user, pathname, loading]);
+  }, [user, pathname, loading, router]);
 
   return (
     <SimulationContext.Provider value={{
@@ -190,6 +230,7 @@ export function SimulationProvider({ children }) {
       simulate,
       switchRole,
       switchBidang,
+      updateCurrentUserBidang,
       switchYear,
       fetchWithAuth,
       refreshMetadata

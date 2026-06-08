@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function LeaderboardPage() {
@@ -9,8 +9,9 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBidang, setFilterBidang] = useState('Semua');
+  const searchInputRef = useRef(null);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       const res = await fetchWithAuth('/api/rewards/leaderboard');
       if (res.ok) {
@@ -22,11 +23,38 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
 
   useEffect(() => {
-    fetchLeaderboard();
-  }, [currentUser]);
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.isContentEditable
+      )) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchLeaderboard();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [currentUser, fetchLeaderboard]);
 
   // Extract unique departments for filtering
   const allBidangs = ['Semua', ...new Set(leaderboardData.map(item => item.bidang).filter(Boolean))];
@@ -167,14 +195,24 @@ export default function LeaderboardPage() {
             <div className="glass-panel" style={{ marginTop: '24px', padding: '16px', background: 'rgba(30, 41, 59, 0.25)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '12px', flexGrow: 1, maxWidth: '600px' }}>
-                  <div className="form-group" style={{ margin: 0, flexGrow: 1 }}>
+                  <div className="form-group" style={{ margin: 0, flexGrow: 1, position: 'relative' }}>
                     <input
+                      ref={searchInputRef}
                       type="text"
                       className="form-control"
-                      placeholder="Cari nama atau jabatan pegawai..."
+                      placeholder="Cari nama atau jabatan pegawai... (Tekan '/')"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ paddingRight: searchQuery ? '30px' : '12px' }}
                     />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', outline: 'none' }}
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    )}
                   </div>
                   <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
                     <select

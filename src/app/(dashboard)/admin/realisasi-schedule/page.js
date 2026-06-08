@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminRealisasiSchedulePage() {
@@ -12,14 +12,14 @@ export default function AdminRealisasiSchedulePage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const hasAccess = activeRole === 'admin';
+  const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
 
   const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
-  const loadSchedules = async () => {
+  const loadSchedules = useCallback(async () => {
     setLoading(true);
     setError('');
     setSuccess('');
@@ -35,13 +35,16 @@ export default function AdminRealisasiSchedulePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeYear]);
 
   useEffect(() => {
     if (hasAccess) {
-      loadSchedules();
+      const timer = setTimeout(() => {
+        loadSchedules();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [activeRole, activeYear]);
+  }, [hasAccess, loadSchedules]);
 
   const handleToggleLock = (idx) => {
     const updated = [...schedules];
@@ -87,7 +90,7 @@ export default function AdminRealisasiSchedulePage() {
       <div className="glass-panel" style={{ textAlign: 'center', padding: '40px' }}>
         <i className="fa-solid fa-ban text-orange" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
         <h2>Akses Ditolak</h2>
-        <p className="text-muted" style={{ marginTop: '8px' }}>Hanya Administrator Sistem yang diperbolehkan mengelola jadwal realisasi bulanan.</p>
+        <p className="text-muted" style={{ marginTop: '8px' }}>Hanya Administrator Sistem atau Admin Perencana yang diperbolehkan mengelola jadwal realisasi bulanan.</p>
       </div>
     );
   }

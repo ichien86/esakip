@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminMonitoring5YearsPage() {
@@ -8,7 +8,7 @@ export default function AdminMonitoring5YearsPage() {
   const [monitoringData, setMonitoringData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadMonitoring = async () => {
+  const loadMonitoring = useCallback(async () => {
     try {
       const res = await fetchWithAuth('/api/monitoring/5years');
       if (res.ok) {
@@ -19,11 +19,14 @@ export default function AdminMonitoring5YearsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
 
   useEffect(() => {
-    loadMonitoring();
-  }, []);
+    const timer = setTimeout(() => {
+      loadMonitoring();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadMonitoring]);
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
 
@@ -32,7 +35,7 @@ export default function AdminMonitoring5YearsPage() {
       <div className="glass-panel" style={{ textAlign: 'center', padding: '40px' }}>
         <i className="fa-solid fa-ban text-orange" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
         <h2>Akses Ditolak</h2>
-        <p className="text-muted" style={{ marginTop: '8px' }}>Hanya Administrator atau Admin Perencana yang diperbolehkan mengakses halaman monitoring 5 tahunan.</p>
+        <p className="text-muted" style={{ marginTop: '8px' }}>Hanya Administrator atau Admin Perencana yang diperbolehkan mengakses halaman monitoring Renstra.</p>
       </div>
     );
   }
@@ -47,14 +50,14 @@ export default function AdminMonitoring5YearsPage() {
   return (
     <div className="glass-panel">
       <div className="panel-header">
-        <h3><i className="fa-solid fa-chart-bar text-orange"></i> Monitoring Kinerja 5 Tahunan BPBD (2025-2030)</h3>
+        <h3><i className="fa-solid fa-chart-bar text-orange"></i> Monitoring Kinerja Renstra BPBD (2025-2030)</h3>
         <p className="text-muted">Progres pencapaian dihitung berdasarkan akumulasi realisasi tahunan terhadap Target Akhir RPJMD.</p>
       </div>
       <div className="panel-body">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '20px' }}><i className="fa-solid fa-circle-notch fa-spin"></i> Memuat progres monitoring...</div>
         ) : monitoringData.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>Belum ada data sasaran 5 tahunan.</div>
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>Belum ada data sasaran Renstra.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             {monitoringData.map(item => {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function DashboardPage() {
@@ -8,9 +8,10 @@ export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState([]);
   const [deactivatedWarnings, setDeactivatedWarnings] = useState([]);
   const [masterWarnings, setMasterWarnings] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const res = await fetchWithAuth('/api/dashboard/summary');
       if (res.ok) {
@@ -22,9 +23,9 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchWithAuth]);
 
-  const fetchWarnings = async () => {
+  const fetchWarnings = useCallback(async () => {
     if (!['admin', 'admin_bidang', 'perencana'].includes(activeRole)) {
       setDeactivatedWarnings([]);
       return;
@@ -38,9 +39,9 @@ export default function DashboardPage() {
     } catch (e) {
       console.error('Failed to fetch deactivated warnings', e);
     }
-  };
+  }, [activeRole, fetchWithAuth]);
 
-  const fetchMasterWarnings = async () => {
+  const fetchMasterWarnings = useCallback(async () => {
     if (!['admin', 'admin_bidang', 'perencana'].includes(activeRole)) {
       setMasterWarnings([]);
       return;
@@ -53,6 +54,39 @@ export default function DashboardPage() {
       }
     } catch (e) {
       console.error('Failed to fetch master warnings', e);
+    }
+  }, [activeRole, fetchWithAuth]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!['admin', 'admin_bidang', 'perencana', 'pemimpin'].includes(activeRole)) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      const res = await fetchWithAuth('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch notifications', e);
+    }
+  }, [activeRole, fetchWithAuth]);
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      const res = await fetchWithAuth('/api/notifications', {
+        method: 'PUT',
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gagal menandai notifikasi sebagai dibaca.');
+      }
+    } catch (e) {
+      alert('Kesalahan jaringan.');
     }
   };
 
@@ -79,10 +113,14 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    fetchSummary();
-    fetchWarnings();
-    fetchMasterWarnings();
-  }, [currentUser, activeRole, activeBidang]);
+    const timer = setTimeout(() => {
+      fetchSummary();
+      fetchWarnings();
+      fetchMasterWarnings();
+      fetchNotifications();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchSummary, fetchWarnings, fetchMasterWarnings, fetchNotifications]);
 
   const participants = summaryData.filter(emp => emp.id !== 'admin');
   const totalEmployees = participants.length;
@@ -107,6 +145,59 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* Unassigned Performance Indicator Notifications */}
+          {notifications.length > 0 && (
+            <div className="glass-panel" style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              marginBottom: '24px',
+              boxShadow: '0 0 15px rgba(239, 68, 68, 0.15)'
+            }}>
+              <div className="panel-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <h3 style={{ color: '#EF4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+                  Pemberitahuan: Indikator Kehilangan Penanggung Jawab
+                </h3>
+              </div>
+              <div className="panel-body">
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                  Terdapat indikator kinerja yang kehilangan penanggung jawab di unit kerja Anda karena pegawai bersangkutan pindah unit kerja.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {notifications.map((notif, idx) => (
+                    <div key={idx} style={{
+                      background: 'rgba(15, 23, 42, 0.4)',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(239, 68, 68, 0.15)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
+                      <div style={{ flex: '1 1 300px' }}>
+                        <p style={{ color: 'white', fontSize: '13px', margin: '0 0 4px 0', lineHeight: '1.4' }}>{notif.message}</p>
+                        <span className="text-muted" style={{ fontSize: '11px' }}>
+                          Dibuat pada: {new Date(notif.createdAt).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div style={{ flex: '0 0 auto' }}>
+                        <button 
+                          className="btn btn-sm btn-secondary" 
+                          onClick={() => handleMarkAsRead(notif.id)}
+                          style={{ padding: '6px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.15)' }}
+                        >
+                          Tandai Dibaca
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Master Data Mismatch Warnings */}
           {masterWarnings.length > 0 && (
             <div className="glass-panel" style={{
@@ -141,7 +232,7 @@ export default function DashboardPage() {
                     }}>
                       <div style={{ flex: '1 1 300px' }}>
                         <span className="badge" style={{ fontSize: '9px', textTransform: 'uppercase', background: 'rgba(255, 107, 0, 0.2)', color: 'var(--primary-orange)', padding: '2px 6px', borderRadius: '4px' }}>
-                          {warning.level} ({warning.type === 'annual' ? 'Tahunan' : '5 Tahunan'})
+                          {warning.level} ({warning.type === 'annual' ? 'Indikator Renja' : 'Indikator Renstra'})
                         </span>
                         
                         <div style={{ marginTop: '8px' }}>

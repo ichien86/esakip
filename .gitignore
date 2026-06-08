@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch folder containing local utility scripts
+/scratch/
+
+# local seed and data files
+/import_pegawai.js
+/public/data pegawai.xlsx

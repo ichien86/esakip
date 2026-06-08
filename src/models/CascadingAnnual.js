@@ -15,6 +15,11 @@ const CascadingAnnualSchema = new mongoose.Schema({
   tahun: { type: Number, required: true, default: 2026 },
   masterId: { type: String, default: null },
   anggaran: { type: Number, default: 0 },
+  anggaranDpa: { type: Number, default: 0 },
+  sasaran: { type: String, default: '' },
+  nomenklatur: { type: String, default: '' },
+  indicators: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  penanggungJawab: { type: String, default: null },
 
   // Operational definition and sub-activity targets
   sasaranSubkegiatan: { type: String, default: '' },

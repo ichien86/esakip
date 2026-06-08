@@ -34,8 +34,8 @@ export async function POST(request) {
     const body = await request.json();
     const { schedules, requesterRole } = body;
 
-    if (requesterRole !== 'admin') {
-      return NextResponse.json({ error: 'Akses ditolak. Hanya Administrator Sistem yang dapat mengubah jadwal realisasi.' }, { status: 403 });
+    if (requesterRole !== 'admin' && requesterRole !== 'perencana') {
+      return NextResponse.json({ error: 'Akses ditolak. Hanya Administrator Sistem atau Admin Perencana yang dapat mengubah jadwal realisasi.' }, { status: 403 });
     }
 
     if (!Array.isArray(schedules)) {

@@ -32,14 +32,6 @@ export async function POST(request) {
     }
 
     let bidangs = employee.bidangs;
-    if (employee.roles.includes('admin') || employee.roles.includes('perencana')) {
-      bidangs = ['Sekretariat', 'Pencegahan & Kesiapsiagaan', 'Kedaruratan & Logistik', 'Rehabilitasi & Rekonstruksi', 'Pimpinan'];
-    } else if (employee.parentId) {
-      const supervisor = await Employee.findOne({ id: employee.parentId });
-      if (supervisor) {
-        bidangs = supervisor.bidangs;
-      }
-    }
 
     let warningsCount = 0;
     try {
@@ -49,7 +41,11 @@ export async function POST(request) {
       const MasterSubkegiatan = (await import('@/models/MasterSubkegiatan')).default;
 
       // Query only nodes that belong to the user's bidangs
-      const annualNodes = await CascadingAnnual.find({ bidangPengampu: { $in: bidangs }, masterId: { $ne: null } });
+      const bidangsForWarnings = (employee.roles.includes('admin') || employee.roles.includes('perencana'))
+        ? ['Sekretariat', 'Bidang Pencegahan dan Kesiapsiagaan', 'Bidang Kedaruratan dan Logistik', 'Bidang Rehabilitasi dan Rekonstruksi', 'Tata Usaha', 'Badan']
+        : employee.bidangs;
+
+      const annualNodes = await CascadingAnnual.find({ bidangPengampu: { $in: bidangsForWarnings }, masterId: { $ne: null } });
       const masterPrograms = await MasterProgram.find({});
       const masterKegiatans = await MasterKegiatan.find({});
       const masterSubkegiatans = await MasterSubkegiatan.find({});
@@ -81,9 +77,11 @@ export async function POST(request) {
         nama: employee.nama,
         nip: employee.nip,
         jabatan: employee.jabatan,
+        pangkatGolongan: employee.pangkatGolongan || '',
         roles: employee.roles,
         parentId: employee.parentId,
         bidangs: bidangs,
+        scopeLeader: employee.scopeLeader || null,
         warningsCount
       }
     });

@@ -5,10 +5,12 @@ const EmployeeSchema = new mongoose.Schema({
   nama: { type: String, required: true },
   nip: { type: String, required: true },
   jabatan: { type: String, required: true },
+  pangkatGolongan: { type: String, default: '' },
   password: { type: String, default: 'bpbd@boyolali' },
   roles: { type: [String], default: [] },
   parentId: { type: String, default: null },
   bidangs: { type: [String], default: [] },
+  scopeLeader: { type: String, enum: ['Badan', 'Bidang', 'Sekretariat', 'Tata Usaha', null], default: null },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 

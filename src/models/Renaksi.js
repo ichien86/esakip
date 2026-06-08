@@ -16,6 +16,7 @@ const RenaksiSchema = new mongoose.Schema({
   faktorPendorong: { type: String, default: '' },
   inovasi: { type: String, default: '' },
   status: { type: String, default: 'Draft' }, // Draft, Diajukan, Disetujui
+  isCrossCuttingSelected: { type: Boolean, default: true },
   
   // Realization calculation variables
   variabelJumlahVal: { type: Number, default: null },

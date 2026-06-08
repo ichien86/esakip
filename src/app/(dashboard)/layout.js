@@ -38,14 +38,16 @@ export default function DashboardLayout({ children }) {
     simulate,
     switchRole,
     switchBidang,
-    switchYear
+    updateCurrentUserBidang,
+    switchYear,
+    fetchWithAuth
   } = useSimulation();
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   if (loading || !user) {
     return (
@@ -69,19 +71,16 @@ export default function DashboardLayout({ children }) {
   // Determine which sections to show
   const showAdminMenu = activeRole === 'admin' || activeRole === 'perencana';
   const showUserManagement = activeRole === 'admin';
-  const showEmployeeMenu = ['staff', 'kasi', 'kabid', 'sekretaris', 'kalaksa'].includes(activeRole);
-  const showSupervisorMenu = ['kasi', 'kabid', 'sekretaris', 'kalaksa', 'admin_bidang'].includes(activeRole);
+  const showEmployeeMenu = activeRole === 'staff' || activeRole === 'pemimpin' || activeRole === 'admin_bidang';
+  const showSupervisorMenu = activeRole === 'pemimpin' || activeRole === 'admin_bidang';
 
   const getRoleLabel = (role) => {
     const labels = {
       admin: 'Admin Sistem',
       perencana: 'Admin Perencana',
-      admin_bidang: 'Admin Bidang',
-      kalaksa: 'Kepala Pelaksana',
-      sekretaris: 'Sekretaris',
-      kabid: 'Kepala Bidang',
-      kasi: 'Kepala Seksi/Kasubag',
-      staff: 'Staf Pelaksana'
+      admin_bidang: 'Admin Unit Kerja',
+      pemimpin: 'Pemimpin',
+      staff: 'Pejabat Fungsional'
     };
     return labels[role] || role;
   };
@@ -102,8 +101,8 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* User Simulation Swapper (Visible only to actual logged-in Admins) */}
-        {user && user.roles.includes('admin') && (
+        {/* User Simulation Swapper (Visible to actual logged-in Super Admin and Admin Unit Kerja) */}
+        {user && (user.roles.includes('admin') || user.roles.includes('admin_bidang')) && (
           <div className="user-simulator-box">
             <label htmlFor="userSelect">
               <i className="fa-solid fa-user-ninja" style={{ color: 'var(--primary-orange)' }}></i> Simulasi Pegawai
@@ -115,7 +114,11 @@ export default function DashboardLayout({ children }) {
               onChange={(e) => simulate(e.target.value)}
             >
               <option value={user.id}>-- Logged In: {user.nama} --</option>
-              {allEmployees.filter(emp => emp.id !== user.id && emp.isActive !== false).map(emp => (
+              {allEmployees.filter(emp => {
+                if (emp.id === user.id || emp.isActive === false) return false;
+                if (user.roles.includes('admin')) return true;
+                return emp.bidangs.some(b => user.bidangs.includes(b));
+              }).map(emp => (
                 <option key={emp.id} value={emp.id}>
                   {emp.nama} ({emp.jabatan})
                 </option>
@@ -143,21 +146,26 @@ export default function DashboardLayout({ children }) {
             <>
               <div className="nav-group-title">ADMINISTRASI</div>
               {showUserManagement && (
-                <Link href="/admin/employees" className={`nav-item ${isLinkActive('/admin/employees') ? 'active' : ''}`}>
-                  <i className="fa-solid fa-users-gear"></i> Manajemen Pegawai
-                </Link>
+                <>
+                  <Link href="/admin/employees" className={`nav-item ${isLinkActive('/admin/employees') ? 'active' : ''}`}>
+                    <i className="fa-solid fa-users-gear"></i> Manajemen Pegawai
+                  </Link>
+                  <Link href="/admin/settings" className={`nav-item ${isLinkActive('/admin/settings') ? 'active' : ''}`}>
+                    <i className="fa-solid fa-gears"></i> Pengaturan Sistem
+                  </Link>
+                </>
               )}
               <Link href="/admin/master" className={`nav-item ${isLinkActive('/admin/master') ? 'active' : ''}`}>
                 <i className="fa-solid fa-database"></i> Data Master
               </Link>
               <Link href="/admin/cascading-5years" className={`nav-item ${isLinkActive('/admin/cascading-5years') ? 'active' : ''}`}>
-                <i className="fa-solid fa-layer-group"></i> Renstra 5 Tahunan
+                <i className="fa-solid fa-layer-group"></i> Indikator Renstra
               </Link>
               <Link href="/admin/operational-definition" className={`nav-item ${isLinkActive('/admin/operational-definition') ? 'active' : ''}`}>
                 <i className="fa-solid fa-book-bookmark"></i> Definisi Operasional
               </Link>
               <Link href="/admin/cascading-annual" className={`nav-item ${isLinkActive('/admin/cascading-annual') ? 'active' : ''}`}>
-                <i className="fa-solid fa-network-wired"></i> Renja Tahunan
+                <i className="fa-solid fa-network-wired"></i> Indikator Renja
               </Link>
               <Link href="/admin/realisasi-schedule" className={`nav-item ${isLinkActive('/admin/realisasi-schedule') ? 'active' : ''}`}>
                 <i className="fa-solid fa-calendar-check"></i> Jadwal Realisasi
@@ -275,6 +283,8 @@ export default function DashboardLayout({ children }) {
               </select>
             </div>
 
+
+
             {/* Multi-role Selector */}
             {currentUser && currentUser.roles && currentUser.roles.length > 1 && (
               <div className="form-group" style={{ margin: 0 }}>
@@ -291,26 +301,15 @@ export default function DashboardLayout({ children }) {
               </div>
             )}
 
-            {/* Multi-bidang Selector */}
-            {currentUser && currentUser.bidangs && currentUser.bidangs.length > 1 && (
-              <div className="form-group" style={{ margin: 0 }}>
-                <select
-                  className="select-sim"
-                  value={activeBidang}
-                  onChange={(e) => switchBidang(e.target.value)}
-                  style={{ width: 'auto', background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}
-                >
-                  {currentUser.bidangs.map(b => (
-                    <option key={b} value={b}>Bidang: {b}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
             <div className="header-profile">
               <div className="profile-info">
                 <h4>{currentUser?.nama || 'Guest'}</h4>
-                <span>{currentUser?.jabatan || 'No Jabatan'} - {activeBidang}</span>
+                <span>
+                  {currentUser?.jabatan || 'No Jabatan'}
+                  {activeRole === 'perencana' || activeRole === 'admin'
+                    ? ' - Seluruh Unit Kerja'
+                    : (currentUser?.bidangs?.[0] ? ` - ${currentUser.bidangs[0]}` : '')}
+                </span>
               </div>
               <div className="profile-avatar" onClick={logout} title="Click to Logout" style={{ cursor: 'pointer' }}>
                 <i className="fa-solid fa-right-from-bracket" style={{ color: 'white' }}></i>

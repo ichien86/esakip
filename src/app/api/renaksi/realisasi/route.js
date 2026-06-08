@@ -25,10 +25,25 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Target bulanan belum diset' }, { status: 404 });
     }
 
-    // Check realization schedule lock status
+    // Check if realization has already been approved / verified (ACC_Admin or Disetujui)
+    if (record.status === 'ACC_Admin' || record.status === 'Disetujui') {
+      return NextResponse.json({ error: `Pengisian realisasi untuk Bulan ${bulan} tahun ${record.tahun || 2026} tidak dapat diubah karena telah di-ACC/Disetujui oleh atasan.` }, { status: 403 });
+    }
+
+    // Check realization schedule lock status and deadline
     const schedule = await RealisasiSchedule.findOne({ tahun: record.tahun || 2026, bulan: parseInt(bulan) });
-    if (schedule && schedule.isLocked) {
-      return NextResponse.json({ error: `Pengisian realisasi untuk Bulan ${bulan} tahun ${record.tahun || 2026} telah dikunci oleh Administrator.` }, { status: 403 });
+    if (schedule) {
+      if (schedule.isLocked) {
+        return NextResponse.json({ error: `Pengisian realisasi untuk Bulan ${bulan} tahun ${record.tahun || 2026} telah dikunci oleh Administrator.` }, { status: 403 });
+      }
+      if (schedule.deadline) {
+        const now = new Date();
+        const deadlineDate = new Date(schedule.deadline);
+        deadlineDate.setHours(23, 59, 59, 999);
+        if (now > deadlineDate) {
+          return NextResponse.json({ error: `Pengisian realisasi untuk Bulan ${bulan} tahun ${record.tahun || 2026} telah ditutup karena melewati batas tanggal pengisian (${schedule.deadline}).` }, { status: 403 });
+        }
+      }
     }
 
     const target = record.targetBulanan;

@@ -30,7 +30,8 @@ export async function GET() {
         const yearRenaksi = renaksis.filter(r =>
           r.tahun === year &&
           matchingIds.includes(r.indicatorId) &&
-          r.realisasiBulanan !== null
+          r.realisasiBulanan !== null &&
+          r.isCrossCuttingSelected !== false
         );
 
         let yearRealisasi = 0;

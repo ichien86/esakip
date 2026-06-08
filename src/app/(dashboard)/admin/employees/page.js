@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminEmployeesPage() {
@@ -9,6 +9,7 @@ export default function AdminEmployeesPage() {
   const [nama, setNama] = useState('');
   const [nip, setNip] = useState('');
   const [jabatan, setJabatan] = useState('');
+  const [pangkatGolongan, setPangkatGolongan] = useState('');
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedBidangs, setSelectedBidangs] = useState([]);
   const [parentId, setParentId] = useState('');
@@ -17,15 +18,35 @@ export default function AdminEmployeesPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
-    if (parentId) {
-      const supervisor = allEmployees.find(e => e.id === parentId);
-      if (supervisor) {
-        setSelectedBidangs(supervisor.bidangs || []);
+    const handleKeyDown = (e) => {
+      if (showFormModal) return;
+      
+      const activeEl = document.activeElement;
+      if (activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.tagName === 'SELECT' || 
+        activeEl.isContentEditable
+      )) {
+        return;
       }
-    }
-  }, [parentId, allEmployees]);
+
+      if (e.key === '/') {
+        e.preventDefault();
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showFormModal]);
 
   if (activeRole !== 'admin') {
     return (
@@ -40,20 +61,18 @@ export default function AdminEmployeesPage() {
   const roleOptions = [
     { value: 'admin', label: 'Admin Sistem' },
     { value: 'perencana', label: 'Admin Perencana' },
-    { value: 'admin_bidang', label: 'Admin Bidang' },
-    { value: 'kalaksa', label: 'Kepala Pelaksana' },
-    { value: 'sekretaris', label: 'Sekretaris' },
-    { value: 'kabid', label: 'Kepala Bidang' },
-    { value: 'kasi', label: 'Kepala Seksi/Kasubag' },
-    { value: 'staff', label: 'Staf Pelaksana' }
+    { value: 'admin_bidang', label: 'Admin Unit Kerja' },
+    { value: 'pemimpin', label: 'Pemimpin' },
+    { value: 'staff', label: 'Pejabat Fungsional' }
   ];
 
   const bidangOptions = [
-    { value: 'Pimpinan', label: 'Pimpinan' },
+    { value: 'Badan', label: 'Badan' },
     { value: 'Sekretariat', label: 'Sekretariat' },
-    { value: 'Pencegahan & Kesiapsiagaan', label: 'Pencegahan & Kesiapsiagaan' },
-    { value: 'Kedaruratan & Logistik', label: 'Kedaruratan & Logistik' },
-    { value: 'Rehabilitasi & Rekonstruksi', label: 'Rehabilitasi & Rekonstruksi' }
+    { value: 'Tata Usaha', label: 'Tata Usaha' },
+    { value: 'Bidang Pencegahan dan Kesiapsiagaan', label: 'Bidang Pencegahan dan Kesiapsiagaan' },
+    { value: 'Bidang Kedaruratan dan Logistik', label: 'Bidang Kedaruratan dan Logistik' },
+    { value: 'Bidang Rehabilitasi dan Rekonstruksi', label: 'Bidang Rehabilitasi dan Rekonstruksi' }
   ];
 
   const handleRoleChange = (role) => {
@@ -64,12 +83,8 @@ export default function AdminEmployeesPage() {
     }
   };
 
-  const handleBidangChange = (bidang) => {
-    if (selectedBidangs.includes(bidang)) {
-      setSelectedBidangs(selectedBidangs.filter(b => b !== bidang));
-    } else {
-      setSelectedBidangs([...selectedBidangs, bidang]);
-    }
+  const handleParentChange = (newParentId) => {
+    setParentId(newParentId);
   };
 
   const handleSubmit = async (e) => {
@@ -82,7 +97,7 @@ export default function AdminEmployeesPage() {
       return;
     }
     if (selectedBidangs.length === 0) {
-      setError('Pilih minimal satu bidang pengampu.');
+      setError('Pilih unit kerja.');
       return;
     }
 
@@ -90,6 +105,7 @@ export default function AdminEmployeesPage() {
       nama,
       nip,
       jabatan,
+      pangkatGolongan,
       roles: selectedRoles,
       bidangs: selectedBidangs,
       parentId: parentId || null,
@@ -113,7 +129,7 @@ export default function AdminEmployeesPage() {
 
       if (res.ok) {
         setSuccess(isEditing ? 'Data pegawai berhasil diubah.' : 'Pegawai baru berhasil ditambahkan.');
-        resetForm();
+        closeFormModal();
         refreshMetadata();
       } else {
         const err = await res.json();
@@ -130,10 +146,12 @@ export default function AdminEmployeesPage() {
     setNama(emp.nama);
     setNip(emp.nip);
     setJabatan(emp.jabatan);
+    setPangkatGolongan(emp.pangkatGolongan || '');
     setSelectedRoles(emp.roles || []);
     setSelectedBidangs(emp.bidangs || []);
     setParentId(emp.parentId || '');
     setIsActive(emp.isActive !== false);
+    setShowFormModal(true);
   };
 
   const deleteEmployee = async (id) => {
@@ -166,6 +184,7 @@ export default function AdminEmployeesPage() {
       nama: emp.nama,
       nip: emp.nip,
       jabatan: emp.jabatan,
+      pangkatGolongan: emp.pangkatGolongan || '',
       roles: emp.roles,
       bidangs: emp.bidangs,
       parentId: emp.parentId,
@@ -219,82 +238,219 @@ export default function AdminEmployeesPage() {
     setNama('');
     setNip('');
     setJabatan('');
+    setPangkatGolongan('');
     setSelectedRoles([]);
     setSelectedBidangs([]);
     setParentId('');
     setIsActive(true);
   };
 
+  const closeFormModal = () => {
+    resetForm();
+    setShowFormModal(false);
+  };
+
   const activeEmployees = allEmployees.filter(emp => emp.id !== 'admin');
+
+  const filteredEmployees = activeEmployees.filter(emp => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (emp.nama || '').toLowerCase().includes(term) ||
+      (emp.nip || '').toLowerCase().includes(term)
+    );
+  });
 
   return (
     <section>
-      <div className="grid-two-columns">
-        {/* Form Panel */}
-        <div className="glass-panel">
-          <div className="panel-header">
-            <h3>
-              <i className="fa-solid fa-user-plus text-orange"></i>
-              {isEditing ? ' Edit Data Pegawai' : ' Tambah Pegawai'}
-            </h3>
+      {/* Header bar with Add button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <i className="fa-solid fa-users text-orange"></i>
+          Manajemen Pegawai
+        </h2>
+        <button 
+          className="btn btn-orange" 
+          onClick={() => { resetForm(); setIsEditing(false); setShowFormModal(true); }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+        >
+          <i className="fa-solid fa-user-plus"></i> Tambah Pegawai
+        </button>
+      </div>
+
+      {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
+      {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
+
+      {/* List Panel (Full Width) */}
+      <div className="glass-panel">
+        <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <h3 style={{ margin: 0 }}><i className="fa-solid fa-users text-orange"></i> Daftar Pegawai</h3>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '280px' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <i className="fa-solid fa-magnifying-glass" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888', fontSize: '12px' }}></i>
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="form-control"
+                placeholder="Cari nama / NIP... (Tekan '/')"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ paddingLeft: '32px', fontSize: '13px', background: 'rgba(15, 23, 42, 0.4)', borderColor: 'var(--glass-border)', color: 'white', margin: 0 }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '14px', padding: 0 }}
+                >
+                  &times;
+                </button>
+              )}
+            </div>
           </div>
-          <div className="panel-body">
-            {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
-            {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
+        </div>
+        <div className="panel-body">
+          <div className="table-responsive">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Pegawai</th>
+                  <th>Jabatan</th>
+                  <th>Unit Kerja</th>
+                  <th style={{ textAlign: 'right' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEmployees.map(emp => (
+                  <tr key={emp.id} style={{ opacity: emp.isActive === false ? 0.6 : 1 }}>
+                    <td>
+                      <strong>{emp.nama}</strong>
+                      {emp.isActive === false && (
+                        <span className="badge" style={{
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          color: '#EF4444',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          fontSize: '9px',
+                          marginLeft: '6px'
+                        }}>
+                          Nonaktif
+                        </span>
+                      )}
+                      {emp.roles.includes('pemimpin') && (
+                        <span className="badge" style={{
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          color: '#60A5FA',
+                          border: '1px solid rgba(59, 130, 246, 0.3)',
+                          fontSize: '9px',
+                          marginLeft: '6px'
+                        }}>
+                          Pimpinan: {emp.bidangs.join(', ')}
+                        </span>
+                      )}
+                      <div className="text-muted" style={{ fontSize: '11px' }}>NIP. {emp.nip}</div>
+                      {emp.pangkatGolongan && <div className="text-muted" style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--primary-orange)' }}>{emp.pangkatGolongan}</div>}
+                    </td>
+                    <td>{emp.jabatan}</td>
+                    <td>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {emp.bidangs.map(b => (
+                          <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                        <button className="btn btn-sm btn-secondary" onClick={() => editEmployee(emp)} title="Edit Pegawai">
+                          <i className="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button className="btn btn-sm btn-primary" onClick={() => resetPassword(emp.id, emp.nama)} title="Reset Password ke bpbd@boyolali" style={{ background: '#F59E0B' }}>
+                          <i className="fa-solid fa-key"></i>
+                        </button>
+                        {emp.isActive !== false ? (
+                          <button className="btn btn-sm btn-danger" onClick={() => deleteEmployee(emp.id)} title="Nonaktifkan Pegawai">
+                            <i className="fa-solid fa-user-slash"></i>
+                          </button>
+                        ) : (
+                          <button className="btn btn-sm btn-secondary" onClick={() => reactivateEmployee(emp)} title="Aktifkan Kembali Pegawai" style={{ background: '#10B981', color: 'white' }}>
+                            <i className="fa-solid fa-user-check"></i>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group mb-3">
-                <label>Nama Lengkap & Gelar</label>
-                <input type="text" className="form-control" value={nama} onChange={(e) => setNama(e.target.value)} required placeholder="Contoh: Drs. Bambang, M.Si." />
-              </div>
-              
-              <div className="form-group mb-3">
-                <label>NIP</label>
-                <input type="text" className="form-control" value={nip} onChange={(e) => setNip(e.target.value)} required placeholder="Contoh: 198009112009031005" />
-              </div>
-
-              <div className="form-group mb-3">
-                <label>Jabatan</label>
-                <input type="text" className="form-control" value={jabatan} onChange={(e) => setJabatan(e.target.value)} required placeholder="Contoh: Kepala Bidang Pencegahan" />
-              </div>
-
-              {/* Roles Multi-select Checkboxes */}
-              <div className="form-group mb-3">
-                <label>Role Aplikasi (Multi-role)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                  {roleOptions.map(opt => (
-                    <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedRoles.includes(opt.value)}
-                        onChange={() => handleRoleChange(opt.value)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      {opt.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bidang Multi-select Checkboxes */}
-              {parentId ? (
+      {/* Form Modal */}
+      {showFormModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,107,0,0.3)'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3>
+                <i className={`fa-solid ${isEditing ? 'fa-user-pen' : 'fa-user-plus'} text-orange`}></i>
+                {isEditing ? ' Edit Data Pegawai' : ' Tambah Pegawai'}
+              </h3>
+              <button onClick={closeFormModal} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '24px', lineHeight: '1' }}>&times;</button>
+            </div>
+            
+            <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1 }}>
+              <form onSubmit={handleSubmit}>
                 <div className="form-group mb-3">
-                  <label>Bidang Pengampu</label>
-                  <div style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', padding: '12px', borderRadius: '8px', color: '#60A5FA', fontSize: '12px', lineHeight: '1.4' }}>
-                    <i className="fa-solid fa-circle-info" style={{ marginRight: '6px' }}></i>
-                    Bidang diwariskan otomatis dari atasan langsung: <strong>{allEmployees.find(e => e.id === parentId)?.bidangs?.join(', ') || '-'}</strong>
-                  </div>
+                  <label>Nama Lengkap & Gelar</label>
+                  <input type="text" className="form-control" value={nama} onChange={(e) => setNama(e.target.value)} required placeholder="Contoh: Drs. Bambang, M.Si." />
                 </div>
-              ) : (
+                
                 <div className="form-group mb-3">
-                  <label>Bidang Pengampu (Multi-bidang)</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                    {bidangOptions.map(opt => (
+                  <label>NIP</label>
+                  <input type="text" className="form-control" value={nip} onChange={(e) => setNip(e.target.value)} required placeholder="Contoh: 198009112009031005" />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label>Pangkat/Golongan</label>
+                  <input type="text" className="form-control" value={pangkatGolongan} onChange={(e) => setPangkatGolongan(e.target.value)} placeholder="Contoh: Pembina Utama Muda, IV/c" />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label>Jabatan</label>
+                  <input type="text" className="form-control" value={jabatan} onChange={(e) => setJabatan(e.target.value)} required placeholder="Contoh: Kepala Bidang Pencegahan" />
+                </div>
+
+                {/* Roles Multi-select Checkboxes */}
+                <div className="form-group mb-3">
+                  <label>Role Aplikasi (Multi-role)</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                    {roleOptions.map(opt => (
                       <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
                         <input
                           type="checkbox"
-                          checked={selectedBidangs.includes(opt.value)}
-                          onChange={() => handleBidangChange(opt.value)}
+                          checked={selectedRoles.includes(opt.value)}
+                          onChange={() => handleRoleChange(opt.value)}
                           style={{ cursor: 'pointer' }}
                         />
                         {opt.label}
@@ -302,118 +458,94 @@ export default function AdminEmployeesPage() {
                     ))}
                   </div>
                 </div>
-              )}
 
-              <div className="form-group mb-3">
-                <label>Atasan Langsung</label>
-                <select className="select-sim" value={parentId} onChange={(e) => setParentId(e.target.value)}>
-                  <option value="">-- Tidak ada (Root) --</option>
-                  {allEmployees.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false).map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
-                  ))}
-                </select>
-              </div>
+                {/* Unit Kerja Selector */}
+                {selectedRoles.includes('pemimpin') ? (
+                  <div className="form-group mb-3">
+                    <label style={{ fontWeight: 'bold', color: 'var(--primary-orange)' }}>
+                      Unit Kerja yang Dipimpin (Bisa pilih lebih dari satu jika merangkap Plt)
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(15, 23, 42, 0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                      {bidangOptions.map(opt => {
+                        const isChecked = selectedBidangs.includes(opt.value);
+                        const handleCheckboxChange = () => {
+                          if (isChecked) {
+                            setSelectedBidangs(selectedBidangs.filter(b => b !== opt.value));
+                          } else {
+                            setSelectedBidangs([...selectedBidangs, opt.value]);
+                          }
+                        };
+                        return (
+                          <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={handleCheckboxChange}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            {opt.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group mb-3">
+                    <label>Unit Kerja</label>
+                    <select
+                      className="select-sim"
+                      value={selectedBidangs[0] || ''}
+                      onChange={(e) => setSelectedBidangs(e.target.value ? [e.target.value] : [])}
+                      required
+                    >
+                      <option value="">-- Pilih Unit Kerja --</option>
+                      {bidangOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-              {isEditing && (
                 <div className="form-group mb-3">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                      style={{ cursor: 'pointer', width: 'auto' }}
-                    />
-                    <strong>Pegawai Aktif</strong>
-                  </label>
-                  <p className="text-muted" style={{ fontSize: '11px', margin: '4px 0 0 0' }}>
-                    Hilangkan centang untuk menonaktifkan akun pegawai ini tanpa menghapus data.
-                  </p>
+                  <label>Atasan Langsung</label>
+                  <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)}>
+                    <option value="">-- Tidak ada (Root) --</option>
+                    {allEmployees.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false).map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
+                    ))}
+                  </select>
                 </div>
-              )}
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
-                <button type="submit" className="btn btn-orange w-full">
-                  <i className="fa-solid fa-circle-check"></i> Simpan Data
-                </button>
                 {isEditing && (
-                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                  <div className="form-group mb-3">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        style={{ cursor: 'pointer', width: 'auto' }}
+                      />
+                      <strong>Pegawai Aktif</strong>
+                    </label>
+                    <p className="text-muted" style={{ fontSize: '11px', margin: '4px 0 0 0' }}>
+                      Hilangkan centang untuk menonaktifkan akun pegawai ini tanpa menghapus data.
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '24px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-secondary" onClick={closeFormModal}>
                     Batal
                   </button>
-                )}
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* List Panel */}
-        <div className="glass-panel">
-          <div className="panel-header">
-            <h3><i className="fa-solid fa-users text-orange"></i> Daftar Pegawai</h3>
-          </div>
-          <div className="panel-body">
-            <div className="table-responsive">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Pegawai</th>
-                    <th>Jabatan</th>
-                    <th>Bidang</th>
-                    <th style={{ textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeEmployees.map(emp => (
-                    <tr key={emp.id} style={{ opacity: emp.isActive === false ? 0.6 : 1 }}>
-                      <td>
-                        <strong>{emp.nama}</strong>
-                        {emp.isActive === false && (
-                          <span className="badge" style={{
-                            background: 'rgba(239, 68, 68, 0.15)',
-                            color: '#EF4444',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            fontSize: '9px',
-                            marginLeft: '6px'
-                          }}>
-                            Nonaktif
-                          </span>
-                        )}
-                        <div className="text-muted" style={{ fontSize: '11px' }}>NIP. {emp.nip}</div>
-                      </td>
-                      <td>{emp.jabatan}</td>
-                      <td>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {emp.bidangs.map(b => (
-                            <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>
-                          ))}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
-                          <button className="btn btn-sm btn-secondary" onClick={() => editEmployee(emp)} title="Edit Pegawai">
-                            <i className="fa-solid fa-pen-to-square"></i>
-                          </button>
-                          <button className="btn btn-sm btn-primary" onClick={() => resetPassword(emp.id, emp.nama)} title="Reset Password ke bpbd@boyolali" style={{ background: '#F59E0B' }}>
-                            <i className="fa-solid fa-key"></i>
-                          </button>
-                          {emp.isActive !== false ? (
-                            <button className="btn btn-sm btn-danger" onClick={() => deleteEmployee(emp.id)} title="Nonaktifkan Pegawai">
-                              <i className="fa-solid fa-user-slash"></i>
-                            </button>
-                          ) : (
-                            <button className="btn btn-sm btn-secondary" onClick={() => reactivateEmployee(emp)} title="Aktifkan Kembali Pegawai" style={{ background: '#10B981', color: 'white' }}>
-                              <i className="fa-solid fa-user-check"></i>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                  <button type="submit" className="btn btn-orange">
+                    <i className="fa-solid fa-circle-check"></i> Simpan Data
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
