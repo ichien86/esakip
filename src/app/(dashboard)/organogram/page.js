@@ -10,8 +10,10 @@ export default function OrganogramPage() {
     const children = allEmployees.filter(emp => emp.parentId === parentId && emp.id !== 'admin' && emp.isActive !== false);
     if (children.length === 0) return null;
 
+    const useVertical = children.length > 3;
+
     return (
-      <ul>
+      <ul className={useVertical ? 'vertical-layout' : ''}>
         {children.map(emp => (
           <li key={emp.id}>
             <div
