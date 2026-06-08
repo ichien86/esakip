@@ -101,36 +101,7 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* User Simulation Swapper (Visible to actual logged-in Super Admin and Admin Unit Kerja) */}
-        {user && (user.roles.includes('admin') || user.roles.includes('admin_bidang')) && (
-          <div className="user-simulator-box">
-            <label htmlFor="userSelect">
-              <i className="fa-solid fa-user-ninja" style={{ color: 'var(--primary-orange)' }}></i> Simulasi Pegawai
-            </label>
-            <select
-              id="userSelect"
-              className="select-sim"
-              value={simulatedUser ? simulatedUser.id : user.id}
-              onChange={(e) => simulate(e.target.value)}
-            >
-              <option value={user.id}>-- Logged In: {user.nama} --</option>
-              {allEmployees.filter(emp => {
-                if (emp.id === user.id || emp.isActive === false) return false;
-                if (user.roles.includes('admin')) return true;
-                return emp.bidangs.some(b => user.bidangs.includes(b));
-              }).map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.nama} ({emp.jabatan})
-                </option>
-              ))}
-            </select>
-            {isSimulating && (
-              <div className="current-role-badge">
-                Mode Simulasi Aktif
-              </div>
-            )}
-          </div>
-        )}
+
 
         <nav className="sidebar-nav">
           {/* General navigation */}

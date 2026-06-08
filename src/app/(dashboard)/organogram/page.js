@@ -16,11 +16,6 @@ export default function OrganogramPage() {
           <li key={emp.id}>
             <div
               className="org-node"
-              onClick={() => {
-                if (user && user.roles.includes('admin')) {
-                  simulate(emp.id);
-                }
-              }}
               style={{
                 border: currentUser?.id === emp.id ? '2px solid var(--primary-orange)' : '',
                 boxShadow: currentUser?.id === emp.id ? '0 0 15px rgba(255, 107, 0, 0.4)' : ''
@@ -43,11 +38,7 @@ export default function OrganogramPage() {
     <div className="glass-panel">
       <div className="panel-header">
         <h3><i className="fa-solid fa-sitemap text-orange"></i> Visualisasi Hierarki Organisasi BPBD Boyolali</h3>
-        {user && user.roles.includes('admin') ? (
-          <p className="text-muted">Klik kotak pegawai di bawah untuk mensimulasikan login sebagai pegawai tersebut.</p>
-        ) : (
-          <p className="text-muted">Diagram struktur organisasi BPBD Kabupaten Boyolali.</p>
-        )}
+        <p className="text-muted">Diagram struktur organisasi BPBD Kabupaten Boyolali.</p>
       </div>
       <div className="panel-body org-chart-container">
         <div className="org-tree">
@@ -56,11 +47,6 @@ export default function OrganogramPage() {
               <li>
                 <div
                   className="org-node"
-                  onClick={() => {
-                    if (user && user.roles.includes('admin')) {
-                      simulate(rootEmployee.id);
-                    }
-                  }}
                   style={{
                     border: currentUser?.id === rootEmployee.id ? '2px solid var(--primary-orange)' : '',
                     boxShadow: currentUser?.id === rootEmployee.id ? '0 0 15px rgba(255, 107, 0, 0.4)' : ''

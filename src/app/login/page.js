@@ -105,10 +105,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div style={{ marginTop: '30px', fontSize: '11px', color: 'var(--text-muted)' }}>
-          <p>Default Password Pegawai: <code>bpbd@boyolali</code></p>
-          <p style={{ marginTop: '4px' }}>Password Admin: <code>admin@123</code></p>
-        </div>
+
       </div>
     </div>
   );
