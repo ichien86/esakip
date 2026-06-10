@@ -11,6 +11,9 @@ export async function POST(request) {
     const body = await request.json();
     const { employeeId, selectedIndicators, assignments } = body;
 
+    const requestYear = request.headers.get('x-requester-year') || body.tahun || '2026';
+    const yearNum = parseInt(requestYear);
+
     const lockSetting = await Setting.findOne({ key: 'planning_locked' });
     if (lockSetting && lockSetting.value === true) {
       return NextResponse.json({ error: 'Masa penyusunan perencanaan (pemilihan IKU) telah dikunci oleh Administrator.' }, { status: 403 });
@@ -23,39 +26,16 @@ export async function POST(request) {
       for (const [indicatorId, penanggungJawab] of Object.entries(assignments)) {
         if (!penanggungJawab) continue;
 
-        const indicator = await CascadingAnnual.findOne({ id: indicatorId, tahun: 2026 });
+        const indicator = await CascadingAnnual.findOne({ id: indicatorId, tahun: yearNum });
         if (!indicator) continue;
 
         let isValid = false;
         const targetIsJabatan = penanggungJawab.startsWith('jabatan:');
         const targetValue = penanggungJawab.replace('jabatan:', '');
 
-        // 1. Tujuan & Sasaran: Only Kepala Badan (Kepala Pelaksana)
-        if (indicator.level === 'tujuan' || indicator.level === 'sasaran') {
-          if (targetIsJabatan && targetValue === 'Kepala Pelaksana') {
-            isValid = true;
-          } else if (!targetIsJabatan) {
-            const emp = allEmployees.find(e => e.id === penanggungJawab);
-            if (emp && (emp.jabatan === 'Kepala Pelaksana' || (emp.roles.includes('pemimpin') && emp.bidangs.includes('Badan')))) {
-              isValid = true;
-            }
-          }
-        }
-        // 2. Program: Only Sekretaris or Kepala Bidang
-        else if (indicator.level === 'program' || indicator.level === 'sasaran_program') {
-          if (targetIsJabatan && (targetValue === 'Sekretaris' || targetValue.startsWith('Kepala Bidang') || targetValue.startsWith('Kabid'))) {
-            isValid = true;
-          } else if (!targetIsJabatan) {
-            const emp = allEmployees.find(e => e.id === penanggungJawab);
-            if (emp && emp.roles.includes('pemimpin') && (emp.jabatan.includes('Sekretaris') || emp.jabatan.includes('Kepala Bidang') || emp.jabatan.includes('Kabid'))) {
-              isValid = true;
-            }
-          }
-        }
-        // 3. Kegiatan, Subkegiatan, Aktivitas: Pemimpin Tata Usaha or Staf
-        else if (indicator.level === 'kegiatan' || indicator.level === 'sasaran_kegiatan' || 
-                 indicator.level === 'subkegiatan' || indicator.level === 'sasaran_subkegiatan' || 
-                 indicator.level === 'aktivitas' || indicator.level === 'sasaran_aktivitas') {
+        // Only validate and process assignments for subkegiatan/aktivitas levels
+        if (indicator.level === 'subkegiatan' || indicator.level === 'sasaran_subkegiatan' || 
+            indicator.level === 'aktivitas' || indicator.level === 'sasaran_aktivitas') {
           if (targetIsJabatan && (targetValue === 'Kepala Sub Bagian Tata Usaha' || targetValue === 'Kepala TU' || targetValue === 'Kasi TU')) {
             isValid = true;
           } else if (!targetIsJabatan) {
@@ -68,6 +48,10 @@ export async function POST(request) {
               }
             }
           }
+        } else {
+          // Higher levels (Tujuan, Sasaran, Program, Kegiatan) cannot be directly assigned.
+          // Since they are derived bottom-up, they are considered valid by default if no assignment is actually saved.
+          isValid = true;
         }
 
         if (!isValid) {
@@ -78,12 +62,52 @@ export async function POST(request) {
         }
       }
 
-      // If all passed validation, save!
+      // If all passed validation, save assignments only for subkegiatan and aktivitas levels
+      const requesterBidang = request.headers.get('x-requester-bidang') || '';
+      const cleanStr = (s) => (s || '').toLowerCase().replace(/dan/g, '').replace(/&/g, '').replace(/bidang/g, '').replace(/[^a-z]/g, '').trim();
+      const matchBidangs = (b1, b2) => cleanStr(b1) === cleanStr(b2);
+      const isJabatanInBidang = (jab, bid) => cleanStr(jab).includes(cleanStr(bid));
+
       for (const [indicatorId, penanggungJawab] of Object.entries(assignments)) {
-        await CascadingAnnual.updateOne(
-          { id: indicatorId, tahun: 2026 },
-          { $set: { penanggungJawab: penanggungJawab || null } }
-        );
+        const indicator = await CascadingAnnual.findOne({ id: indicatorId, tahun: yearNum });
+        if (indicator && ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(indicator.level)) {
+          let nextPenanggungJawab = penanggungJawab || null;
+
+          // Merge caretaker if indicator is cross-cutting (assigned to multiple bidangs)
+          if (indicator.bidangPengampu && indicator.bidangPengampu.length > 1 && requesterBidang) {
+            const currentVal = indicator.penanggungJawab || '';
+            const currentList = currentVal.split(',').map(s => s.trim()).filter(Boolean);
+            const otherBidangsCaretakers = [];
+
+            for (const pic of currentList) {
+              let belongsToRequesterBidang = false;
+              if (pic.startsWith('jabatan:')) {
+                const position = pic.replace('jabatan:', '');
+                belongsToRequesterBidang = isJabatanInBidang(position, requesterBidang);
+              } else {
+                const emp = allEmployees.find(e => e.id === pic);
+                if (emp && emp.bidangs) {
+                  belongsToRequesterBidang = emp.bidangs.some(b => matchBidangs(b, requesterBidang));
+                }
+              }
+
+              if (!belongsToRequesterBidang) {
+                otherBidangsCaretakers.push(pic);
+              }
+            }
+
+            if (penanggungJawab) {
+              otherBidangsCaretakers.push(penanggungJawab);
+            }
+
+            nextPenanggungJawab = [...new Set(otherBidangsCaretakers)].filter(Boolean).join(',') || null;
+          }
+
+          await CascadingAnnual.updateOne(
+            { id: indicatorId, tahun: yearNum },
+            { $set: { penanggungJawab: nextPenanggungJawab } }
+          );
+        }
       }
       return NextResponse.json({ message: 'Penanggung jawab indikator berhasil disimpan' });
     }
@@ -93,29 +117,33 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Format data pemilihan tidak sesuai' }, { status: 400 });
     }
 
-    const programIndicators = await CascadingAnnual.find({ level: 'program', tahun: 2026 });
-    const programIds = programIndicators.map(node => node.id);
-    const cleanedSelectedIndicators = selectedIndicators.filter(id => !programIds.includes(id));
+    // Filter selection to only allow subkegiatan and aktivitas levels
+    const selectableIndicators = await CascadingAnnual.find({
+      id: { $in: selectedIndicators },
+      level: { $in: ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'] },
+      tahun: yearNum
+    });
+    const cleanedSelectedIndicators = selectableIndicators.map(node => node.id);
 
-    // Clear previous direct selections for this employee
+    // Clear previous direct selections for this employee for the selected year
     await CascadingAnnual.updateMany(
-      { penanggungJawab: employeeId, tahun: 2026 },
+      { penanggungJawab: employeeId, tahun: yearNum },
       { $set: { penanggungJawab: null } }
     );
 
     // Apply new direct selections for this employee
     await CascadingAnnual.updateMany(
-      { id: { $in: cleanedSelectedIndicators }, tahun: 2026 },
+      { id: { $in: cleanedSelectedIndicators }, tahun: yearNum },
       { $set: { penanggungJawab: employeeId } }
     );
 
     // Keep legacy Selection collection updated for backward compatibility
-    let selection = await Selection.findOne({ employeeId, tahun: 2026 });
+    let selection = await Selection.findOne({ employeeId, tahun: yearNum });
     if (selection) {
       selection.selectedIndicators = cleanedSelectedIndicators;
       await selection.save();
     } else {
-      selection = new Selection({ employeeId, selectedIndicators: cleanedSelectedIndicators, tahun: 2026 });
+      selection = new Selection({ employeeId, selectedIndicators: cleanedSelectedIndicators, tahun: yearNum });
       await selection.save();
     }
 
@@ -124,6 +152,7 @@ export async function POST(request) {
     let finalSelected = [...cleanedSelectedIndicators];
     if (isKabid) {
       const empBidangs = employee.bidangs || [];
+      const programIndicators = await CascadingAnnual.find({ level: 'program', tahun: yearNum });
       const autoProgramIds = programIndicators
         .filter(node => node.bidangPengampu.some(b => empBidangs.includes(b)))
         .map(node => node.id);
@@ -135,7 +164,7 @@ export async function POST(request) {
       message: 'Indikator berhasil dipilih',
       data: {
         employeeId,
-        tahun: 2026,
+        tahun: yearNum,
         selectedIndicators: finalSelected
       }
     });

@@ -4,15 +4,36 @@ import Employee from '@/models/Employee';
 import Renaksi from '@/models/Renaksi';
 import CascadingAnnual from '@/models/CascadingAnnual';
 
-export async function GET() {
+export async function GET(request) {
   try {
     await dbConnect();
+    
+    // Parse query parameter 'bulan'
+    const url = new URL(request.url);
+    const queryBulan = url.searchParams.get('bulan');
+    const selectedBulan = queryBulan ? parseInt(queryBulan) : null;
+
+    // Get dynamic year from header
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
+
     const employees = await Employee.find({ id: { $ne: 'admin' }, isActive: { $ne: false } });
-    const renaksis = await Renaksi.find({
+
+    // Build filter for Renaksi query
+    const renaksiQuery = {
+      tahun: yearNum,
       realisasiBulanan: { $ne: null },
       status: { $in: ['Diajukan', 'Disetujui'] }
-    });
-    const annualNodes = await CascadingAnnual.find({});
+    };
+
+    // If selectedBulan is 1-11, filter by that specific month.
+    // If selectedBulan is 12 (Desember / Tahunan), we query for all months (annual).
+    if (selectedBulan && selectedBulan >= 1 && selectedBulan <= 11) {
+      renaksiQuery.bulan = selectedBulan;
+    }
+
+    const renaksis = await Renaksi.find(renaksiQuery);
+    const annualNodes = await CascadingAnnual.find({ tahun: yearNum });
 
     const leaderboard = employees.map(emp => {
       const records = renaksis.filter(r => r.employeeId === emp.id);

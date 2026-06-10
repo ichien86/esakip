@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeSelectIndicatorsPage() {
-  const { fetchWithAuth, currentUser, activeRole, activeBidang, systemSettings, allEmployees } = useSimulation();
+  const { fetchWithAuth, currentUser, activeRole, activeBidang, activeYear, systemSettings, allEmployees } = useSimulation();
 
   const [annualNodes, setAnnualNodes] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -92,7 +92,7 @@ export default function EmployeeSelectIndicatorsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const res = await fetch('/api/renja/2026'); // Load Renja 2026
+      const res = await fetchWithAuth(`/api/renja/${activeYear}`);
       if (res.ok) {
         const nodes = await res.json();
         // Filter nodes that match employee's active bidang
@@ -111,7 +111,7 @@ export default function EmployeeSelectIndicatorsPage() {
       }
 
       if (currentUser) {
-        const selRes = await fetch(`/api/selections/${currentUser.id}`);
+        const selRes = await fetchWithAuth(`/api/selections/${currentUser.id}`);
         if (selRes.ok) {
           const selection = await selRes.json();
           setSelectedIds(selection.selectedIndicators || []);
@@ -122,7 +122,7 @@ export default function EmployeeSelectIndicatorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, activeBidang]);
+  }, [currentUser, activeBidang, activeYear, fetchWithAuth]);
 
   useEffect(() => {
     if (currentUser) {
@@ -188,12 +188,14 @@ export default function EmployeeSelectIndicatorsPage() {
 
   const resolvePenanggungJawabLabel = (val) => {
     if (!val) return 'Belum ditentukan';
-    if (val.startsWith('jabatan:')) {
-      const pos = val.replace('jabatan:', '');
-      return `Jabatan Melekat: ${pos}`;
-    }
-    const emp = allEmployees.find(e => e.id === val);
-    return emp ? `${emp.nama} (${emp.jabatan})` : val;
+    return val.split(',').map(v => {
+      if (v.startsWith('jabatan:')) {
+        const pos = v.replace('jabatan:', '');
+        return `Jabatan Melekat: ${pos}`;
+      }
+      const emp = allEmployees.find(e => e.id === v);
+      return emp ? `${emp.nama} (${emp.jabatan})` : v;
+    }).join(', ');
   };
 
   return (
@@ -206,7 +208,7 @@ export default function EmployeeSelectIndicatorsPage() {
         <p className="text-muted">
           {isAdminUnitKerja 
             ? `Tentukan penanggung jawab (PIC) untuk indikator kinerja di unit kerja ${activeBidang}.` 
-            : `Berikut adalah indikator kinerja Anda untuk tahun anggaran 2026 di unit ${activeBidang}.`
+            : `Berikut adalah indikator kinerja Anda untuk tahun anggaran ${activeYear} di unit ${activeBidang}.`
           }
         </p>
         
@@ -283,36 +285,43 @@ export default function EmployeeSelectIndicatorsPage() {
                                 <label style={{ fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 'bold', margin: 0 }}>
                                   Penanggung Jawab:
                                 </label>
-                                <select
-                                  className="select-sim"
-                                  value={assignments[node.id] || ''}
-                                  disabled={systemSettings?.planning_locked || node.level === 'program'}
-                                  onChange={(e) => handleAssignmentChange(node.id, e.target.value)}
-                                  style={{ minWidth: '220px', fontSize: '12px', background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'white' }}
-                                >
-                                  <option value="">-- Pilih Penanggung Jawab --</option>
-                                  {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').length > 0 && (
-                                    <optgroup label="Nama Pegawai (Staf/Pimpinan)">
-                                      {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                      ))}
-                                    </optgroup>
-                                  )}
-                                  {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').length > 0 && (
-                                    <optgroup label="Jabatan Pemimpin (Melekat)">
-                                      {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                      ))}
-                                    </optgroup>
-                                  )}
-                                  {assignments[node.id] && !getPenanggungJawabOptionsForNode(node).some(opt => opt.value === assignments[node.id]) && (
-                                    <optgroup label="Aktif Saat Ini">
-                                      <option value={assignments[node.id]}>
-                                        {resolvePenanggungJawabLabel(assignments[node.id])}
-                                      </option>
-                                    </optgroup>
-                                  )}
-                                </select>
+                                {['tujuan', 'sasaran', 'program', 'sasaran_program', 'kegiatan', 'sasaran_kegiatan'].includes(node.level) ? (
+                                  <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--glass-border)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', minWidth: '220px' }}>
+                                    <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
+                                    <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
+                                  </div>
+                                ) : (
+                                  <select
+                                    className="select-sim"
+                                    value={assignments[node.id] || ''}
+                                    disabled={systemSettings?.planning_locked}
+                                    onChange={(e) => handleAssignmentChange(node.id, e.target.value)}
+                                    style={{ minWidth: '220px', fontSize: '12px', background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'white' }}
+                                  >
+                                    <option value="">-- Pilih Penanggung Jawab --</option>
+                                    {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').length > 0 && (
+                                      <optgroup label="Nama Pegawai (Staf/Pimpinan)">
+                                        {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').map(opt => (
+                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                    {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').length > 0 && (
+                                      <optgroup label="Jabatan Pemimpin (Melekat)">
+                                        {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').map(opt => (
+                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                      </optgroup>
+                                    )}
+                                    {assignments[node.id] && !getPenanggungJawabOptionsForNode(node).some(opt => opt.value === assignments[node.id]) && (
+                                      <optgroup label="Aktif Saat Ini">
+                                        <option value={assignments[node.id]}>
+                                          {resolvePenanggungJawabLabel(assignments[node.id])}
+                                        </option>
+                                      </optgroup>
+                                    )}
+                                  </select>
+                                )}
                               </div>
                             ) : (
                               <div style={{ background: 'rgba(255, 107, 0, 0.08)', border: '1px solid rgba(255, 107, 0, 0.2)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>

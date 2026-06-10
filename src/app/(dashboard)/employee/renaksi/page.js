@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeRenaksiPage() {
-  const { fetchWithAuth, currentUser, activeBidang, systemSettings } = useSimulation();
+  const { fetchWithAuth, currentUser, activeBidang, activeYear, systemSettings } = useSimulation();
 
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
@@ -18,7 +18,7 @@ export default function EmployeeRenaksiPage() {
   const loadData = useCallback(async () => {
     try {
       // 1. Fetch selection list
-      const selRes = await fetch(`/api/selections/${currentUser.id}`);
+      const selRes = await fetchWithAuth(`/api/selections/${currentUser.id}`);
       let selectedIds = [];
       if (selRes.ok) {
         const selData = await selRes.json();
@@ -26,7 +26,7 @@ export default function EmployeeRenaksiPage() {
       }
 
       // 2. Fetch annual Renja nodes
-      const nodesRes = await fetch('/api/renja/2026');
+      const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
       let matchedNodes = [];
       if (nodesRes.ok) {
         const allNodes = await nodesRes.json();
@@ -35,7 +35,7 @@ export default function EmployeeRenaksiPage() {
       }
 
       // 3. Fetch existing Renaksi records
-      const rxRes = await fetch(`/api/renaksi/${currentUser.id}/2026`);
+      const rxRes = await fetchWithAuth(`/api/renaksi/${currentUser.id}/${activeYear}`);
       if (rxRes.ok) {
         const records = await rxRes.json();
         setRenaksiRecords(records);
@@ -50,7 +50,7 @@ export default function EmployeeRenaksiPage() {
 
       // 4. Fetch supervisor details
       if (currentUser?.parentId) {
-        const empRes = await fetch('/api/employees');
+        const empRes = await fetchWithAuth('/api/employees');
         if (empRes.ok) {
           const emps = await empRes.json();
           const boss = emps.find(e => e.id === currentUser.parentId);
@@ -62,7 +62,7 @@ export default function EmployeeRenaksiPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, activeYear, fetchWithAuth]);
 
   useEffect(() => {
     if (currentUser) {
@@ -346,7 +346,7 @@ export default function EmployeeRenaksiPage() {
             </div>
 
             <h3 style={{ textAlign: 'center', textDecoration: 'underline', fontSize: '14px', margin: '0 0 4px 0' }}>PERJANJIAN KINERJA INDIVIDU</h3>
-            <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN 2026</p>
+            <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN {activeYear}</p>
 
             <p style={{ fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
               Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan dan akuntabel serta berorientasi pada hasil, kami yang bertanda tangan di bawah ini berjanji akan mewujudkan target kinerja tahunan sesuai lampiran perjanjian ini.
@@ -436,7 +436,7 @@ export default function EmployeeRenaksiPage() {
                 <p>NIP. {currentUser?.nip}</p>
               </div>
               <div style={{ textAlign: 'center', width: '250px' }}>
-                <p>Boyolali, 5 Januari 2026</p>
+                <p>Boyolali, 5 Januari {activeYear}</p>
                 <p>Pihak Kesatu (Atasan Langsung),</p>
                 <br /><br /><br />
                 <p><strong><u>{supervisor ? supervisor.nama : '-'}</u></strong></p>

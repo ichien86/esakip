@@ -22,10 +22,11 @@ export async function GET(request) {
       return NextResponse.json([]);
     }
 
-    const deactivatedIds = deactivatedEmployees.map(emp => emp.id);
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
 
-    // 2. Get selections for 2026 for these deactivated employees
-    const selections = await Selection.find({ employeeId: { $in: deactivatedIds }, tahun: 2026 });
+    // 2. Get selections for yearNum for these deactivated employees
+    const selections = await Selection.find({ employeeId: { $in: deactivatedIds }, tahun: yearNum });
     if (selections.length === 0) {
       return NextResponse.json([]);
     }

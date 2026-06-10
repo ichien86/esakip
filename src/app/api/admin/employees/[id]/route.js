@@ -48,27 +48,30 @@ export async function PUT(request, { params }) {
 
       const oldBidang = oldBidangs[0];
 
-      // Get the employee's selection for 2026
+      const requestYear = request.headers.get('x-requester-year') || '2026';
+      const yearNum = parseInt(requestYear);
+
+      // Get the employee's selection for the selected year
       // Find indicators belonging to the old unit assigned directly to this employee
       const oldUnitIndicators = await CascadingAnnual.find({
         penanggungJawab: id,
         bidangPengampu: oldBidang,
-        tahun: 2026
+        tahun: yearNum
       });
       const oldUnitIndicatorIds = oldUnitIndicators.map(ind => ind.id);
 
       if (oldUnitIndicatorIds.length > 0) {
         // Unset penanggungJawab for these indicators
         await CascadingAnnual.updateMany(
-          { id: { $in: oldUnitIndicatorIds }, tahun: 2026 },
+          { id: { $in: oldUnitIndicatorIds }, tahun: yearNum },
           { $set: { penanggungJawab: null } }
         );
 
         // Delete Renaksi records for these detached indicators
-        await Renaksi.deleteMany({ employeeId: id, indicatorId: { $in: oldUnitIndicatorIds }, tahun: 2026 });
+        await Renaksi.deleteMany({ employeeId: id, indicatorId: { $in: oldUnitIndicatorIds }, tahun: yearNum });
 
         // Update legacy selection collection as well for backward compatibility
-        const selection = await Selection.findOne({ employeeId: id, tahun: 2026 });
+        const selection = await Selection.findOne({ employeeId: id, tahun: yearNum });
         if (selection && selection.selectedIndicators) {
           selection.selectedIndicators = selection.selectedIndicators.filter(id => !oldUnitIndicatorIds.includes(id));
           await selection.save();
@@ -85,7 +88,7 @@ export async function PUT(request, { params }) {
 
           const activePicCount = await CascadingAnnual.countDocuments({
             id: indicator.id,
-            tahun: 2026,
+            tahun: yearNum,
             $or: [
               { penanggungJawab: { $in: activePICIds } },
               { penanggungJawab: { $in: activePICJabatans } }

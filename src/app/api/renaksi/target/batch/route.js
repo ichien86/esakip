@@ -19,13 +19,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Masa penyusunan target renaksi (matriks bulanan) telah dikunci oleh Administrator.' }, { status: 403 });
     }
 
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
+
     const emp = await Employee.findOne({ id: employeeId });
     const userBidang = emp ? (emp.bidangs[0] || '') : '';
 
     const indicatorsToVerify = [...new Set(targets.map(t => t.indicatorId))];
 
     for (let indicatorId of indicatorsToVerify) {
-      const node = await CascadingAnnual.findOne({ id: indicatorId });
+      const node = await CascadingAnnual.findOne({ id: indicatorId, tahun: yearNum });
       if (node && node.tipeTarget === 'Akumulatif') {
         let annualTarget = parseFloat(node.target);
         if (node.crossCuttingType === 'split' && node.splitTargets && userBidang) {
@@ -60,7 +63,7 @@ export async function POST(request) {
           id: recordId,
           employeeId,
           bidang: userBidang,
-          tahun: 2026,
+          tahun: yearNum,
           indicatorId: item.indicatorId,
           bulan: parseInt(item.bulan),
           targetBulanan: targetVal,

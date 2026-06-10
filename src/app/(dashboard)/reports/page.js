@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function LaporanAkipPage() {
-  const { allEmployees } = useSimulation();
+  const { fetchWithAuth, activeYear, allEmployees } = useSimulation();
 
   const [selectedEmpId, setSelectedEmpId] = useState('');
   const [employee, setEmployee] = useState(null);
@@ -46,7 +46,7 @@ export default function LaporanAkipPage() {
       }
 
       // 2. Fetch selection
-      const selRes = await fetch(`/api/selections/${empId}`);
+      const selRes = await fetchWithAuth(`/api/selections/${empId}`);
       let selectedIds = [];
       if (selRes.ok) {
         const selData = await selRes.json();
@@ -54,7 +54,7 @@ export default function LaporanAkipPage() {
       }
 
       // 3. Fetch Renja indicators
-      const nodesRes = await fetch('/api/renja/2026');
+      const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
       let matchedNodes = [];
       if (nodesRes.ok) {
         const allNodes = await nodesRes.json();
@@ -64,13 +64,13 @@ export default function LaporanAkipPage() {
       }
 
       // 4. Fetch Renaksis
-      const rxRes = await fetch(`/api/renaksi/${empId}/2026`);
+      const rxRes = await fetchWithAuth(`/api/renaksi/${empId}/${activeYear}`);
       if (rxRes.ok) {
         setRenaksiRecords(await rxRes.json());
       }
 
       // 5. Fetch Performance sheet
-      const perfRes = await fetch(`/api/performance/${empId}/2026`);
+      const perfRes = await fetchWithAuth(`/api/performance/${empId}/${activeYear}`);
       if (perfRes.ok) {
         setPerformanceSheet(await perfRes.json());
       }
@@ -79,7 +79,7 @@ export default function LaporanAkipPage() {
     } finally {
       setLoading(false);
     }
-  }, [allEmployees]);
+  }, [allEmployees, activeYear, fetchWithAuth]);
 
   useEffect(() => {
     if (selectedEmpId) {
@@ -193,7 +193,7 @@ export default function LaporanAkipPage() {
               </div>
 
               <h3 style={{ textAlign: 'center', textDecoration: 'underline', fontSize: '14px', margin: '0 0 4px 0' }}>LEMBAR HASIL EVALUASI AKUNTABILITAS KINERJA INDIVIDU (AKIP-I)</h3>
-              <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN 2026</p>
+              <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN {activeYear}</p>
 
               <table style={{ width: '100%', fontSize: '12px', marginBottom: '24px', borderCollapse: 'collapse' }}>
                 <tbody>
@@ -291,7 +291,7 @@ export default function LaporanAkipPage() {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px' }}>
                 <div style={{ textAlign: 'center', width: '250px' }}>
-                  <p>Boyolali, {performanceSheet?.evaluasiAtasan?.tanggalEvaluasi || '5 Desember 2026'}</p>
+                  <p>Boyolali, {performanceSheet?.evaluasiAtasan?.tanggalEvaluasi || `5 Desember ${activeYear}`}</p>
                   <p>Pejabat Penilai/Atasan Langsung,</p>
                   <br /><br /><br />
                   <p><strong><u>{supervisor ? supervisor.nama : '-'}</u></strong></p>

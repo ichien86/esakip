@@ -4,10 +4,13 @@ import CascadingAnnual from '@/models/CascadingAnnual';
 import Cascading5Years from '@/models/Cascading5Years';
 import { checkPlanningLock } from '@/lib/lock-check';
 
+import { resolveTreePICs } from '@/lib/pic-resolver';
+
 export async function GET() {
   await dbConnect();
   const data = await CascadingAnnual.find({});
-  const mapped = data.map(node => {
+  const resolvedData = resolveTreePICs(data);
+  const mapped = resolvedData.map(node => {
     let lvl = node.level;
     if (lvl === 'program') lvl = 'sasaran_program';
     else if (lvl === 'kegiatan') lvl = 'sasaran_kegiatan';
@@ -27,7 +30,7 @@ export async function GET() {
     }
 
     return {
-      ...node.toObject(),
+      ...node,
       level: lvl,
       indicators,
       sasaran: node.sasaran || node.sasaranSubkegiatan || '',

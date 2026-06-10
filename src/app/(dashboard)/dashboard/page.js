@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function DashboardPage() {
-  const { fetchWithAuth, currentUser, activeRole, activeBidang } = useSimulation();
+  const { fetchWithAuth, currentUser, activeRole, activeBidang, activeYear } = useSimulation();
   const [summaryData, setSummaryData] = useState([]);
   const [deactivatedWarnings, setDeactivatedWarnings] = useState([]);
   const [masterWarnings, setMasterWarnings] = useState([]);
@@ -361,7 +361,7 @@ export default function DashboardPage() {
           <div className="glass-panel" style={{ marginTop: '24px' }}>
             <div className="panel-header">
               <h3>
-                <i className="fa-solid fa-ranking-star text-orange"></i> Rekapitulasi Capaian Kinerja BPBD 2026
+                <i className="fa-solid fa-ranking-star text-orange"></i> Rekapitulasi Capaian Kinerja BPBD {activeYear}
               </h3>
             </div>
             <div className="panel-body">

@@ -12,9 +12,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'employeeId dan indicatorId wajib diisi' }, { status: 400 });
     }
 
-    const node = await CascadingAnnual.findOne({ id: indicatorId });
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
+
+    const node = await CascadingAnnual.findOne({ id: indicatorId, tahun: yearNum });
     if (node && node.crossCuttingType === 'split') {
-      const allRecords = await Renaksi.find({ indicatorId, tahun: 2026 });
+      const allRecords = await Renaksi.find({ indicatorId, tahun: yearNum });
       const totalTargetAll = allRecords.reduce((sum, r) => sum + (r.targetBulanan || 0), 0);
       const expectedTarget = parseFloat(node.target) || 0;
 
@@ -41,9 +44,9 @@ export async function POST(request) {
       nextStatus = 'Target_Disetujui';
     }
 
-    // Set the status of all monthly records of this employee for this indicator for 2026
+    // Set the status of all monthly records of this employee for this indicator for the selected year
     const result = await Renaksi.updateMany(
-      { employeeId, indicatorId, tahun: 2026, status: targetStatusFilter },
+      { employeeId, indicatorId, tahun: yearNum, status: targetStatusFilter },
       { $set: { status: nextStatus, isCrossCuttingSelected: true } }
     );
 
@@ -67,7 +70,7 @@ export async function POST(request) {
           {
             employeeId: { $ne: employeeId },
             indicatorId,
-            tahun: 2026,
+            tahun: yearNum,
             bidang: userBidang
           },
           { $set: { isCrossCuttingSelected: false } }
@@ -79,7 +82,7 @@ export async function POST(request) {
         {
           employeeId: { $ne: employeeId },
           indicatorId,
-          tahun: 2026
+          tahun: yearNum
         },
         { $set: { isCrossCuttingSelected: false } }
       );

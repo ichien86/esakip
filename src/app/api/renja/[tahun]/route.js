@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import CascadingAnnual from '@/models/CascadingAnnual';
 import Cascading5Years from '@/models/Cascading5Years';
+import { resolveTreePICs } from '@/lib/pic-resolver';
 
 export async function GET(request, { params }) {
   try {
@@ -10,9 +11,10 @@ export async function GET(request, { params }) {
     const yearNum = parseInt(tahun);
 
     const annualNodes = await CascadingAnnual.find({ tahun: yearNum });
+    const resolvedNodes = resolveTreePICs(annualNodes);
     const fiveYearNodes = await Cascading5Years.find({});
 
-    const enrichedData = annualNodes.map(node => {
+    const enrichedData = resolvedNodes.map(node => {
       const fiveYearMatch = fiveYearNodes.find(c5 => {
         if (node.level === 'tujuan' || node.level === 'sasaran') {
           return c5.level === node.level && c5.text === node.text;

@@ -24,7 +24,7 @@ export default function AdminRealisasiSchedulePage() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/settings/realisasi-schedule?tahun=${activeYear}`);
+      const res = await fetchWithAuth(`/api/admin/settings/realisasi-schedule?tahun=${activeYear}`);
       if (res.ok) {
         setSchedules(await res.json());
       } else {

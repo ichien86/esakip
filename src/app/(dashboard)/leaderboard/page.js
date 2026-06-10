@@ -4,16 +4,50 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function LeaderboardPage() {
-  const { fetchWithAuth, currentUser } = useSimulation();
+  const { fetchWithAuth, currentUser, activeYear } = useSimulation();
+  const getInitialMonth = () => {
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+    let defaultMonth = currentMonth - 1; // n-1
+    if (defaultMonth < 1) defaultMonth = 12; // fallback if current month is Jan, default to Dec (Tahunan)
+    return defaultMonth.toString();
+  };
+
+  const getMonthName = (m) => {
+    const names = [
+      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember (Tahunan)'
+    ];
+    return names[m];
+  };
+
+  const getSelectableMonths = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    if (parseInt(activeYear) < currentYear) {
+      // All months are in the past, so all are selectable
+      return Array.from({ length: 12 }, (_, i) => i + 1);
+    } else if (parseInt(activeYear) === currentYear) {
+      // Only allow months up to currentMonth
+      return Array.from({ length: currentMonth }, (_, i) => i + 1);
+    } else {
+      // Future year, default to Jan
+      return [1];
+    }
+  };
+
   const [leaderboardData, setLeaderboardData] = useState([]);
+  const [selectedBulan, setSelectedBulan] = useState(getInitialMonth());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBidang, setFilterBidang] = useState('Semua');
   const searchInputRef = useRef(null);
 
   const fetchLeaderboard = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetchWithAuth('/api/rewards/leaderboard');
+      const res = await fetchWithAuth(`/api/rewards/leaderboard?bulan=${selectedBulan}`);
       if (res.ok) {
         const data = await res.json();
         setLeaderboardData(data);
@@ -23,7 +57,7 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth]);
+  }, [fetchWithAuth, selectedBulan]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -92,7 +126,7 @@ export default function LeaderboardPage() {
       <div className="glass-panel print-exclude" style={{ marginBottom: '24px', background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.45) 0%, rgba(15, 23, 42, 0.45) 100%)' }}>
         <div className="panel-header justify-between">
           <h3>
-            <i className="fa-solid fa-trophy text-orange"></i> Penghargaan & Leaderboard Capaian Kinerja BPBD 2026
+            <i className="fa-solid fa-trophy text-orange"></i> Penghargaan & Leaderboard Capaian Kinerja BPBD {activeYear}
           </h3>
           <button onClick={fetchLeaderboard} className="btn btn-secondary btn-sm">
             <i className="fa-solid fa-rotate"></i> Refresh
@@ -129,7 +163,7 @@ export default function LeaderboardPage() {
                         <span>{top2.averageCapaian}%</span>
                       </div>
                       <p className="podium-meta">
-                        {top2.totalBulanMengisi} Bulan Diisi
+                        {selectedBulan === '12' ? `${top2.totalBulanMengisi} Laporan (Tahunan)` : `${top2.totalBulanMengisi} Laporan`}
                       </p>
                     </div>
                     <div className="podium-step step-silver">
@@ -156,7 +190,7 @@ export default function LeaderboardPage() {
                         <span>{top1.averageCapaian}%</span>
                       </div>
                       <p className="podium-meta">
-                        {top1.totalBulanMengisi} Bulan Diisi
+                        {selectedBulan === '12' ? `${top1.totalBulanMengisi} Laporan (Tahunan)` : `${top1.totalBulanMengisi} Laporan`}
                       </p>
                     </div>
                     <div className="podium-step step-gold">
@@ -180,7 +214,7 @@ export default function LeaderboardPage() {
                         <span>{top3.averageCapaian}%</span>
                       </div>
                       <p className="podium-meta">
-                        {top3.totalBulanMengisi} Bulan Diisi
+                        {selectedBulan === '12' ? `${top3.totalBulanMengisi} Laporan (Tahunan)` : `${top3.totalBulanMengisi} Laporan`}
                       </p>
                     </div>
                     <div className="podium-step step-bronze">
@@ -194,7 +228,7 @@ export default function LeaderboardPage() {
             {/* Filters Bar */}
             <div className="glass-panel" style={{ marginTop: '24px', padding: '16px', background: 'rgba(30, 41, 59, 0.25)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '12px', flexGrow: 1, maxWidth: '600px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexGrow: 1, maxWidth: '780px' }}>
                   <div className="form-group" style={{ margin: 0, flexGrow: 1, position: 'relative' }}>
                     <input
                       ref={searchInputRef}
@@ -214,7 +248,18 @@ export default function LeaderboardPage() {
                       </button>
                     )}
                   </div>
-                  <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
+                  <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
+                    <select
+                      className="form-control"
+                      value={selectedBulan}
+                      onChange={(e) => setSelectedBulan(e.target.value)}
+                    >
+                      {getSelectableMonths().map(m => (
+                        <option key={m} value={m}>{getMonthName(m)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
                     <select
                       className="form-control"
                       value={filterBidang}
@@ -247,7 +292,7 @@ export default function LeaderboardPage() {
                         <th style={{ width: '80px', textAlign: 'center' }}>Peringkat</th>
                         <th>Nama Pegawai</th>
                         <th>Jabatan / Bidang</th>
-                        <th style={{ textAlign: 'center' }}>Bulan Diisi</th>
+                        <th style={{ textAlign: 'center' }}>{selectedBulan === '12' ? 'Total Laporan' : 'Laporan Diisi'}</th>
                         <th style={{ textAlign: 'center' }}>Rata-rata Capaian</th>
                         <th>Update Pelaporan Terakhir</th>
                         <th style={{ width: '80px', textAlign: 'center' }}>Status</th>
@@ -278,7 +323,9 @@ export default function LeaderboardPage() {
                                 <div>{item.jabatan}</div>
                                 <span className="text-muted" style={{ fontSize: '11px' }}>{item.bidang || 'Pimpinan'}</span>
                               </td>
-                              <td style={{ textAlign: 'center' }}>{item.totalBulanMengisi} / 12</td>
+                              <td style={{ textAlign: 'center' }}>
+                                {item.totalBulanMengisi} Laporan
+                              </td>
                               <td style={{ textAlign: 'center' }}>
                                 <strong className="text-orange" style={{ fontSize: '14px' }}>{item.averageCapaian}%</strong>
                               </td>

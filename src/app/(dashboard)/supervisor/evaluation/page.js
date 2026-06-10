@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function SupervisorEvaluationPage() {
-  const { fetchWithAuth, currentUser, activeRole, allEmployees } = useSimulation();
+  const { fetchWithAuth, currentUser, activeRole, activeYear, allEmployees } = useSimulation();
 
   const [subordinates, setSubordinates] = useState([]);
   const [selectedSub, setSelectedSub] = useState(null);
@@ -64,14 +64,14 @@ export default function SupervisorEvaluationPage() {
       const allTargets = [];
       const allRealisasis = [];
 
-      const nodesRes = await fetch('/api/renja/2026');
+      const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
       const allNodes = nodesRes.ok ? await nodesRes.json() : [];
 
       const allSubRenaksis = [];
       const subRenaksisMap = {};
 
       for (let sub of subs) {
-        const rxRes = await fetch(`/api/renaksi/${sub.id}/2026`);
+        const rxRes = await fetchWithAuth(`/api/renaksi/${sub.id}/${activeYear}`);
         if (rxRes.ok) {
           const rxData = await rxRes.json();
           subRenaksisMap[sub.id] = rxData;
@@ -161,7 +161,7 @@ export default function SupervisorEvaluationPage() {
     } finally {
       setKabidLoading(false);
     }
-  }, [currentUser, activeRole, allEmployees]);
+  }, [currentUser, activeRole, activeYear, allEmployees, fetchWithAuth]);
 
   useEffect(() => {
     if (isSupervisor) {
@@ -231,7 +231,7 @@ export default function SupervisorEvaluationPage() {
       setSubordinates(subs);
 
       // Load all Renja indicators for details lookup
-      const nodesRes = await fetch('/api/renja/2026');
+      const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
       if (nodesRes.ok) {
         setAnnualNodes(await nodesRes.json());
       }
@@ -240,7 +240,7 @@ export default function SupervisorEvaluationPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, activeRole, allEmployees]);
+  }, [currentUser, activeRole, activeYear, allEmployees, fetchWithAuth]);
 
   useEffect(() => {
     if (isSupervisor) {
@@ -262,7 +262,7 @@ export default function SupervisorEvaluationPage() {
 
     try {
       // 1. Fetch Renaksi
-      const rxRes = await fetch(`/api/renaksi/${sub.id}/2026`);
+      const rxRes = await fetchWithAuth(`/api/renaksi/${sub.id}/${activeYear}`);
       if (rxRes.ok) {
         const rxData = await rxRes.json();
         // Filter those submitted (ACC_Admin) for Pemimpin's validation
@@ -270,7 +270,7 @@ export default function SupervisorEvaluationPage() {
       }
 
       // 2. Fetch Performance Evaluation Sheet
-      const perfRes = await fetch(`/api/performance/${sub.id}/2026`);
+      const perfRes = await fetchWithAuth(`/api/performance/${sub.id}/${activeYear}`);
       if (perfRes.ok) {
         const perfData = await perfRes.json();
         setPerfRecord(perfData);
@@ -301,7 +301,7 @@ export default function SupervisorEvaluationPage() {
         method: 'POST',
         body: JSON.stringify({
           employeeId: selectedSub.id,
-          tahun: 2026,
+          tahun: activeYear,
           evaluatorId: currentUser.id,
           skorAKIP: scoreVal,
           catatan

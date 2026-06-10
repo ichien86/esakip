@@ -11,9 +11,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'employeeId wajib diisi' }, { status: 400 });
     }
 
-    // Update all Draft records for employee in 2026 to Target_Diajukan
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
+
+    // Update all Draft records for employee in the selected year to Target_Diajukan
     const result = await Renaksi.updateMany(
-      { employeeId, tahun: 2026, status: 'Draft' },
+      { employeeId, tahun: yearNum, status: 'Draft' },
       { $set: { status: 'Target_Diajukan' } }
     );
 

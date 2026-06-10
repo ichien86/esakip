@@ -41,6 +41,26 @@ export async function GET() {
   return NextResponse.json(mapped);
 }
 
+async function propagateBidangPengampu(nodeId, newBidangPengampu) {
+  const children = await Cascading5Years.find({ parentId: nodeId });
+  for (const child of children) {
+    child.bidangPengampu = newBidangPengampu;
+    
+    // Adjust splitTargets if any key in splitTargets is not in newBidangPengampu
+    if (child.splitTargets && typeof child.splitTargets === 'object') {
+      const updatedSplitTargets = {};
+      newBidangPengampu.forEach(b => {
+        updatedSplitTargets[b] = child.splitTargets[b] || '0';
+      });
+      child.splitTargets = updatedSplitTargets;
+    }
+    
+    await child.save();
+    // Recursively propagate
+    await propagateBidangPengampu(child.id, newBidangPengampu);
+  }
+}
+
 export async function POST(request) {
   try {
     await dbConnect();
@@ -60,7 +80,15 @@ export async function POST(request) {
 
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
 
-    if (!level || !text || finalBidang.length === 0) {
+    let resolvedBidang = finalBidang;
+    if (level !== 'tujuan' && parentId) {
+      const parentNode = await Cascading5Years.findOne({ id: parentId });
+      if (parentNode) {
+        resolvedBidang = parentNode.bidangPengampu || [];
+      }
+    }
+
+    if (!level || !text || resolvedBidang.length === 0) {
       return NextResponse.json({ error: 'Data cascading 5 tahunan tidak lengkap' }, { status: 400 });
     }
 
@@ -68,7 +96,7 @@ export async function POST(request) {
       if (level === 'tujuan') {
         return NextResponse.json({ error: 'Hanya Administrator Sistem yang dapat mengelola Tujuan Strategis.' }, { status: 403 });
       }
-      const hasAccess = finalBidang.every(b => requesterBidang === b);
+      const hasAccess = resolvedBidang.every(b => requesterBidang === b);
       if (!hasAccess) {
         return NextResponse.json({ error: `Anda hanya dapat mengelola cascading pengampuan bidang Anda (${requesterBidang})` }, { status: 403 });
       }
@@ -98,7 +126,7 @@ export async function POST(request) {
       satuan: satuan || '-',
       tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
       parentId: parentId || null,
-      bidangPengampu: finalBidang,
+      bidangPengampu: resolvedBidang,
       crossCuttingType: crossCuttingType || 'shared',
       splitTargets: splitTargets || {},
       target2025: target2025 || '0',
@@ -128,8 +156,16 @@ export async function POST(request) {
     };
 
     if (item) {
+      const oldBidangStr = JSON.stringify(item.bidangPengampu || []);
+      const newBidangStr = JSON.stringify(resolvedBidang);
+
       Object.assign(item, updateObj);
       await item.save();
+
+      // If bidangPengampu changed, propagate to descendants recursively
+      if (oldBidangStr !== newBidangStr) {
+        await propagateBidangPengampu(item.id, resolvedBidang);
+      }
     } else {
       item = new Cascading5Years(updateObj);
       await item.save();

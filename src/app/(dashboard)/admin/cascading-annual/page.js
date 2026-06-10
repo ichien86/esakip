@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminCascadingAnnualPage() {
-  const { fetchWithAuth, activeRole, activeBidang } = useSimulation();
+  const { fetchWithAuth, activeRole, activeBidang, activeYear } = useSimulation();
 
   const [nodes, setNodes] = useState([]);
   const [fiveYearNodes, setFiveYearNodes] = useState([]);
@@ -24,7 +24,7 @@ export default function AdminCascadingAnnualPage() {
   const [selectedBidangs, setSelectedBidangs] = useState([]);
   const [crossCuttingType, setCrossCuttingType] = useState('shared');
   const [splitTargets, setSplitTargets] = useState({});
-  const [tahun, setTahun] = useState(2026);
+  const tahun = activeYear;
   const [anggaran, setAnggaran] = useState(0);
   const [anggaranDpa, setAnggaranDpa] = useState(0);
 
@@ -151,19 +151,19 @@ export default function AdminCascadingAnnualPage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch(`/api/renja/${tahun}`);
+      const res = await fetchWithAuth(`/api/renja/${tahun}`);
       if (res.ok) setNodes(await res.json());
 
-      const fRes = await fetch('/api/cascading5years');
+      const fRes = await fetchWithAuth('/api/cascading5years');
       if (fRes.ok) setFiveYearNodes(await fRes.json());
 
-      const mpRes = await fetch('/api/master/program');
+      const mpRes = await fetchWithAuth('/api/master/program');
       if (mpRes.ok) setMasterPrograms(await mpRes.json());
 
-      const mkRes = await fetch('/api/master/kegiatan');
+      const mkRes = await fetchWithAuth('/api/master/kegiatan');
       if (mkRes.ok) setMasterKegiatans(await mkRes.json());
 
-      const mskRes = await fetch('/api/master/subkegiatan');
+      const mskRes = await fetchWithAuth('/api/master/subkegiatan');
       if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
     } catch (e) {
       console.error('Failed to load cascading data', e);
@@ -999,16 +999,11 @@ export default function AdminCascadingAnnualPage() {
   return (
     <section>
       <div className="glass-panel print-exclude" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <label style={{ fontWeight: 'bold' }}>Tahun Rencana (Renja):</label>
-          <select className="select-sim" style={{ width: '120px' }} value={tahun} onChange={(e) => setTahun(parseInt(e.target.value))}>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-            <option value="2029">2029</option>
-            <option value="2030">2030</option>
-          </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontWeight: 'bold' }}>Tahun Rencana Aktif:</span>
+          <span className="badge badge-score" style={{ background: 'var(--primary-orange)', color: 'white', padding: '6px 12px', fontSize: '13px' }}>
+            {activeYear}
+          </span>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button 
@@ -1373,8 +1368,8 @@ export default function AdminCascadingAnnualPage() {
               <tr style={{ background: '#f2f2f2' }}>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Tujuan Strategis</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Strategis</th>
-                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Program</th>
-                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Kegiatan</th>
+                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Program</th>
+                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Kegiatan</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '20%' }}>Subkegiatan</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '8%' }}>Bidang Pengampu</th>
               </tr>

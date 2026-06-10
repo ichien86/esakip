@@ -42,6 +42,11 @@ export default function AdminCascading5YearsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
 
+  // Custom autocomplete search dropdown states for master data
+  const [masterSearchQuery, setMasterSearchQuery] = useState('');
+  const [isMasterDropdownOpen, setIsMasterDropdownOpen] = useState(false);
+  const masterDropdownRef = useRef(null);
+
   const [isEditing, setIsEditing] = useState(false);
 
   // Modal states
@@ -90,16 +95,16 @@ export default function AdminCascading5YearsPage() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/cascading5years');
+      const res = await fetchWithAuth('/api/cascading5years');
       if (res.ok) setNodes(await res.json());
 
-      const mpRes = await fetch('/api/master/program');
+      const mpRes = await fetchWithAuth('/api/master/program');
       if (mpRes.ok) setMasterPrograms(await mpRes.json());
 
-      const mkRes = await fetch('/api/master/kegiatan');
+      const mkRes = await fetchWithAuth('/api/master/kegiatan');
       if (mkRes.ok) setMasterKegiatans(await mkRes.json());
 
-      const mskRes = await fetch('/api/master/subkegiatan');
+      const mskRes = await fetchWithAuth('/api/master/subkegiatan');
       if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
     } catch (e) {
       console.error('Failed to load cascading data', e);
@@ -174,15 +179,48 @@ export default function AdminCascading5YearsPage() {
     }
   }, [level, isEditing]);
 
-  // Inherit bidang from parent automatically when adding
+  // Inherit bidang from parent automatically (single source of truth)
   useEffect(() => {
-    if (!isEditing && parentId) {
+    if (parentId) {
       const parentNode = nodes.find(n => n.id === parentId);
       if (parentNode && parentNode.bidangPengampu) {
         setSelectedBidangs(parentNode.bidangPengampu);
       }
     }
-  }, [parentId, isEditing, nodes]);
+  }, [parentId, nodes]);
+
+  // Synchronize masterSearchQuery when selectedMasterId changes or level changes
+  useEffect(() => {
+    if (selectedMasterId) {
+      let foundName = '';
+      if (level === 'sasaran_program') {
+        const item = masterPrograms.find(p => p.id === selectedMasterId);
+        if (item) foundName = item.nama;
+      } else if (level === 'sasaran_kegiatan') {
+        const item = masterKegiatans.find(k => k.id === selectedMasterId);
+        if (item) foundName = item.nama;
+      } else if (level === 'sasaran_subkegiatan') {
+        const item = masterSubkegiatans.find(s => s.id === selectedMasterId);
+        if (item) foundName = item.nama;
+      }
+      setMasterSearchQuery(foundName || nomenklatur || '');
+    } else {
+      setMasterSearchQuery('');
+    }
+  }, [selectedMasterId, level, masterPrograms, masterKegiatans, masterSubkegiatans, nomenklatur]);
+
+  // Close searchable dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (masterDropdownRef.current && !masterDropdownRef.current.contains(event.target)) {
+        setIsMasterDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Handle Master dropdown selection change
   const handleMasterChange = (masterId) => {
@@ -1491,19 +1529,6 @@ export default function AdminCascading5YearsPage() {
                 </select>
               </div>
 
-              {/* Master Data Selection for Program/Kegiatan/Subkegiatan */}
-              {['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(level) && (
-                <div className="form-group mb-3" style={{ background: 'rgba(255, 107, 0, 0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed var(--primary-orange)' }}>
-                  <label>Pilih Nomenklatur Master Data</label>
-                  <select className="select-sim" value={selectedMasterId} onChange={(e) => handleMasterChange(e.target.value)}>
-                    <option value="">-- Pilih Nomenklatur --</option>
-                    {getMasterOptions().map(opt => (
-                      <option key={opt.id} value={opt.id}>{opt.nama}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
               {/* Text / Uraian input */}
               <div className="form-group mb-3">
                 <label>
@@ -1525,6 +1550,133 @@ export default function AdminCascading5YearsPage() {
                 />
               </div>
 
+              {/* Master Data Selection for Program/Kegiatan/Subkegiatan */}
+              {['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(level) && (
+                <div className="form-group mb-3" style={{ background: 'rgba(255, 107, 0, 0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed var(--primary-orange)' }}>
+                  <label>Pilih Nomenklatur Master Data</label>
+                  <div ref={masterDropdownRef} style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ paddingRight: '40px' }}
+                        placeholder="Ketik untuk mencari nomenklatur..."
+                        value={masterSearchQuery}
+                        onChange={(e) => {
+                          setMasterSearchQuery(e.target.value);
+                          setIsMasterDropdownOpen(true);
+                          if (!e.target.value) {
+                            handleMasterChange('');
+                          }
+                        }}
+                        onFocus={() => setIsMasterDropdownOpen(true)}
+                      />
+                      {masterSearchQuery ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMasterSearchQuery('');
+                            handleMasterChange('');
+                            setIsMasterDropdownOpen(true);
+                          }}
+                          style={{
+                            position: 'absolute',
+                            right: '30px',
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setIsMasterDropdownOpen(!isMasterDropdownOpen)}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        <i className={`fa-solid ${isMasterDropdownOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
+                      </button>
+                    </div>
+
+                    {isMasterDropdownOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: '#090d1a',
+                          border: '1px solid var(--glass-border)',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          zIndex: 10000,
+                          marginTop: '4px'
+                        }}
+                      >
+                        {getMasterOptions().filter(opt =>
+                          opt.nama.toLowerCase().includes(masterSearchQuery.toLowerCase())
+                        ).length > 0 ? (
+                          getMasterOptions()
+                            .filter(opt =>
+                              opt.nama.toLowerCase().includes(masterSearchQuery.toLowerCase())
+                            )
+                            .map((opt) => (
+                              <div
+                                key={opt.id}
+                                onClick={() => {
+                                  handleMasterChange(opt.id);
+                                  setMasterSearchQuery(opt.nama);
+                                  setIsMasterDropdownOpen(false);
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  color: 'white',
+                                  background: selectedMasterId === opt.id ? 'var(--primary-orange-light)' : 'transparent',
+                                  borderBottom: '1px solid rgba(255,255,255,0.03)',
+                                  transition: 'background 0.2s',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (selectedMasterId !== opt.id) {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (selectedMasterId !== opt.id) {
+                                    e.currentTarget.style.background = 'transparent';
+                                  }
+                                }}
+                              >
+                                <div style={{ fontWeight: '600' }}>{opt.nama}</div>
+                                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Kode: {opt.kode || opt.id}</div>
+                              </div>
+                            ))
+                        ) : (
+                          <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                            Tidak ada data master yang cocok
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Uraian Aktivitas (for Aktivitas level only) */}
               {level === 'sasaran_aktivitas' && (
                 <div className="form-group mb-3">
@@ -1542,14 +1694,18 @@ export default function AdminCascading5YearsPage() {
 
               {/* Multi Bidang Pengampu */}
               <div className="form-group mb-3">
-                <label>Bidang Pengampu</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                <label>
+                  Bidang Pengampu {level !== 'tujuan' && <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 'normal' }}>(Diwarisi dari induk)</span>}
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', opacity: level !== 'tujuan' ? 0.75 : 1 }}>
                   {bidangOptions.map(opt => (
-                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: level === 'tujuan' ? 'pointer' : 'not-allowed', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
                       <input
                         type="checkbox"
                         checked={selectedBidangs.includes(opt)}
                         onChange={() => handleBidangChange(opt)}
+                        disabled={level !== 'tujuan'}
+                        style={{ cursor: level === 'tujuan' ? 'pointer' : 'not-allowed' }}
                       />
                       {opt}
                     </label>
@@ -1961,8 +2117,8 @@ export default function AdminCascading5YearsPage() {
               <tr style={{ background: '#f2f2f2' }}>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Tujuan Strategis</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Strategis</th>
-                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Program</th>
-                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Kegiatan</th>
+                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Program</th>
+                <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '18%' }}>Sasaran Kegiatan</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '20%' }}>Subkegiatan</th>
                 <th style={{ border: '1px solid black', padding: '6px', fontSize: '11px', width: '8%' }}>Bidang Pengampu</th>
               </tr>

@@ -3,11 +3,14 @@ import dbConnect from '@/lib/db';
 import Employee from '@/models/Employee';
 import Performance from '@/models/Performance';
 
-export async function GET() {
+export async function GET(request) {
   try {
     await dbConnect();
+    const requestYear = request.headers.get('x-requester-year') || '2026';
+    const yearNum = parseInt(requestYear);
+
     const employees = await Employee.find({ isActive: { $ne: false } });
-    const performances = await Performance.find({ tahun: 2026 });
+    const performances = await Performance.find({ tahun: yearNum });
 
     const summary = employees.map(emp => {
       const perf = performances.find(p => p.employeeId === emp.id);

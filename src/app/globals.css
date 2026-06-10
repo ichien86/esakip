@@ -738,9 +738,9 @@ body {
 
 /* Vertical layout for nodes with > 3 children */
 .org-tree ul.vertical-layout {
-  flex-direction: column;
-  align-items: center;
-  padding-top: 10px;
+  display: block;
+  padding: 0 0 0 40px;
+  position: relative;
 }
 
 .org-tree ul.vertical-layout::before {
@@ -749,27 +749,42 @@ body {
 
 .org-tree ul.vertical-layout > li {
   float: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 15px 0 0 0;
+  display: block;
+  text-align: left;
+  padding: 10px 0 10px 20px;
   position: relative;
-  width: 100%;
 }
 
 .org-tree ul.vertical-layout > li::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 50%;
+  left: 0;
   border-left: 1px solid var(--glass-border);
   border-top: none;
   width: 0;
-  height: 15px;
+  height: 100%;
+}
+
+.org-tree ul.vertical-layout > li:last-child::before {
+  height: 25px; /* Stop vertical line at the last node's branch level */
 }
 
 .org-tree ul.vertical-layout > li::after {
-  display: none;
+  content: '';
+  position: absolute;
+  top: 25px; /* branch connection to the middle of the node */
+  left: 0;
+  border-top: 1px solid var(--glass-border);
+  width: 20px;
+  height: 0;
+  display: block;
+}
+
+.org-tree ul.vertical-layout > li > .org-node {
+  display: inline-block;
+  text-align: left;
+  min-width: 200px;
 }
 
 /* Org Nodes Styling */

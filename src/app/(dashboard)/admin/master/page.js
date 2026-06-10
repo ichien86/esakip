@@ -54,17 +54,17 @@ export default function AdminMasterPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const pRes = await fetch('/api/master/program');
+      const pRes = await fetchWithAuth('/api/master/program');
       let loadedPrograms = [];
       if (pRes.ok) {
         loadedPrograms = await pRes.json();
         setPrograms(loadedPrograms);
       }
 
-      const kRes = await fetch('/api/master/kegiatan');
+      const kRes = await fetchWithAuth('/api/master/kegiatan');
       if (kRes.ok) setKegiatans(await kRes.json());
 
-      const sRes = await fetch('/api/master/subkegiatan');
+      const sRes = await fetchWithAuth('/api/master/subkegiatan');
       if (sRes.ok) setSubkegiatans(await sRes.json());
 
       // Auto-expand Urusans by default

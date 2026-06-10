@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
 export default function EmployeeRealisasiPage() {
-  const { fetchWithAuth, currentUser, activeBidang } = useSimulation();
+  const { fetchWithAuth, currentUser, activeBidang, activeYear } = useSimulation();
 
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
@@ -38,7 +38,7 @@ export default function EmployeeRealisasiPage() {
     if (!currentUser) return;
     try {
       // 1. Fetch selection list
-      const selRes = await fetch(`/api/selections/${currentUser.id}`);
+      const selRes = await fetchWithAuth(`/api/selections/${currentUser.id}`);
       let selectedIds = [];
       if (selRes.ok) {
         const selData = await selRes.json();
@@ -46,7 +46,7 @@ export default function EmployeeRealisasiPage() {
       }
 
       // 2. Fetch annual Renja nodes
-      const nodesRes = await fetch('/api/renja/2026');
+      const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
       let matchedNodes = [];
       if (nodesRes.ok) {
         const allNodes = await nodesRes.json();
@@ -58,13 +58,13 @@ export default function EmployeeRealisasiPage() {
       }
 
       // 3. Fetch existing Renaksi records
-      const rxRes = await fetch(`/api/renaksi/${currentUser.id}/2026`);
+      const rxRes = await fetchWithAuth(`/api/renaksi/${currentUser.id}/${activeYear}`);
       if (rxRes.ok) {
         setRenaksiRecords(await rxRes.json());
       }
 
       // 4. Fetch monthly realization schedules
-      const schedRes = await fetch('/api/admin/settings/realisasi-schedule?tahun=2026');
+      const schedRes = await fetchWithAuth(`/api/admin/settings/realisasi-schedule?tahun=${activeYear}`);
       if (schedRes.ok) {
         setMonthlySchedules(await schedRes.json());
       }
@@ -73,7 +73,7 @@ export default function EmployeeRealisasiPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, activeYear, fetchWithAuth]);
 
   useEffect(() => {
     if (currentUser) {
@@ -178,9 +178,8 @@ export default function EmployeeRealisasiPage() {
     setCheckingLink(true);
     setVerifyStatus({ checking: true, message: 'Memverifikasi link...' });
     try {
-      const res = await fetch('/api/verify-link', {
+      const res = await fetchWithAuth('/api/verify-link', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       });
       if (res.ok) {
@@ -267,7 +266,7 @@ export default function EmployeeRealisasiPage() {
       if (res.ok) {
         setSuccess('Laporan realisasi bulanan berhasil diajukan.');
         // Refresh records list
-        const rxRes = await fetch(`/api/renaksi/${currentUser.id}/2026`);
+        const rxRes = await fetchWithAuth(`/api/renaksi/${currentUser.id}/${activeYear}`);
         if (rxRes.ok) {
           setRenaksiRecords(await rxRes.json());
         }
