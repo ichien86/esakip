@@ -1,31 +1,14 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Setting from '@/models/Setting';
+import SettingService from '@/services/SettingService';
 
 export async function POST(request) {
   try {
-    await dbConnect();
-    const { key, value, requesterRole } = await request.json();
-
-    if (requesterRole !== 'admin') {
-      return NextResponse.json({ error: 'Akses ditolak. Hanya Administrator Sistem yang dapat mengubah pengaturan sistem.' }, { status: 403 });
-    }
-
-    if (!key || value === undefined) {
-      return NextResponse.json({ error: 'Key dan Value wajib diisi' }, { status: 400 });
-    }
-
-    let setting = await Setting.findOne({ key });
-    if (setting) {
-      setting.value = value;
-      await setting.save();
-    } else {
-      setting = new Setting({ key, value });
-      await setting.save();
-    }
+    const body = await request.json();
+    const setting = await SettingService.updateSetting(body);
 
     return NextResponse.json({ message: 'Pengaturan berhasil diperbarui', setting });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.status || 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
 }

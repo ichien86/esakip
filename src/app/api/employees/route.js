@@ -1,17 +1,16 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import Employee from '@/models/Employee';
+import EmployeeService from '@/services/EmployeeService';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    await dbConnect();
-    const employees = await Employee.find({}).sort({ id: 1 });
-
-    const enriched = employees.map(emp => {
-      return emp.toObject();
-    });
-
-    return NextResponse.json(enriched);
+    const { searchParams } = new URL(request.url);
+    const includeSystem = searchParams.get('includeSystem') === 'true';
+    
+    const employees = includeSystem 
+      ? await EmployeeService.getAllEmployeesIncludingBupati()
+      : await EmployeeService.getAllEmployees();
+      
+    return NextResponse.json(employees);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

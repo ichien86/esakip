@@ -141,6 +141,9 @@ export default function DashboardLayout({ children }) {
               <Link href="/admin/realisasi-schedule" className={`nav-item ${isLinkActive('/admin/realisasi-schedule') ? 'active' : ''}`}>
                 <i className="fa-solid fa-calendar-check"></i> Jadwal Realisasi
               </Link>
+              <Link href="/admin/perjakin" className={`nav-item ${isLinkActive('/admin/perjakin') ? 'active' : ''}`}>
+                <i className="fa-solid fa-print"></i> Cetak Perjakin
+              </Link>
               <Link href="/admin/monitoring-5years" className={`nav-item ${isLinkActive('/admin/monitoring-5years') ? 'active' : ''}`}>
                 <i className="fa-solid fa-chart-bar"></i> Monitoring Renstra
               </Link>
@@ -282,8 +285,13 @@ export default function DashboardLayout({ children }) {
                     : (currentUser?.bidangs?.[0] ? ` - ${currentUser.bidangs[0]}` : '')}
                 </span>
               </div>
-              <div className="profile-avatar" onClick={logout} title="Click to Logout" style={{ cursor: 'pointer' }}>
-                <i className="fa-solid fa-right-from-bracket" style={{ color: 'white' }}></i>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <Link href="/profile" className="profile-avatar" title="Profil & Tanda Tangan" style={{ cursor: 'pointer', background: 'rgba(255, 107, 0, 0.2)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <i className="fa-solid fa-user-gear" style={{ color: 'var(--primary-orange)' }}></i>
+                </Link>
+                <div className="profile-avatar" onClick={logout} title="Keluar (Logout)" style={{ cursor: 'pointer' }}>
+                  <i className="fa-solid fa-right-from-bracket" style={{ color: 'white' }}></i>
+                </div>
               </div>
             </div>
           </div>

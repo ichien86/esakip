@@ -502,7 +502,7 @@ export default function AdminMasterPage() {
                           <tr key={`new-prog-${p.id}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={{ padding: '6px' }}><code>{p.id}</code></td>
                             <td style={{ padding: '6px' }}><span className="badge" style={{ background: '#10B981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Baru</span></td>
-                            <td style={{ padding: '6px' }}>Nama: <strong>{p.nama}</strong><br /><span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Urusan: {p.urusan}</span></td>
+                            <td style={{ padding: '6px' }}>Nomenklatur Program: <strong>{p.nama}</strong><br /><span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Urusan: {p.urusan}</span></td>
                             <td style={{ padding: '6px', textAlign: 'right' }}>
                               <button className="btn btn-sm btn-orange" style={{ padding: '2px 8px', fontSize: '11px', width: 'auto' }} onClick={() => handleUpdateSingleItem('program', p.actionData, 'newPrograms', p.id)}>Update</button>
                             </td>
@@ -514,7 +514,7 @@ export default function AdminMasterPage() {
                             <td style={{ padding: '6px' }}><span className="badge" style={{ background: '#F59E0B', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Ubah</span></td>
                             <td style={{ padding: '6px' }}>
                               <div>
-                                Nama: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{p.oldNama}</span>
+                                Nomenklatur Program: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{p.oldNama}</span>
                                 <i className="fa-solid fa-arrow-right" style={{ margin: '0 6px', color: 'var(--text-muted)' }}></i>
                                 <span className="text-success">{p.newNama}</span>
                               </div>
@@ -558,7 +558,7 @@ export default function AdminMasterPage() {
                           <tr key={`new-keg-${k.id}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                             <td style={{ padding: '6px' }}><code>{k.id}</code><br /><span className="text-muted" style={{ fontSize: '10px' }}>Prog: {k.programId}</span></td>
                             <td style={{ padding: '6px' }}><span className="badge" style={{ background: '#10B981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Baru</span></td>
-                            <td style={{ padding: '6px' }}>Nama: <strong>{k.nama}</strong></td>
+                            <td style={{ padding: '6px' }}>Nomenklatur Kegiatan: <strong>{k.nama}</strong></td>
                             <td style={{ padding: '6px', textAlign: 'right' }}>
                               <button className="btn btn-sm btn-orange" style={{ padding: '2px 8px', fontSize: '11px', width: 'auto' }} onClick={() => handleUpdateSingleItem('kegiatan', k.actionData, 'newKegiatans', k.id)}>Update</button>
                             </td>
@@ -571,7 +571,7 @@ export default function AdminMasterPage() {
                             <td style={{ padding: '6px' }}>
                               {k.oldNama !== k.newNama && (
                                 <div>
-                                  Nama: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{k.oldNama}</span>
+                                  Nomenklatur Kegiatan: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{k.oldNama}</span>
                                   <i className="fa-solid fa-arrow-right" style={{ margin: '0 6px', color: 'var(--text-muted)' }}></i>
                                   <span className="text-success">{k.newNama}</span>
                                 </div>
@@ -617,7 +617,7 @@ export default function AdminMasterPage() {
                             <td style={{ padding: '6px' }}><code>{s.id}</code><br /><span className="text-muted" style={{ fontSize: '10px' }}>Keg: {s.kegiatanId}</span></td>
                             <td style={{ padding: '6px' }}><span className="badge" style={{ background: '#10B981', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>Baru</span></td>
                             <td style={{ padding: '6px' }}>
-                              <div>Nama: <strong>{s.nama}</strong></div>
+                              <div>Nomenklatur Subkegiatan: <strong>{s.nama}</strong></div>
                               <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>Indikator: {s.indikator} ({s.satuan})</div>
                               {s.bidang && <div style={{ fontSize: '10.5px', marginTop: '2px', color: '#10B981' }}>Pelaksana: {s.bidang}</div>}
                             </td>
@@ -633,7 +633,7 @@ export default function AdminMasterPage() {
                             <td style={{ padding: '6px' }}>
                               {s.oldNama !== s.newNama && (
                                 <div>
-                                  Nama: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{s.oldNama}</span>
+                                  Nomenklatur Subkegiatan: <span className="text-danger" style={{ textDecoration: 'line-through' }}>{s.oldNama}</span>
                                   <i className="fa-solid fa-arrow-right" style={{ margin: '0 4px', color: 'var(--text-muted)' }}></i>
                                   <span className="text-success">{s.newNama}</span>
                                 </div>
@@ -905,7 +905,7 @@ export default function AdminMasterPage() {
               </div>
 
               <div>
-                <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nama Subkegiatan</span>
+                <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nomenklatur Subkegiatan</span>
                 <div style={{ fontSize: '14px', color: '#f3f4f6', fontWeight: 600, marginTop: '3px', lineHeight: '1.4' }}>
                   {selectedSubkegDetails.nama}
                 </div>
@@ -913,7 +913,7 @@ export default function AdminMasterPage() {
 
               <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kinerja (Sasaran Subkegiatan)</span>
+                  <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sasaran Subkegiatan (Kinerja)</span>
                   <div style={{ fontSize: '13px', color: '#34D399', fontWeight: 600, marginTop: '4px', lineHeight: '1.4' }}>
                     {selectedSubkegDetails.kinerja || '-'}
                   </div>

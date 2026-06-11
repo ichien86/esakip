@@ -9,11 +9,14 @@ export default function AdminEmployeesPage() {
   const [nama, setNama] = useState('');
   const [nip, setNip] = useState('');
   const [jabatan, setJabatan] = useState('');
+  const [jenisJabatan, setJenisJabatan] = useState('JFU');
   const [pangkatGolongan, setPangkatGolongan] = useState('');
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedBidangs, setSelectedBidangs] = useState([]);
   const [parentId, setParentId] = useState('');
   const [isActive, setIsActive] = useState(true);
+  
+  const [allEmployeesWithSystem, setAllEmployeesWithSystem] = useState([]);
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -21,6 +24,11 @@ export default function AdminEmployeesPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const searchInputRef = useRef(null);
+
+  // Replacement Flow State
+  const [replacementPrompt, setReplacementPrompt] = useState(null);
+  const [replacementTarget, setReplacementTarget] = useState('');
+  const [replacementLoading, setReplacementLoading] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -47,6 +55,15 @@ export default function AdminEmployeesPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showFormModal]);
+
+  useEffect(() => {
+    if (activeRole === 'admin') {
+      fetch('/api/employees?includeSystem=true')
+        .then(res => res.json())
+        .then(data => setAllEmployeesWithSystem(data))
+        .catch(err => console.error(err));
+    }
+  }, [activeRole]);
 
   if (activeRole !== 'admin') {
     return (
@@ -105,6 +122,7 @@ export default function AdminEmployeesPage() {
       nama,
       nip,
       jabatan,
+      jenisJabatan,
       pangkatGolongan,
       roles: selectedRoles,
       bidangs: selectedBidangs,
@@ -112,6 +130,41 @@ export default function AdminEmployeesPage() {
       isActive,
       requesterRole: 'admin'
     };
+
+    if (isEditing) {
+      const originalEmp = allEmployees.find(e => e.id === formId);
+      if (originalEmp) {
+        const removedRoles = originalEmp.roles.filter(r => !selectedRoles.includes(r) || !isActive);
+        
+        if (removedRoles.includes('admin')) {
+          const allAdmins = allEmployees.filter(e => e.roles?.includes('admin') && e.isActive !== false);
+          if (allAdmins.length <= 1) {
+            const candidates = allEmployees.filter(e => !e.roles?.includes('admin') && e.isActive !== false && e.id !== formId);
+            setReplacementPrompt({ roleName: 'admin', roleDisplay: 'Administrator Sistem', action: 'save', payload, candidates });
+            return;
+          }
+        }
+        
+        if (removedRoles.includes('perencana')) {
+          const allPerencana = allEmployees.filter(e => e.roles?.includes('perencana') && e.isActive !== false);
+          if (allPerencana.length <= 1) {
+            const candidates = allEmployees.filter(e => !e.roles?.includes('perencana') && e.isActive !== false && e.id !== formId);
+            setReplacementPrompt({ roleName: 'perencana', roleDisplay: 'Admin Perencana', action: 'save', payload, candidates });
+            return;
+          }
+        }
+
+        if (removedRoles.includes('admin_bidang') && originalEmp.bidangs?.length > 0) {
+          const bidang = originalEmp.bidangs[0];
+          const allAdminBidang = allEmployees.filter(e => e.roles?.includes('admin_bidang') && e.bidangs?.includes(bidang) && e.isActive !== false);
+          if (allAdminBidang.length <= 1) {
+            const candidates = allEmployees.filter(e => !e.roles?.includes('admin_bidang') && e.bidangs?.includes(bidang) && e.isActive !== false && e.id !== formId);
+            setReplacementPrompt({ roleName: 'admin_bidang', roleDisplay: `Admin Unit Kerja (${bidang})`, action: 'save', payload, candidates });
+            return;
+          }
+        }
+      }
+    }
 
     try {
       let res;
@@ -146,6 +199,7 @@ export default function AdminEmployeesPage() {
     setNama(emp.nama);
     setNip(emp.nip);
     setJabatan(emp.jabatan);
+    setJenisJabatan(emp.jenisJabatan || 'JFU');
     setPangkatGolongan(emp.pangkatGolongan || '');
     setSelectedRoles(emp.roles || []);
     setSelectedBidangs(emp.bidangs || []);
@@ -155,6 +209,38 @@ export default function AdminEmployeesPage() {
   };
 
   const deleteEmployee = async (id) => {
+    const originalEmp = allEmployees.find(e => e.id === id);
+    if (!originalEmp) return;
+
+    const removedRoles = originalEmp.roles;
+    if (removedRoles.includes('admin')) {
+      const allAdmins = allEmployees.filter(e => e.roles?.includes('admin') && e.isActive !== false);
+      if (allAdmins.length <= 1) {
+        const candidates = allEmployees.filter(e => !e.roles?.includes('admin') && e.isActive !== false && e.id !== id);
+        setReplacementPrompt({ roleName: 'admin', roleDisplay: 'Administrator Sistem', action: 'delete', targetId: id, candidates });
+        return;
+      }
+    }
+    
+    if (removedRoles.includes('perencana')) {
+      const allPerencana = allEmployees.filter(e => e.roles?.includes('perencana') && e.isActive !== false);
+      if (allPerencana.length <= 1) {
+        const candidates = allEmployees.filter(e => !e.roles?.includes('perencana') && e.isActive !== false && e.id !== id);
+        setReplacementPrompt({ roleName: 'perencana', roleDisplay: 'Admin Perencana', action: 'delete', targetId: id, candidates });
+        return;
+      }
+    }
+
+    if (removedRoles.includes('admin_bidang') && originalEmp.bidangs?.length > 0) {
+      const bidang = originalEmp.bidangs[0];
+      const allAdminBidang = allEmployees.filter(e => e.roles?.includes('admin_bidang') && e.bidangs?.includes(bidang) && e.isActive !== false);
+      if (allAdminBidang.length <= 1) {
+        const candidates = allEmployees.filter(e => !e.roles?.includes('admin_bidang') && e.bidangs?.includes(bidang) && e.isActive !== false && e.id !== id);
+        setReplacementPrompt({ roleName: 'admin_bidang', roleDisplay: `Admin Unit Kerja (${bidang})`, action: 'delete', targetId: id, candidates });
+        return;
+      }
+    }
+
     if (!confirm('Yakin ingin menonaktifkan pegawai ini?')) return;
     setError('');
     setSuccess('');
@@ -175,6 +261,75 @@ export default function AdminEmployeesPage() {
     }
   };
 
+  const executeReplacement = async () => {
+    if (!replacementTarget) return;
+    setReplacementLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const targetEmp = allEmployees.find(e => e.id === replacementTarget);
+      if (!targetEmp) throw new Error('Pegawai pengganti tidak valid');
+
+      const newRoles = [...(targetEmp.roles || []), replacementPrompt.roleName];
+      const updateTargetRes = await fetchWithAuth(`/api/admin/employees/${replacementTarget}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          nama: targetEmp.nama,
+          nip: targetEmp.nip,
+          jabatan: targetEmp.jabatan,
+          jenisJabatan: targetEmp.jenisJabatan || 'JFU',
+          pangkatGolongan: targetEmp.pangkatGolongan || '',
+          roles: newRoles,
+          bidangs: targetEmp.bidangs || [],
+          parentId: targetEmp.parentId || null,
+          isActive: targetEmp.isActive,
+          requesterRole: 'admin'
+        })
+      });
+
+      if (!updateTargetRes.ok) throw new Error('Gagal menambahkan role pada pegawai pengganti');
+
+      if (replacementPrompt.action === 'save') {
+        const res = await fetchWithAuth(`/api/admin/employees/${formId}`, {
+          method: 'PUT',
+          body: JSON.stringify(replacementPrompt.payload)
+        });
+        if (res.ok) {
+          setSuccess('Data berhasil disimpan dan pengganti telah ditetapkan.');
+          closeFormModal();
+          refreshMetadata();
+        } else {
+          const err = await res.json();
+          throw new Error(err.error || 'Gagal menyimpan data pegawai.');
+        }
+      } else if (replacementPrompt.action === 'delete') {
+        const res = await fetchWithAuth(`/api/admin/employees/${replacementPrompt.targetId}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          setSuccess('Pegawai dinonaktifkan dan pengganti telah ditetapkan.');
+          refreshMetadata();
+        } else {
+          const err = await res.json();
+          throw new Error(err.error || 'Gagal menonaktifkan pegawai.');
+        }
+      }
+      
+      setReplacementPrompt(null);
+      setReplacementTarget('');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setReplacementLoading(false);
+    }
+  };
+
+  const closeReplacementModal = () => {
+    setReplacementPrompt(null);
+    setReplacementTarget('');
+  };
+
   const reactivateEmployee = async (emp) => {
     if (!confirm(`Yakin ingin mengaktifkan kembali pegawai ${emp.nama}?`)) return;
     setError('');
@@ -184,6 +339,7 @@ export default function AdminEmployeesPage() {
       nama: emp.nama,
       nip: emp.nip,
       jabatan: emp.jabatan,
+      jenisJabatan: emp.jenisJabatan || 'JFU',
       pangkatGolongan: emp.pangkatGolongan || '',
       roles: emp.roles,
       bidangs: emp.bidangs,
@@ -238,6 +394,7 @@ export default function AdminEmployeesPage() {
     setNama('');
     setNip('');
     setJabatan('');
+    setJenisJabatan('JFU');
     setPangkatGolongan('');
     setSelectedRoles([]);
     setSelectedBidangs([]);
@@ -350,7 +507,12 @@ export default function AdminEmployeesPage() {
                       <div className="text-muted" style={{ fontSize: '11px' }}>NIP. {emp.nip}</div>
                       {emp.pangkatGolongan && <div className="text-muted" style={{ fontSize: '11px', fontStyle: 'italic', color: 'var(--primary-orange)' }}>{emp.pangkatGolongan}</div>}
                     </td>
-                    <td>{emp.jabatan}</td>
+                    <td>
+                      <div>{emp.jabatan}</div>
+                      <div className="badge" style={{ background: 'rgba(255,255,255,0.1)', marginTop: '4px', fontSize: '9px', fontWeight: 'normal' }}>
+                        {emp.jenisJabatan || 'JFU'}
+                      </div>
+                    </td>
                     <td>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {emp.bidangs.map(b => (
@@ -385,7 +547,73 @@ export default function AdminEmployeesPage() {
         </div>
       </div>
 
-      {/* Form Modal */}
+      {/* Replacement Prompt Modal */}
+      {replacementPrompt && (
+        <div className="fade-in" style={{ 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.85)', 
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 99999 
+        }}>
+          <div className="glass-panel slide-down" style={{ 
+            maxWidth: '500px', 
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 15px 40px rgba(0,0,0,0.6)',
+            border: '1px solid rgba(255,107,0,0.4)',
+            borderRadius: '16px',
+            overflow: 'hidden'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,107,0,0.1)' }}>
+              <h5 style={{ margin: 0, fontWeight: 'bold' }}>Tunjuk Pengganti ({replacementPrompt.roleDisplay})</h5>
+              <button onClick={closeReplacementModal} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '20px' }}>&times;</button>
+            </div>
+            
+            <div className="panel-body" style={{ padding: '20px' }}>
+              <div className="alert-sim error fade-in" style={{ marginBottom: '20px' }}>
+                <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '8px' }}></i>
+                Tindakan ini akan menghapus satu-satunya <strong>{replacementPrompt.roleDisplay}</strong> yang tersisa. Anda wajib menunjuk penggantinya agar tidak kehilangan akses sistem.
+              </div>
+              
+              <div className="form-group">
+                <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>Pilih Pegawai Pengganti</label>
+                <select 
+                  className="select-sim w-100" 
+                  value={replacementTarget} 
+                  onChange={(e) => setReplacementTarget(e.target.value)}
+                  style={{ width: '100%', padding: '10px' }}
+                  required
+                >
+                  <option value="">-- Pilih Pegawai --</option>
+                  {replacementPrompt.candidates.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.nama} - {emp.jabatan}</option>
+                  ))}
+                </select>
+                {replacementPrompt.candidates.length === 0 && (
+                  <small style={{ color: 'var(--danger-color, #ef4444)', marginTop: '8px', display: 'block' }}>
+                    <i className="fa-solid fa-circle-xmark" style={{ marginRight: '5px' }}></i>
+                    Tidak ada kandidat pegawai aktif di unit ini. Batalkan aksi ini dan tambahkan pegawai baru terlebih dahulu.
+                  </small>
+                )}
+              </div>
+            </div>
+            
+            <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button className="btn-sim secondary" onClick={closeReplacementModal} disabled={replacementLoading}>Batal</button>
+              <button 
+                className="btn-sim primary" 
+                onClick={executeReplacement} 
+                disabled={replacementLoading || !replacementTarget || replacementPrompt.candidates.length === 0}
+              >
+                {replacementLoading ? <><i className="fa-solid fa-spinner fa-spin"></i> Memproses...</> : 'Tunjuk Pengganti'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Form Tambah/Edit Pegawai */}
       {showFormModal && (
         <div style={{
           position: 'fixed',
@@ -439,6 +667,17 @@ export default function AdminEmployeesPage() {
                 <div className="form-group mb-3">
                   <label>Jabatan</label>
                   <input type="text" className="form-control" value={jabatan} onChange={(e) => setJabatan(e.target.value)} required placeholder="Contoh: Kepala Bidang Pencegahan" />
+                </div>
+
+                <div className="form-group mb-3">
+                  <label>Jenis Jabatan</label>
+                  <select className="select-sim" value={jenisJabatan} onChange={(e) => setJenisJabatan(e.target.value)} required>
+                    <option value="Pimpinan Tinggi">Pimpinan Tinggi</option>
+                    <option value="Administrator">Administrator</option>
+                    <option value="Pengawas">Pengawas</option>
+                    <option value="JFT">Jabatan Fungsional Tertentu (JFT)</option>
+                    <option value="JFU">Jabatan Fungsional Umum (JFU)</option>
+                  </select>
                 </div>
 
                 {/* Roles Multi-select Checkboxes */}
@@ -510,7 +749,7 @@ export default function AdminEmployeesPage() {
                   <label>Atasan Langsung</label>
                   <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)}>
                     <option value="">-- Tidak ada (Root) --</option>
-                    {allEmployees.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false).map(emp => (
+                    {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false).map(emp => (
                       <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
                     ))}
                   </select>
