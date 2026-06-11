@@ -5,7 +5,7 @@ import React from 'react';
 const PrintLayout = React.forwardRef(({ data }, ref) => {
   if (!data) return null;
 
-  const { tahun, pihakPertama, pihakKedua, items } = data;
+  const { tahun, status, pihakPertama, pihakKedua, items } = data;
 
   const formatDate = () => {
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -74,7 +74,27 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
         .signature-space {
           height: 100px;
         }
+        
+        .watermark-draft {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-45deg);
+          font-size: 100px;
+          color: rgba(239, 68, 68, 0.15);
+          white-space: nowrap;
+          z-index: -1;
+          pointer-events: none;
+          font-weight: bold;
+          font-family: sans-serif;
+        }
       `}</style>
+
+      {status !== 'Disetujui' && (
+        <div className="watermark-draft">
+          DRAFT / BELUM DISETUJUI
+        </div>
+      )}
 
       {/* Header Document */}
       <div style={{ textAlign: 'center', marginBottom: '30px', fontWeight: 'bold' }}>
@@ -164,6 +184,7 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
           <div className="signature-space"></div>
           <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakKedua.nama}</div>
           {pihakKedua.nip !== '-' && !isBupati && <div>NIP. {pihakKedua.nip}</div>}
+          {status !== 'Disetujui' && <div style={{ fontSize: '10px', color: '#ef4444', fontStyle: 'italic', marginTop: '5px' }}>(Belum disetujui)</div>}
         </div>
       </div>
 
@@ -220,6 +241,7 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
             <div className="signature-space"></div>
             <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakKedua.nama}</div>
             {pihakKedua.nip !== '-' && !isBupati && <div>NIP. {pihakKedua.nip}</div>}
+            {status !== 'Disetujui' && <div style={{ fontSize: '10px', color: '#ef4444', fontStyle: 'italic', marginTop: '5px' }}>(Belum disetujui)</div>}
           </div>
         </div>
       </div>

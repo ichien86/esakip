@@ -1,6 +1,8 @@
 import EmployeeRepository from '@/repositories/EmployeeRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import MasterRepository from '@/repositories/MasterRepository';
+import PerjakinDocumentRepository from '@/repositories/PerjakinDocumentRepository';
+import { v4 as uuidv4 } from 'uuid';
 
 class PerjakinService {
   async getPerjakinData(employeeId, tahun) {
@@ -71,21 +73,68 @@ class PerjakinService {
       anggaran: ind.anggaran || 0
     }));
 
+    // 4. Dapatkan Status Dokumen Perjakin
+    let document = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });
+    
+    // Jika belum ada dokumen, buatkan status virtual Draft
+    const docStatus = document ? document.status : 'Draft';
+    const docHistory = document ? document.history : [];
+
     return {
       tahun,
+      status: docStatus,
+      history: docHistory,
       pihakPertama: {
         nama: pihakPertama.nama,
         nip: pihakPertama.nip,
         jabatan: pihakPertama.jabatan,
-        jenisJabatan: pihakPertama.jenisJabatan || 'JFU'
+        jenisJabatan: pihakPertama.jenisJabatan || 'JFU',
+        roles: pihakPertama.roles
       },
       pihakKedua: {
+        id: pihakKedua.id || null,
         nama: pihakKedua.nama,
         nip: pihakKedua.nip,
         jabatan: pihakKedua.jabatan
       },
       items: perjakinItems
     };
+  }
+
+  async changeDocumentStatus(employeeId, tahun, newStatus, actorRole, actorName, notes = '') {
+    if (!employeeId || !tahun || !newStatus) {
+      throw new Error('Data tidak lengkap untuk mengubah status');
+    }
+
+    let document = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });
+    
+    const historyEntry = {
+      status: newStatus,
+      actorRole,
+      actorName,
+      timestamp: new Date(),
+      notes
+    };
+
+    if (!document) {
+      document = await PerjakinDocumentRepository.create({
+        id: uuidv4(),
+        employeeId,
+        tahun: Number(tahun),
+        status: newStatus,
+        history: [historyEntry]
+      });
+    } else {
+      document = await PerjakinDocumentRepository.update(
+        { employeeId, tahun: Number(tahun) },
+        { 
+          status: newStatus,
+          $push: { history: historyEntry }
+        }
+      );
+    }
+
+    return document;
   }
 }
 

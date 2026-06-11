@@ -1238,15 +1238,39 @@ export default function AdminCascadingAnnualPage() {
               )}
 
               {/* Bidang Pengampu (ReadOnly) */}
-              <div className="form-group mb-3">
-                <label>Bidang Pengampu (ReadOnly)</label>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {selectedBidangs.map(b => (
-                    <span key={b} className="badge badge-draft">{b}</span>
-                  ))}
-                  {selectedBidangs.length === 0 && <span className="text-muted">-</span>}
+              {['tujuan', 'sasaran', 'sasaran_strategis'].includes(level) ? (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu</label>
+                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px' }}>
+                    <i className="fa-solid fa-circle-info mr-2"></i>
+                    Dikelola oleh Pimpinan / Eselon II (Otomatis)
+                  </div>
                 </div>
-              </div>
+              ) : ['sasaran_program', 'sasaran_kegiatan', 'program', 'kegiatan'].includes(level) || (['sasaran_subkegiatan', 'subkegiatan'].includes(level) && (formId ? nodes.some(n => n.parentId === formId) : false)) ? (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu (Otomatis)</label>
+                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px', marginBottom: '8px' }}>
+                    <i className="fa-solid fa-diagram-project mr-2"></i>
+                    Diakumulasi secara bottom-up dari Aktivitas di bawahnya.
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {selectedBidangs.map(b => (
+                      <span key={b} className="badge badge-draft">{b}</span>
+                    ))}
+                    {selectedBidangs.length === 0 && <span className="text-muted">-</span>}
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu (Diwarisi dari Renstra)</label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {selectedBidangs.map(b => (
+                      <span key={b} className="badge badge-draft">{b}</span>
+                    ))}
+                    {selectedBidangs.length === 0 && <span className="text-muted">-</span>}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>

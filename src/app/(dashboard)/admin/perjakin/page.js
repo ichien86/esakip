@@ -27,7 +27,7 @@ export default function AdminPerjakinPage() {
       const data = await res.json();
       if (res.ok) {
         // Filter out bupati just in case
-        setEmployees(data.data.filter(e => !e.roles?.includes('bupati')));
+        setEmployees(data.filter(e => !e.roles?.includes('bupati')));
       }
     } catch (err) {
       console.error('Failed to fetch employees', err);
@@ -59,6 +59,36 @@ export default function AdminPerjakinPage() {
     }
   };
 
+  const handleVerifikasi = async (newStatus) => {
+    if (!confirm('Apakah Anda yakin ingin memverifikasi dokumen ini?')) return;
+    
+    setLoading(true);
+    try {
+      const payload = {
+        employeeId: selectedEmployee,
+        tahun: selectedTahun,
+        newStatus: newStatus,
+        actorRole: activeRole,
+        actorName: 'Admin',
+        notes: 'Diverifikasi oleh Admin'
+      };
+
+      const res = await fetch('/api/perjakin/approval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) throw new Error('Gagal memverifikasi');
+      
+      // refresh data
+      handleGenerate({ preventDefault: () => {} });
+    } catch (err) {
+      setErrorMsg(err.message);
+      setLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -76,8 +106,12 @@ export default function AdminPerjakinPage() {
     <div className="container-fluid py-4 fade-in">
       {/* Hide controls during print */}
       <style>{`
+        @media screen {
+          .print-only { display: none !important; }
+        }
         @media print {
           .no-print { display: none !important; }
+          .print-only { display: block !important; }
         }
       `}</style>
 
@@ -134,11 +168,30 @@ export default function AdminPerjakinPage() {
         {perjakinData && (
           <div className="card-sim mt-4 slide-up">
             <div className="card-header-sim" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h5 className="mb-0">Pratinjau Dokumen</h5>
-              <button className="btn-sim success" onClick={handlePrint}>
-                <i className="fi fi-rr-print" style={{ marginRight: '8px' }}></i>
-                Cetak PDF / Print
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <h5 className="mb-0">Pratinjau Dokumen</h5>
+                {perjakinData.status === 'Draft' && <span className="badge badge-draft">Draft</span>}
+                {perjakinData.status === 'Menunggu Verifikasi Unit' && <span className="badge badge-warning">Menunggu Verifikasi Unit</span>}
+                {perjakinData.status === 'Menunggu Verifikasi Perencana' && <span className="badge badge-warning">Menunggu Verifikasi Perencana</span>}
+                {perjakinData.status === 'Menunggu Persetujuan Atasan' && <span className="badge badge-info">Menunggu ACC Atasan</span>}
+                {perjakinData.status === 'Disetujui' && <span className="badge badge-success">Disetujui</span>}
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                {perjakinData.status === 'Menunggu Verifikasi Unit' && (
+                  <button className="btn-sim primary" onClick={() => handleVerifikasi('Menunggu Verifikasi Perencana')} disabled={loading}>
+                    <i className="fa-solid fa-check mr-2"></i> Verifikasi Unit
+                  </button>
+                )}
+                {perjakinData.status === 'Menunggu Verifikasi Perencana' && (
+                  <button className="btn-sim primary" onClick={() => handleVerifikasi('Menunggu Persetujuan Atasan')} disabled={loading}>
+                    <i className="fa-solid fa-check-double mr-2"></i> Verifikasi Perencana
+                  </button>
+                )}
+                <button className="btn-sim success" onClick={handlePrint} disabled={loading}>
+                  <i className="fi fi-rr-print" style={{ marginRight: '8px' }}></i>
+                  Cetak PDF / Print
+                </button>
+              </div>
             </div>
             <div className="card-body-sim" style={{ background: '#f5f5f5', padding: '20px', borderRadius: '8px' }}>
               <div style={{ textAlign: 'center', marginBottom: '10px', fontStyle: 'italic', color: '#666' }}>
@@ -160,7 +213,7 @@ export default function AdminPerjakinPage() {
       </div>
 
       {/* The Printable Layout Component (Only visible when printing) */}
-      <div style={{ display: 'none' }}>
+      <div className="print-only">
         <PrintLayout data={perjakinData} ref={printRef} />
       </div>
     </div>

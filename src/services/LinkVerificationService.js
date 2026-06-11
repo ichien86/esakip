@@ -8,8 +8,20 @@ class LinkVerificationService {
         return;
       }
 
-      if (!userUrl.includes('drive.google.com') && !userUrl.includes('docs.google.com')) {
-        resolve({ isDrive: false, isPublic: true, message: 'Bukan link Google Drive (tautan luar).' });
+      const isGoogle = userUrl.includes('drive.google.com') || userUrl.includes('docs.google.com');
+      const isDropbox = userUrl.includes('dropbox.com');
+      const isOneDrive = userUrl.includes('onedrive.live.com') || userUrl.includes('1drv.ms') || userUrl.includes('sharepoint.com');
+
+      if (!isGoogle && !isDropbox && !isOneDrive) {
+        resolve({ isDrive: false, isPublic: false, message: 'Tautan ditolak. Sistem hanya menerima Bukti Dukung dari Google Drive, Dropbox, atau OneDrive.' });
+        return;
+      }
+
+      if (isDropbox || isOneDrive) {
+        // We bypass the deep HTTP scraping for Dropbox/OneDrive as they have complex JS-based auth walls
+        // We will just trust they are public links since the user pasted them, 
+        // but strictly format them later in the UI for iframe.
+        resolve({ isDrive: false, isPublic: true, message: 'Link Publik (Siap diverifikasi).' });
         return;
       }
 

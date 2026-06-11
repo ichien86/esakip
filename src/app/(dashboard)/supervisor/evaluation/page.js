@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
+import DocumentPreviewModal from '@/components/DocumentPreviewModal';
 
 export default function SupervisorEvaluationPage() {
   const { fetchWithAuth, currentUser, activeRole, activeYear, allEmployees } = useSimulation();
@@ -21,6 +22,9 @@ export default function SupervisorEvaluationPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Document Preview State
+  const [previewUrl, setPreviewUrl] = useState('');
 
   const isSupervisor = ['admin_bidang', 'pemimpin'].includes(activeRole);
 
@@ -652,18 +656,14 @@ export default function SupervisorEvaluationPage() {
 
                           {item.buktiDukung && (
                             <div>
-                              <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Bukti Dukung:</label>
-                              <a href={item.buktiDukung} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '4px 10px',
-                                fontSize: '11px',
-                                marginTop: '4px',
-                                width: 'auto'
-                              }}>
-                                <i className="fa-solid fa-up-right-from-square"></i> Buka Link Dokumen
-                              </a>
+                              <button 
+                                type="button" 
+                                onClick={() => setPreviewUrl(item.buktiDukung)} 
+                                className="btn btn-sm btn-secondary" 
+                                style={{ padding: '4px 10px', fontSize: '11px', marginTop: '4px', width: 'auto' }}
+                              >
+                                <i className="fa-solid fa-file-lines"></i> Lihat Bukti Dukung
+                              </button>
                             </div>
                           )}
 
@@ -815,9 +815,14 @@ export default function SupervisorEvaluationPage() {
                                 </td>
                                 <td>
                                   {rx.buktiDukung && (
-                                    <a href={rx.buktiDukung} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary" style={{ padding: '2px 8px' }}>
-                                      Open Link
-                                    </a>
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setPreviewUrl(rx.buktiDukung)} 
+                                      className="btn btn-sm btn-secondary" 
+                                      style={{ padding: '2px 8px' }}
+                                    >
+                                      <i className="fa-solid fa-file-lines"></i> Lihat
+                                    </button>
                                   )}
                                 </td>
                                 <td>
@@ -903,6 +908,14 @@ export default function SupervisorEvaluationPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewUrl && (
+        <DocumentPreviewModal 
+          url={previewUrl} 
+          onClose={() => setPreviewUrl('')} 
+        />
       )}
     </section>
   );

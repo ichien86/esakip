@@ -47,25 +47,43 @@ class Cascading5YearsService {
   }
 
   /**
-   * Fungsi rekursif untuk menyebarkan perubahan Bidang Pengampu ke anak-anaknya.
+   * Fungsi rekursif untuk menyebarkan perubahan Bidang Pengampu ke induknya (Bottom-Up).
    */
-  async propagateBidangPengampu(nodeId, newBidangPengampu) {
-    const children = await Cascading5YearsRepository.find({ parentId: nodeId });
-    for (const child of children) {
-      child.bidangPengampu = newBidangPengampu;
+  async propagateBidangUpwards(parentId) {
+    if (!parentId) return;
+    
+    const parentNode = await Cascading5YearsRepository.findOne({ id: parentId });
+    if (!parentNode) return;
+
+    // Merangkum untuk Program, Kegiatan, dan Subkegiatan
+    if (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan', 'program', 'kegiatan', 'subkegiatan'].includes(parentNode.level)) {
+      const children = await Cascading5YearsRepository.find({ parentId: parentId });
       
-      // Adjust splitTargets if any key in splitTargets is not in newBidangPengampu
-      if (child.splitTargets && typeof child.splitTargets === 'object') {
-        const updatedSplitTargets = {};
-        newBidangPengampu.forEach(b => {
-          updatedSplitTargets[b] = child.splitTargets[b] || '0';
-        });
-        child.splitTargets = updatedSplitTargets;
+      // Khusus Subkegiatan: Jika tidak punya anak (Aktivitas), biarkan bertindak sebagai leaf. Jangan timpa nilainya dengan kosong.
+      if (children.length === 0 && ['sasaran_subkegiatan', 'subkegiatan'].includes(parentNode.level)) {
+        return;
       }
+
+      const aggregatedBidang = new Set();
+      children.forEach(child => {
+        if (Array.isArray(child.bidangPengampu)) {
+          child.bidangPengampu.forEach(b => aggregatedBidang.add(b));
+        }
+      });
       
-      await Cascading5YearsRepository.saveDocument(child);
-      // Recursively propagate
-      await this.propagateBidangPengampu(child.id, newBidangPengampu);
+      const newBidangs = Array.from(aggregatedBidang);
+      const oldBidangStr = JSON.stringify(parentNode.bidangPengampu || []);
+      const newBidangStr = JSON.stringify(newBidangs);
+
+      if (oldBidangStr !== newBidangStr) {
+        parentNode.bidangPengampu = newBidangs;
+        await Cascading5YearsRepository.saveDocument(parentNode);
+        
+        // Teruskan ke atas jika punya induk lagi
+        if (parentNode.parentId) {
+          await this.propagateBidangUpwards(parentNode.parentId);
+        }
+      }
     }
   }
 
@@ -86,14 +104,9 @@ class Cascading5YearsService {
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
 
     let resolvedBidang = finalBidang;
-    if (level !== 'tujuan' && parentId) {
-      const parentNode = await Cascading5YearsRepository.findOne({ id: parentId });
-      if (parentNode) {
-        resolvedBidang = parentNode.bidangPengampu || [];
-      }
-    }
-
-    if (!level || !text || resolvedBidang.length === 0) {
+    
+    // Validasi kelengkapan data
+    if (!level || !text) {
       const err = new Error('Data cascading 5 tahunan tidak lengkap');
       err.status = 400;
       throw err;
@@ -168,14 +181,12 @@ class Cascading5YearsService {
     };
 
     const existingItem = await Cascading5YearsRepository.findOne({ id: itemId });
-    const oldBidangStr = existingItem ? JSON.stringify(existingItem.bidangPengampu || []) : null;
-    const newBidangStr = JSON.stringify(resolvedBidang);
 
     const savedItem = await Cascading5YearsRepository.createOrUpdate(itemData);
 
-    // If bidangPengampu changed, propagate to descendants recursively
-    if (existingItem && oldBidangStr !== newBidangStr) {
-      await this.propagateBidangPengampu(itemId, resolvedBidang);
+    // Bottom-Up Propagation: Jika ini adalah child, trigger induknya untuk agregasi ulang
+    if (parentId) {
+      await this.propagateBidangUpwards(parentId);
     }
 
     return savedItem;

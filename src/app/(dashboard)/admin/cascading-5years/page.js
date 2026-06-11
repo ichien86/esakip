@@ -23,6 +23,7 @@ export default function AdminCascading5YearsPage() {
   const [nomenklatur, setNomenklatur] = useState('');
   const [selectedMasterId, setSelectedMasterId] = useState(''); 
   const [selectedBidangs, setSelectedBidangs] = useState([]);
+  const [hasAktivitasPlan, setHasAktivitasPlan] = useState(false);
   
   // Cross-cutting states
   const [crossCuttingType, setCrossCuttingType] = useState('shared');
@@ -180,14 +181,7 @@ export default function AdminCascading5YearsPage() {
   }, [level, isEditing]);
 
   // Inherit bidang from parent automatically (single source of truth)
-  useEffect(() => {
-    if (parentId) {
-      const parentNode = nodes.find(n => n.id === parentId);
-      if (parentNode && parentNode.bidangPengampu) {
-        setSelectedBidangs(parentNode.bidangPengampu);
-      }
-    }
-  }, [parentId, nodes]);
+  // DELETED: Bottom-Up architecture means parents inherit from children, not vice versa.
 
   // Synchronize masterSearchQuery when selectedMasterId changes or level changes
   useEffect(() => {
@@ -270,8 +264,15 @@ export default function AdminCascading5YearsPage() {
     setError('');
     setSuccess('');
 
-    if (selectedBidangs.length === 0) {
-      setError('Pilih minimal satu bidang pengampu.');
+    const hasChildren = formId ? nodes.some(n => n.parentId === formId) : false;
+
+    if (level === 'sasaran_aktivitas' && selectedBidangs.length === 0) {
+      setError('Pilih minimal satu bidang pengampu untuk Aktivitas ini.');
+      return;
+    }
+
+    if (level === 'sasaran_subkegiatan' && !hasAktivitasPlan && selectedBidangs.length === 0) {
+      setError('Pilih minimal satu bidang pengampu untuk Subkegiatan ini.');
       return;
     }
 
@@ -319,7 +320,7 @@ export default function AdminCascading5YearsPage() {
       satuan: '-',
       tipeTarget: 'Kondisi Akhir Naik',
       parentId: level === 'tujuan' ? null : parentId,
-      bidangPengampu: selectedBidangs,
+      bidangPengampu: (level === 'sasaran_subkegiatan' && hasAktivitasPlan) ? [] : selectedBidangs,
       crossCuttingType,
       splitTargets,
       anggaran2025: level === 'sasaran_subkegiatan' ? b2025 : '0',
@@ -368,6 +369,7 @@ export default function AdminCascading5YearsPage() {
     setNomenklatur(node.nomenklatur || '');
     setSelectedMasterId(node.masterId || '');
     setSelectedBidangs(node.bidangPengampu || []);
+    setHasAktivitasPlan(nodes.some(n => n.parentId === node.id));
     setCrossCuttingType(node.crossCuttingType || 'shared');
     setSplitTargets(node.splitTargets || {});
     
@@ -389,6 +391,7 @@ export default function AdminCascading5YearsPage() {
     setNomenklatur('');
     setSelectedMasterId('');
     setSelectedBidangs([]);
+    setHasAktivitasPlan(false);
     setCrossCuttingType('shared');
     setSplitTargets({});
     
@@ -1693,25 +1696,95 @@ export default function AdminCascading5YearsPage() {
               )}
 
               {/* Multi Bidang Pengampu */}
-              <div className="form-group mb-3">
-                <label>
-                  Bidang Pengampu {level !== 'tujuan' && <span style={{ fontSize: '11px', color: '#60a5fa', fontWeight: 'normal' }}>(Diwarisi dari induk)</span>}
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)', opacity: level !== 'tujuan' ? 0.75 : 1 }}>
-                  {bidangOptions.map(opt => (
-                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: level === 'tujuan' ? 'pointer' : 'not-allowed', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedBidangs.includes(opt)}
-                        onChange={() => handleBidangChange(opt)}
-                        disabled={level !== 'tujuan'}
-                        style={{ cursor: level === 'tujuan' ? 'pointer' : 'not-allowed' }}
-                      />
-                      {opt}
-                    </label>
-                  ))}
+              {['tujuan', 'sasaran_strategis'].includes(level) ? (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu</label>
+                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px' }}>
+                    <i className="fa-solid fa-circle-info mr-2"></i>
+                    Otomatis dikelola oleh Pimpinan / Eselon II
+                  </div>
                 </div>
-              </div>
+              ) : ['sasaran_program', 'sasaran_kegiatan'].includes(level) ? (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu</label>
+                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px' }}>
+                    <i className="fa-solid fa-diagram-project mr-2"></i>
+                    Otomatis dikalkulasi (gabungan) berdasarkan Subkegiatan / Aktivitas di bawahnya.
+                  </div>
+                </div>
+              ) : level === 'sasaran_subkegiatan' ? (
+                <div className="form-group mb-3">
+                  <label>Pengaturan Aktivitas & Pengampu</label>
+                  <div style={{ background: 'rgba(15,23,42,0.4)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-muted)' }}>
+                        Apakah Subkegiatan ini akan memiliki rincian Aktivitas?
+                      </label>
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
+                          <input 
+                            type="radio" 
+                            checked={hasAktivitasPlan} 
+                            onChange={() => setHasAktivitasPlan(true)}
+                            disabled={formId && nodes.some(n => n.parentId === formId)}
+                          /> 
+                          Ya, rincikan Aktivitas nanti
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
+                          <input 
+                            type="radio" 
+                            checked={!hasAktivitasPlan} 
+                            onChange={() => setHasAktivitasPlan(false)}
+                            disabled={formId && nodes.some(n => n.parentId === formId)}
+                          /> 
+                          Tidak, ini sudah menjadi rincian terbawah
+                        </label>
+                      </div>
+                    </div>
+                    
+                    {hasAktivitasPlan ? (
+                      <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px', margin: 0 }}>
+                        <i className="fa-solid fa-diagram-project mr-2"></i>
+                        Bidang Pengampu akan otomatis dikalkulasi dari entri Aktivitas di bawahnya nanti.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--text-muted)' }}>
+                          Pilih Bidang Pengampu Subkegiatan <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        {bidangOptions.map(opt => (
+                          <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedBidangs.includes(opt)}
+                              onChange={() => handleBidangChange(opt)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group mb-3">
+                  <label>Bidang Pengampu Aktivitas <span style={{ color: '#ef4444' }}>*</span></label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                    {bidangOptions.map(opt => (
+                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBidangs.includes(opt)}
+                          onChange={() => handleBidangChange(opt)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Cross-cutting options if >1 bidang selected */}
               {selectedBidangs.length > 1 && (

@@ -45,6 +45,47 @@ class CascadingAnnualService {
   }
 
   /**
+   * Fungsi rekursif untuk menyebarkan perubahan Bidang Pengampu ke induknya (Bottom-Up).
+   */
+  async propagateBidangUpwards(parentId) {
+    if (!parentId) return;
+    
+    const parentNode = await CascadingAnnualRepository.findOne({ id: parentId });
+    if (!parentNode) return;
+
+    // Merangkum untuk Program, Kegiatan, dan Subkegiatan
+    if (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan', 'program', 'kegiatan', 'subkegiatan'].includes(parentNode.level)) {
+      const children = await CascadingAnnualRepository.find({ parentId: parentId });
+      
+      // Khusus Subkegiatan: Jika tidak punya anak (Aktivitas), biarkan bertindak sebagai leaf. Jangan timpa nilainya dengan kosong.
+      if (children.length === 0 && ['sasaran_subkegiatan', 'subkegiatan'].includes(parentNode.level)) {
+        return;
+      }
+
+      const aggregatedBidang = new Set();
+      children.forEach(child => {
+        if (Array.isArray(child.bidangPengampu)) {
+          child.bidangPengampu.forEach(b => aggregatedBidang.add(b));
+        }
+      });
+      
+      const newBidangs = Array.from(aggregatedBidang);
+      const oldBidangStr = JSON.stringify(parentNode.bidangPengampu || []);
+      const newBidangStr = JSON.stringify(newBidangs);
+
+      if (oldBidangStr !== newBidangStr) {
+        parentNode.bidangPengampu = newBidangs;
+        await CascadingAnnualRepository.saveDocument(parentNode);
+        
+        // Teruskan ke atas jika punya induk lagi
+        if (parentNode.parentId) {
+          await this.propagateBidangUpwards(parentNode.parentId);
+        }
+      }
+    }
+  }
+
+  /**
    * Menyimpan data Cascading Annual baru atau memperbarui yang ada.
    */
   async saveCascadingAnnualData(body) {
@@ -58,7 +99,7 @@ class CascadingAnnualService {
 
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
 
-    if (!level || !text || finalBidang.length === 0) {
+    if (!level || !text) {
       throw new Error('Data cascading tidak lengkap');
     }
 
@@ -161,6 +202,11 @@ class CascadingAnnualService {
       }
     } catch (err) {
       console.error('Failed to sync to Cascading5Years:', err);
+    }
+
+    // Bottom-Up Propagation: Jika ini adalah child, trigger induknya untuk agregasi ulang
+    if (parentId) {
+      await this.propagateBidangUpwards(parentId);
     }
 
     return savedItem;

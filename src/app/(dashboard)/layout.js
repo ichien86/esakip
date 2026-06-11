@@ -158,10 +158,13 @@ export default function DashboardLayout({ children }) {
                 <i className="fa-solid fa-square-check"></i> Pilih Indikator IKU
               </Link>
               <Link href="/employee/renaksi" className={`nav-item ${isLinkActive('/employee/renaksi') ? 'active' : ''}`}>
-                <i className="fa-solid fa-calendar-days"></i> Rencana Aksi (Renaksi) & PK
+                <i className="fa-solid fa-list-check"></i> Rencana Aksi
+              </Link>
+              <Link href="/employee/perjakin" className={`nav-item ${isLinkActive('/employee/perjakin') ? 'active' : ''}`}>
+                <i className="fa-solid fa-file-signature"></i> Perjakin Saya
               </Link>
               <Link href="/employee/realisasi" className={`nav-item ${isLinkActive('/employee/realisasi') ? 'active' : ''}`}>
-                <i className="fa-solid fa-circle-play"></i> Realisasi Bulanan
+                <i className="fa-solid fa-chart-line"></i> Realisasi Kinerja
               </Link>
             </>
           )}
