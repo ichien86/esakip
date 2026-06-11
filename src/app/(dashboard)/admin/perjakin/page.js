@@ -5,7 +5,7 @@ import { useSimulation } from '@/context/SimulationContext';
 import PrintLayout from './PrintLayout';
 
 export default function AdminPerjakinPage() {
-  const { activeRole, activeYear } = useSimulation();
+  const { activeRole, activeYear, allEmployees } = useSimulation();
   
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
@@ -17,21 +17,10 @@ export default function AdminPerjakinPage() {
   const printRef = useRef(null);
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const res = await fetch('/api/employees');
-      const data = await res.json();
-      if (res.ok) {
-        // Filter out bupati just in case
-        setEmployees(data.filter(e => !e.roles?.includes('bupati')));
-      }
-    } catch (err) {
-      console.error('Failed to fetch employees', err);
+    if (allEmployees && allEmployees.length > 0) {
+      setEmployees(allEmployees.filter(e => !e.roles?.includes('bupati')));
     }
-  };
+  }, [allEmployees]);
 
   const handleGenerate = async (e) => {
     e.preventDefault();
