@@ -423,18 +423,33 @@ export default function AdminCascading5YearsPage() {
       return masterKegiatans.filter(k => !parentProgMasterId || k.programId === parentProgMasterId);
     }
     if (level === 'sasaran_subkegiatan') {
+      // Cari masterId kegiatan dari parent node
       const parentNode = nodes.find(n => n.id === parentId);
-      const parentKegMasterId = parentNode ? parentNode.masterId : '';
+      let parentKegMasterId = parentNode ? parentNode.masterId : '';
       
-      // Filter out subkegiatans already used globally (except the one current editing)
+      // Jika parent langsung tidak punya masterId, coba cari nomenklatur-nya di master kegiatan
+      if (!parentKegMasterId && parentNode && parentNode.nomenklatur) {
+        const matchedKeg = masterKegiatans.find(k => k.nama === parentNode.nomenklatur);
+        if (matchedKeg) parentKegMasterId = matchedKeg.id;
+      }
+      
+      // Filter out subkegiatans already used globally (except the one currently editing)
       const usedMasterIds = nodes
         .filter(n => n.level === 'sasaran_subkegiatan' && n.id !== formId)
         .map(n => n.masterId);
 
-      return masterSubkegiatans.filter(s => 
+      const filtered = masterSubkegiatans.filter(s => 
         (!parentKegMasterId || s.kegiatanId === parentKegMasterId) && 
         !usedMasterIds.includes(s.id)
       );
+      
+      // Fallback: jika filter menghasilkan kosong (kemungkinan masterId tidak cocok), 
+      // tampilkan semua subkegiatan yang belum terpakai
+      if (filtered.length === 0 && masterSubkegiatans.length > 0) {
+        return masterSubkegiatans.filter(s => !usedMasterIds.includes(s.id));
+      }
+      
+      return filtered;
     }
     return [];
   };
