@@ -1179,6 +1179,41 @@ export default function AdminCascadingAnnualPage() {
                 <textarea className="form-control" rows="2" value={text} disabled style={{ background: 'rgba(255,255,255,0.05)' }} />
               </div>
 
+              {/* Ringkasan Data Master Subkegiatan (otomatis dari kamus data) */}
+              {level === 'sasaran_subkegiatan' && selectedMasterId && (() => {
+                const selectedMaster = masterSubkegiatans.find(s => s.id === selectedMasterId);
+                if (!selectedMaster) return null;
+                return (
+                  <div style={{ background: 'rgba(16, 185, 129, 0.06)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px', color: '#34D399', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fa-solid fa-database"></i> Data dari Kamus Master
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Sasaran (Kinerja)</span>
+                        <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                          {selectedMaster.kinerja || selectedMaster.nama}
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                          <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Indikator</span>
+                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                            {selectedMaster.indikator || '-'}
+                          </div>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                          <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Satuan</span>
+                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                            {selectedMaster.satuan || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Budgets for subkegiatan */}
               {level === 'sasaran_subkegiatan' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(255, 107, 0, 0.05)', padding: '12px', borderRadius: '8px', border: '1px dashed var(--primary-orange)' }}>
