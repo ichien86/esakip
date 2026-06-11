@@ -413,43 +413,59 @@ export default function AdminCascading5YearsPage() {
     return [];
   };
 
+  // Resolve masterId dari node, jika belum punya coba cocokkan via nomenklatur
+  const resolveMasterId = (node, masterList) => {
+    if (!node) return '';
+    if (node.masterId) return node.masterId;
+    // Fallback: cocokkan nomenklatur dengan nama di master
+    if (node.nomenklatur) {
+      const match = masterList.find(m => m.nama === node.nomenklatur);
+      if (match) return match.id;
+    }
+    return '';
+  };
+
   const getMasterOptions = () => {
     if (level === 'sasaran_program') {
       return masterPrograms;
     }
     if (level === 'sasaran_kegiatan') {
       const parentNode = nodes.find(n => n.id === parentId);
-      const parentProgMasterId = parentNode ? parentNode.masterId : '';
+      const parentProgMasterId = resolveMasterId(parentNode, masterPrograms);
+      // Filter kegiatan sesuai kode program parent
       return masterKegiatans.filter(k => !parentProgMasterId || k.programId === parentProgMasterId);
     }
     if (level === 'sasaran_subkegiatan') {
-      // Cari masterId kegiatan dari parent node
       const parentNode = nodes.find(n => n.id === parentId);
-      let parentKegMasterId = parentNode ? parentNode.masterId : '';
+      let parentKegMasterId = resolveMasterId(parentNode, masterKegiatans);
       
-      // Jika parent langsung tidak punya masterId, coba cari nomenklatur-nya di master kegiatan
-      if (!parentKegMasterId && parentNode && parentNode.nomenklatur) {
-        const matchedKeg = masterKegiatans.find(k => k.nama === parentNode.nomenklatur);
-        if (matchedKeg) parentKegMasterId = matchedKeg.id;
+      // Jika masih kosong, coba naik ke grandparent (sasaran_program) lalu cari kegiatan dari program itu
+      if (!parentKegMasterId && parentNode) {
+        const grandparentNode = nodes.find(n => n.id === parentNode.parentId);
+        const grandparentProgMasterId = resolveMasterId(grandparentNode, masterPrograms);
+        if (grandparentProgMasterId) {
+          // Cari semua kegiatan di bawah program tersebut, lalu ambil subkegiatannya
+          const kegIds = masterKegiatans.filter(k => k.programId === grandparentProgMasterId).map(k => k.id);
+          
+          const usedMasterIds = nodes
+            .filter(n => n.level === 'sasaran_subkegiatan' && n.id !== formId)
+            .map(n => n.masterId);
+
+          return masterSubkegiatans.filter(s => 
+            kegIds.includes(s.kegiatanId) && !usedMasterIds.includes(s.id)
+          );
+        }
       }
       
-      // Filter out subkegiatans already used globally (except the one currently editing)
+      // Filter subkegiatan sesuai kode kegiatan parent
       const usedMasterIds = nodes
         .filter(n => n.level === 'sasaran_subkegiatan' && n.id !== formId)
         .map(n => n.masterId);
 
-      const filtered = masterSubkegiatans.filter(s => 
+      return masterSubkegiatans.filter(s => 
         (!parentKegMasterId || s.kegiatanId === parentKegMasterId) && 
         !usedMasterIds.includes(s.id)
       );
-      
-      // Fallback: jika filter menghasilkan kosong (kemungkinan masterId tidak cocok), 
-      // tampilkan semua subkegiatan yang belum terpakai
-      if (filtered.length === 0 && masterSubkegiatans.length > 0) {
-        return masterSubkegiatans.filter(s => !usedMasterIds.includes(s.id));
-      }
-      
-      return filtered;
     }
     return [];
   };
