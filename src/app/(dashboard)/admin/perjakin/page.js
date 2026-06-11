@@ -5,11 +5,10 @@ import { useSimulation } from '@/context/SimulationContext';
 import PrintLayout from './PrintLayout';
 
 export default function AdminPerjakinPage() {
-  const { activeRole } = useSimulation();
+  const { activeRole, activeYear } = useSimulation();
   
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
   
   const [perjakinData, setPerjakinData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -46,7 +45,7 @@ export default function AdminPerjakinPage() {
     setPerjakinData(null);
 
     try {
-      const res = await fetch(`/api/perjakin?employeeId=${selectedEmployee}&tahun=${selectedTahun}`);
+      const res = await fetch(`/api/perjakin?employeeId=${selectedEmployee}&tahun=${activeYear}`);
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || 'Gagal memuat data Perjakin');
@@ -66,7 +65,7 @@ export default function AdminPerjakinPage() {
     try {
       const payload = {
         employeeId: selectedEmployee,
-        tahun: selectedTahun,
+        tahun: activeYear,
         newStatus: newStatus,
         actorRole: activeRole,
         actorName: 'Admin',
@@ -124,18 +123,8 @@ export default function AdminPerjakinPage() {
           </div>
           <div className="card-body-sim">
             <form onSubmit={handleGenerate} className="row g-3 align-items-end">
-              <div className="col-md-3">
-                <label className="form-label">Tahun</label>
-                <input 
-                  type="number" 
-                  className="form-control" 
-                  value={selectedTahun}
-                  onChange={(e) => setSelectedTahun(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="col-md-7">
-                <label className="form-label">Pilih Pegawai (Pihak Pertama)</label>
+              <div className="col-md-9">
+                <label className="form-label">Pilih Pegawai (Pihak Pertama) — Tahun Aktif: <strong>{activeYear}</strong></label>
                 <select 
                   className="select-sim" 
                   value={selectedEmployee} 
@@ -150,7 +139,7 @@ export default function AdminPerjakinPage() {
                   ))}
                 </select>
               </div>
-              <div className="col-md-2">
+              <div className="col-md-3">
                 <button type="submit" className="btn-sim primary w-100" disabled={loading}>
                   {loading ? 'Memproses...' : 'Tampilkan'}
                 </button>

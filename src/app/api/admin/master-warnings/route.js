@@ -42,19 +42,19 @@ export async function GET(request) {
       let masterIndikator = '';
       let masterSatuan = '';
 
-      if (node.level === 'program' || node.level === 'sasaran_program') {
+      if (node.level === 'program') {
         const master = programMap.get(masterId);
         if (master) {
           masterNama = master.nama;
           isMismatch = node.text !== master.nama;
         }
-      } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
+      } else if (node.level === 'kegiatan') {
         const master = kegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
           isMismatch = node.text !== master.nama;
         }
-      } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
+      } else if (node.level === 'subkegiatan') {
         const master = subkegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
@@ -62,7 +62,18 @@ export async function GET(request) {
           masterSatuan = master.satuan;
           isMismatch = node.text !== master.nama || node.indikator !== master.indikator || node.satuan !== master.satuan;
         }
+      } else if (node.level === 'sasaran_subkegiatan') {
+        // Sasaran subkegiatan: bandingkan indikator dan satuan (teks sasaran dibandingkan dengan field kinerja)
+        const master = subkegiatanMap.get(masterId);
+        if (master) {
+          masterNama = master.nama;
+          masterIndikator = master.indikator;
+          masterSatuan = master.satuan;
+          isMismatch = node.indikator !== master.indikator || node.satuan !== master.satuan;
+        }
       }
+      // Level sasaran_program, sasaran_kegiatan, aktivitas
+      // TIDAK dibandingkan karena tidak ada padanannya di kamus data master.
 
       if (isMismatch) {
         warnings.push({
@@ -81,8 +92,10 @@ export async function GET(request) {
       }
     };
 
-    annualNodes.forEach(node => checkNode(node, 'annual'));
-    fiveYearNodes.forEach(node => checkNode(node, '5years'));
+    // Hanya filter node yang level-nya ada padanannya di master
+    const relevantLevels = ['program', 'kegiatan', 'subkegiatan', 'sasaran_subkegiatan'];
+    annualNodes.filter(n => relevantLevels.includes(n.level)).forEach(node => checkNode(node, 'annual'));
+    fiveYearNodes.filter(n => relevantLevels.includes(n.level)).forEach(node => checkNode(node, '5years'));
 
     return NextResponse.json(warnings);
   } catch (error) {
@@ -119,10 +132,10 @@ export async function POST(request) {
     let masterIndikator = '';
     let masterSatuan = '';
 
-    if (node.level === 'program' || node.level === 'sasaran_program') {
+    if (node.level === 'program') {
       const master = await MasterProgram.findOne({ id: masterId });
       if (master) masterNama = master.nama;
-    } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
+    } else if (node.level === 'kegiatan') {
       const master = await MasterKegiatan.findOne({ id: masterId });
       if (master) masterNama = master.nama;
     } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
@@ -132,6 +145,8 @@ export async function POST(request) {
         masterIndikator = master.indikator;
         masterSatuan = master.satuan;
       }
+    } else {
+      return NextResponse.json({ error: 'Level ini tidak memiliki padanan di kamus data master.' }, { status: 400 });
     }
 
     if (!masterNama) {

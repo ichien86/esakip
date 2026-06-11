@@ -2,7 +2,7 @@ import EmployeeRepository from '@/repositories/EmployeeRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import MasterRepository from '@/repositories/MasterRepository';
 import PerjakinDocumentRepository from '@/repositories/PerjakinDocumentRepository';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 class PerjakinService {
   async getPerjakinData(employeeId, tahun) {
@@ -118,7 +118,7 @@ class PerjakinService {
 
     if (!document) {
       document = await PerjakinDocumentRepository.create({
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         employeeId,
         tahun: Number(tahun),
         status: newStatus,
