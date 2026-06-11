@@ -38,6 +38,15 @@ export default function AdminCascading5YearsPage() {
   const [b2030, setB2030] = useState('0');
   const [budgetAkhir, setBudgetAkhir] = useState('0');
 
+  // Target Kinerja Indikator per tahun (khusus sasaran_subkegiatan)
+  const [t2025, setT2025] = useState('0');
+  const [t2026, setT2026] = useState('0');
+  const [t2027, setT2027] = useState('0');
+  const [t2028, setT2028] = useState('0');
+  const [t2029, setT2029] = useState('0');
+  const [t2030, setT2030] = useState('0');
+  const [tAkhir, setTAkhir] = useState('0');
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -296,18 +305,20 @@ export default function AdminCascading5YearsPage() {
     if (level === 'sasaran_subkegiatan') {
       const item = masterSubkegiatans.find(s => s.id === selectedMasterId);
       if (item) {
+        // Pertahankan data indicator yang sudah ada (jika editing), update target saja
+        const existingInd = nodeIndicators.find(ind => ind.id === `ind_master_${selectedMasterId}`);
         nodeIndicators = [{
           id: `ind_master_${selectedMasterId}`,
           indikator: item.indikator || '-',
           satuan: item.satuan || '-',
-          tipeTarget: 'Kondisi Akhir Naik',
-          target2025: '0',
-          target2026: '0',
-          target2027: '0',
-          target2028: '0',
-          target2029: '0',
-          target2030: '0',
-          targetAkhir: '0'
+          tipeTarget: existingInd?.tipeTarget || 'Kondisi Akhir Naik',
+          target2025: t2025 || '0',
+          target2026: t2026 || '0',
+          target2027: t2027 || '0',
+          target2028: t2028 || '0',
+          target2029: t2029 || '0',
+          target2030: t2030 || '0',
+          targetAkhir: tAkhir || '0'
         }];
       }
     }
@@ -379,6 +390,16 @@ export default function AdminCascading5YearsPage() {
     setB2028(node.anggaran2028 || '0');
     setB2029(node.anggaran2029 || '0');
     setB2030(node.anggaran2030 || '0');
+
+    // Load target kinerja dari indicator pertama (subkegiatan hanya punya 1 indikator)
+    const firstInd = node.indicators && node.indicators.length > 0 ? node.indicators[0] : {};
+    setT2025(firstInd.target2025 || '0');
+    setT2026(firstInd.target2026 || '0');
+    setT2027(firstInd.target2027 || '0');
+    setT2028(firstInd.target2028 || '0');
+    setT2029(firstInd.target2029 || '0');
+    setT2030(firstInd.target2030 || '0');
+    setTAkhir(firstInd.targetAkhir || '0');
   };
 
   const resetForm = () => {
@@ -401,6 +422,14 @@ export default function AdminCascading5YearsPage() {
     setB2028('0');
     setB2029('0');
     setB2030('0');
+
+    setT2025('0');
+    setT2026('0');
+    setT2027('0');
+    setT2028('0');
+    setT2029('0');
+    setT2030('0');
+    setTAkhir('0');
   };
 
   const getValidChildLevels = (parentLevel) => {
@@ -1893,33 +1922,45 @@ export default function AdminCascading5YearsPage() {
                 </div>
               )}
 
-              {/* Budgets for subkegiatan */}
+              {/* Target Kinerja & Anggaran per tahun untuk subkegiatan */}
               {level === 'sasaran_subkegiatan' && (
                 <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '12px', marginTop: '16px' }}>
                   <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '10px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <i className="fa-solid fa-wallet text-orange"></i> Alokasi Anggaran Renstra (Subkegiatan)
+                    <i className="fa-solid fa-bullseye text-orange"></i> Target Kinerja & Anggaran Renstra
                   </h4>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
                     {['2025', '2026', '2027', '2028', '2029', '2030'].map(year => {
                       const bState = year === '2025' ? b2025 : year === '2026' ? b2026 : year === '2027' ? b2027 : year === '2028' ? b2028 : year === '2029' ? b2029 : b2030;
                       const setBState = year === '2025' ? setB2025 : year === '2026' ? setB2026 : year === '2027' ? setB2027 : year === '2028' ? setB2028 : year === '2029' ? setB2029 : setB2030;
+                      const tState = year === '2025' ? t2025 : year === '2026' ? t2026 : year === '2027' ? t2027 : year === '2028' ? t2028 : year === '2029' ? t2029 : t2030;
+                      const setTState = year === '2025' ? setT2025 : year === '2026' ? setT2026 : year === '2027' ? setT2027 : year === '2028' ? setT2028 : year === '2029' ? setT2029 : setT2030;
 
                       return (
                         <div key={year} style={{ background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                           <strong style={{ fontSize: '12px', color: 'var(--primary-orange)' }}>Tahun {year}</strong>
                           <div className="form-group mt-1">
-                            <label style={{ fontSize: '10px', margin: 0 }}>Anggaran (Rp)</label>
-                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={bState} onChange={(e) => setBState(e.target.value)} />
+                            <label style={{ fontSize: '10px', margin: 0, color: '#34D399' }}>Target Kinerja</label>
+                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={tState} onChange={(e) => setTState(e.target.value)} placeholder="0" />
+                          </div>
+                          <div className="form-group mt-1">
+                            <label style={{ fontSize: '10px', margin: 0, color: 'var(--info)' }}>Anggaran (Rp)</label>
+                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={bState} onChange={(e) => setBState(e.target.value)} placeholder="0" />
                           </div>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="form-group" style={{ background: 'rgba(255,255,255,0.04)', padding: '10px', borderRadius: '8px' }}>
-                    <label>Total Anggaran Akhir Periode</label>
-                    <input type="text" className="form-control" value={parseFloat(budgetAkhir).toLocaleString('id-ID')} readOnly style={{ background: 'rgba(0,0,0,0.3)', fontWeight: 'bold' }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="form-group" style={{ background: 'rgba(16,185,129,0.06)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
+                      <label style={{ color: '#34D399', fontSize: '12px' }}>Target Akhir Periode</label>
+                      <input type="text" className="form-control" value={tAkhir} onChange={(e) => setTAkhir(e.target.value)} style={{ fontWeight: 'bold' }} />
+                    </div>
+                    <div className="form-group" style={{ background: 'rgba(255,255,255,0.04)', padding: '10px', borderRadius: '8px' }}>
+                      <label style={{ fontSize: '12px' }}>Total Anggaran Akhir Periode</label>
+                      <input type="text" className="form-control" value={parseFloat(budgetAkhir).toLocaleString('id-ID')} readOnly style={{ background: 'rgba(0,0,0,0.3)', fontWeight: 'bold' }} />
+                    </div>
                   </div>
                 </div>
               )}
