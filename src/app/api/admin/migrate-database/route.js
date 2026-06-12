@@ -145,85 +145,134 @@ async function mergeDuplicateNodes() {
   const CascadingAnnual = (await import('@/models/CascadingAnnual')).default;
   const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
 
-  // --- 1. Merge Cascading5Years duplicates ---
-  const all5YNodes = await Cascading5Years.find({});
-  const groups5Y = {};
-  
-  all5YNodes.forEach(node => {
-    const textNorm = (node.text || '').trim().toLowerCase();
-    const parentKey = node.parentId || 'ROOT';
-    const key = `${node.level}_${textNorm}_${parentKey}`;
-    if (!groups5Y[key]) {
-      groups5Y[key] = [];
+  const Selection = (await import('@/models/Selection')).default;
+  const Renaksi = (await import('@/models/Renaksi')).default;
+  const Performance = (await import('@/models/Performance')).default;
+
+  function robustNormalizeText(str) {
+    if (!str) return '';
+    return str
+      .replace(/[\u00a0\s\r\n\t]+/g, ' ')
+      .replace(/[^\w\s]/gi, '')
+      .trim()
+      .toLowerCase();
+  }
+
+  function normalizeParentId(parentId) {
+    if (parentId === null || parentId === undefined || String(parentId).trim() === '' || String(parentId).trim() === 'null') {
+      return 'ROOT';
     }
-    groups5Y[key].push(node);
-  });
+    return String(parentId).trim();
+  }
 
+  const levels = ['tujuan', 'sasaran', 'sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan', 'sasaran_aktivitas'];
+
+  // --- 1. Merge Cascading5Years duplicates top-down sequentially ---
   let merged5YNodesCount = 0;
-  for (const key of Object.keys(groups5Y)) {
-    const group = groups5Y[key];
-    if (group.length > 1) {
-      group.sort((a, b) => a.id.localeCompare(b.id));
-      const survivor = group[0];
-      const duplicates = group.slice(1);
-      const duplicateIds = duplicates.map(d => d.id);
+  for (const lvl of levels) {
+    const nodesAtLevel = await Cascading5Years.find({ level: lvl });
+    const groups = {};
+    for (const node of nodesAtLevel) {
+      const textNorm = robustNormalizeText(node.text);
+      const parentKey = normalizeParentId(node.parentId);
+      const key = `${textNorm}_${parentKey}`;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(node);
+    }
 
-      // Move indicators from duplicates to survivor
-      await Indicator5Years.updateMany(
-        { nodeId: { $in: duplicateIds } },
-        { $set: { nodeId: survivor.id } }
-      );
+    for (const key of Object.keys(groups)) {
+      const group = groups[key];
+      if (group.length > 1) {
+        group.sort((a, b) => a.id.localeCompare(b.id));
+        const survivor = group[0];
+        const duplicates = group.slice(1);
+        const duplicateIds = duplicates.map(d => d.id);
 
-      // Update children parentId to survivor id
-      await Cascading5Years.updateMany(
-        { parentId: { $in: duplicateIds } },
-        { $set: { parentId: survivor.id } }
-      );
+        // Move indicators from duplicates to survivor
+        await Indicator5Years.updateMany(
+          { nodeId: { $in: duplicateIds } },
+          { $set: { nodeId: survivor.id } }
+        );
 
-      // Delete duplicate nodes
-      await Cascading5Years.deleteMany({ id: { $in: duplicateIds } });
-      merged5YNodesCount += duplicateIds.length;
+        // Update children parentId to survivor id
+        await Cascading5Years.updateMany(
+          { parentId: { $in: duplicateIds } },
+          { $set: { parentId: survivor.id } }
+        );
+
+        // Delete duplicate nodes
+        await Cascading5Years.deleteMany({ id: { $in: duplicateIds } });
+        merged5YNodesCount += duplicateIds.length;
+      }
     }
   }
 
-  // --- 2. Merge CascadingAnnual duplicates ---
-  const allAnnualNodes = await CascadingAnnual.find({});
-  const groupsAnnual = {};
-
-  allAnnualNodes.forEach(node => {
-    const textNorm = (node.text || '').trim().toLowerCase();
-    const parentKey = node.parentId || 'ROOT';
-    const key = `${node.level}_${textNorm}_${parentKey}_${node.tahun}`;
-    if (!groupsAnnual[key]) {
-      groupsAnnual[key] = [];
-    }
-    groupsAnnual[key].push(node);
-  });
-
+  // --- 2. Merge CascadingAnnual duplicates top-down sequentially ---
   let mergedAnnualNodesCount = 0;
-  for (const key of Object.keys(groupsAnnual)) {
-    const group = groupsAnnual[key];
-    if (group.length > 1) {
-      group.sort((a, b) => a.id.localeCompare(b.id));
-      const survivor = group[0];
-      const duplicates = group.slice(1);
-      const duplicateIds = duplicates.map(d => d.id);
+  for (const lvl of levels) {
+    const nodesAtLevel = await CascadingAnnual.find({ level: lvl });
+    const groups = {};
+    for (const node of nodesAtLevel) {
+      const textNorm = robustNormalizeText(node.text);
+      const parentKey = normalizeParentId(node.parentId);
+      const year = node.tahun || 2026;
+      const key = `${textNorm}_${parentKey}_${year}`;
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(node);
+    }
 
-      // Move indicators
-      await IndicatorAnnual.updateMany(
-        { nodeId: { $in: duplicateIds } },
-        { $set: { nodeId: survivor.id } }
-      );
+    for (const key of Object.keys(groups)) {
+      const group = groups[key];
+      if (group.length > 1) {
+        group.sort((a, b) => a.id.localeCompare(b.id));
+        const survivor = group[0];
+        const duplicates = group.slice(1);
+        const duplicateIds = duplicates.map(d => d.id);
 
-      // Update children parentId
-      await CascadingAnnual.updateMany(
-        { parentId: { $in: duplicateIds } },
-        { $set: { parentId: survivor.id } }
-      );
+        // Move indicators to survivor
+        await IndicatorAnnual.updateMany(
+          { nodeId: { $in: duplicateIds } },
+          { $set: { nodeId: survivor.id } }
+        );
 
-      // Delete duplicate nodes
-      await CascadingAnnual.deleteMany({ id: { $in: duplicateIds } });
-      mergedAnnualNodesCount += duplicateIds.length;
+        // Update children parentId to survivor id
+        await CascadingAnnual.updateMany(
+          { parentId: { $in: duplicateIds } },
+          { $set: { parentId: survivor.id } }
+        );
+
+        // Update selections in Selection collection
+        for (const dupId of duplicateIds) {
+          await Selection.updateMany(
+            { selectedIndicators: dupId },
+            { $set: { "selectedIndicators.$": survivor.id } }
+          );
+        }
+
+        // Update Renaksi target indicatorId
+        for (const dupId of duplicateIds) {
+          await Renaksi.updateMany(
+            { indicatorId: dupId },
+            { $set: { indicatorId: survivor.id } }
+          );
+        }
+
+        // Update Performance targetIKU
+        for (const dupId of duplicateIds) {
+          await Performance.updateMany(
+            { targetIKU: dupId },
+            { $set: { "targetIKU.$": survivor.id } }
+          );
+        }
+
+        // Delete duplicate nodes
+        await CascadingAnnual.deleteMany({ id: { $in: duplicateIds } });
+        mergedAnnualNodesCount += duplicateIds.length;
+      }
     }
   }
 
