@@ -45,18 +45,6 @@ export async function POST() {
         needsSave = true;
       }
 
-      // Migrate indicator to array
-      if ((!node.indicators || node.indicators.length === 0) && node.indikator && node.indikator !== '-') {
-        updates.indicators = [{
-          id: `ind_mig_${node.id}`,
-          indikator: node.indikator,
-          satuan: node.satuan || '-',
-          tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
-          target: node.target || '0'
-        }];
-        needsSave = true;
-      }
-
       // Migrate sasaran & nomenklatur fallbacks
       if (!node.sasaran && (node.sasaranSubkegiatan || node.text)) {
         updates.sasaran = node.sasaranSubkegiatan || '';
@@ -109,24 +97,6 @@ export async function POST() {
       } else if (currentLvl === 'aktivitas') {
         newLvl = 'sasaran_aktivitas';
         updates.level = newLvl;
-        needsSave = true;
-      }
-
-      // Migrate indicator to array
-      if ((!node.indicators || node.indicators.length === 0) && node.indikator && node.indikator !== '-') {
-        updates.indicators = [{
-          id: `ind_mig_${node.id}`,
-          indikator: node.indikator,
-          satuan: node.satuan || '-',
-          tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
-          target2025: node.target2025 || '0',
-          target2026: node.target2026 || '0',
-          target2027: node.target2027 || '0',
-          target2028: node.target2028 || '0',
-          target2029: node.target2029 || '0',
-          target2030: node.target2030 || '0',
-          targetAkhir: node.targetAkhir || '0'
-        }];
         needsSave = true;
       }
 
