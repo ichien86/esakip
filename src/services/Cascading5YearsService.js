@@ -41,7 +41,12 @@ class Cascading5YearsService {
           target2028: node.target2028 || '0',
           target2029: node.target2029 || '0',
           target2030: node.target2030 || '0',
-          targetAkhir: node.targetAkhir || '0'
+          targetAkhir: node.targetAkhir || '0',
+          definisiOperasional: node.definisiOperasional || '',
+          metodePenghitungan: node.metodePenghitungan || 'Jumlah',
+          variabelJumlah: node.variabelJumlah || '',
+          variabelPembilang: node.variabelPembilang || '',
+          variabelPenyebut: node.variabelPenyebut || ''
         }];
       }
 

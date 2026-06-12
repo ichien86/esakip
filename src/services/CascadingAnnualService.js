@@ -41,7 +41,12 @@ class CascadingAnnualService {
           satuan: node.satuan || '-',
           tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
           target: node.target || '0',
-          penanggungJawab: node.penanggungJawab || null
+          penanggungJawab: node.penanggungJawab || null,
+          definisiOperasional: node.definisiOperasional || '',
+          metodePenghitungan: node.metodePenghitungan || 'Jumlah',
+          variabelJumlah: node.variabelJumlah || '',
+          variabelPembilang: node.variabelPembilang || '',
+          variabelPenyebut: node.variabelPenyebut || ''
         }];
       }
 
