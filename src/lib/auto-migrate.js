@@ -29,6 +29,8 @@ export async function runAutoMigration() {
     // 2. Migrasikan Indikator Renstra 5 Tahunan
     const nodes5Y = await Cascading5Years.find({});
     let migrated5YCount = 0;
+    const bulkOps5Y = [];
+    const bulkNodeUpdates5Y = [];
     
     for (const node of nodes5Y) {
       let inds = node.indicators || [];
@@ -58,42 +60,58 @@ export async function runAutoMigration() {
       if (inds.length > 0) {
         for (const ind of inds) {
           const indId = ind.id || `ind_5y_${node.id}_${Math.random().toString(36).substring(2, 7)}`;
-          await Indicator5Years.updateOne(
-            { id: indId },
-            {
-              $set: {
-                id: indId,
-                nodeId: node.id,
-                indikator: ind.indikator,
-                satuan: ind.satuan || '-',
-                tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
-                target2025: ind.target2025 || '0',
-                target2026: ind.target2026 || '0',
-                target2027: ind.target2027 || '0',
-                target2028: ind.target2028 || '0',
-                target2029: ind.target2029 || '0',
-                target2030: ind.target2030 || '0',
-                targetAkhir: ind.targetAkhir || '0',
-                definisiOperasional: ind.definisiOperasional || '',
-                metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
-                variabelJumlah: ind.variabelJumlah || '',
-                variabelPembilang: ind.variabelPembilang || '',
-                variabelPenyebut: ind.variabelPenyebut || ''
-              }
-            },
-            { upsert: true }
-          );
+          bulkOps5Y.push({
+            updateOne: {
+              filter: { id: indId },
+              update: {
+                $set: {
+                  id: indId,
+                  nodeId: node.id,
+                  indikator: ind.indikator,
+                  satuan: ind.satuan || '-',
+                  tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
+                  target2025: ind.target2025 || '0',
+                  target2026: ind.target2026 || '0',
+                  target2027: ind.target2027 || '0',
+                  target2028: ind.target2028 || '0',
+                  target2029: ind.target2029 || '0',
+                  target2030: ind.target2030 || '0',
+                  targetAkhir: ind.targetAkhir || '0',
+                  definisiOperasional: ind.definisiOperasional || '',
+                  metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+                  variabelJumlah: ind.variabelJumlah || '',
+                  variabelPembilang: ind.variabelPembilang || '',
+                  variabelPenyebut: ind.variabelPenyebut || ''
+                }
+              },
+              upsert: true
+            }
+          });
           migrated5YCount++;
         }
         
         // Bersihkan array lama di node utama agar tidak ganda di kemudian hari
-        await Cascading5Years.updateOne({ id: node.id }, { $set: { indicators: [] } });
+        bulkNodeUpdates5Y.push({
+          updateOne: {
+            filter: { id: node.id },
+            update: { $set: { indicators: [] } }
+          }
+        });
       }
+    }
+
+    if (bulkOps5Y.length > 0) {
+      await Indicator5Years.bulkWrite(bulkOps5Y);
+    }
+    if (bulkNodeUpdates5Y.length > 0) {
+      await Cascading5Years.bulkWrite(bulkNodeUpdates5Y);
     }
 
     // 3. Migrasikan Indikator Renja Tahunan
     const nodesAnnual = await CascadingAnnual.find({});
     let migratedAnnualCount = 0;
+    const bulkOpsAnnual = [];
+    const bulkNodeUpdatesAnnual = [];
     
     for (const node of nodesAnnual) {
       let inds = node.indicators || [];
@@ -116,33 +134,47 @@ export async function runAutoMigration() {
       if (inds.length > 0) {
         for (const ind of inds) {
           const indId = ind.id || `ind_ann_${node.id}_${Math.random().toString(36).substring(2, 7)}`;
-          await IndicatorAnnual.updateOne(
-            { id: indId },
-            {
-              $set: {
-                id: indId,
-                nodeId: node.id,
-                tahun: node.tahun || 2026,
-                indikator: ind.indikator,
-                satuan: ind.satuan || '-',
-                tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
-                target: ind.target || '0',
-                penanggungJawab: ind.penanggungJawab || node.penanggungJawab || null,
-                definisiOperasional: ind.definisiOperasional || '',
-                metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
-                variabelJumlah: ind.variabelJumlah || '',
-                variabelPembilang: ind.variabelPembilang || '',
-                variabelPenyebut: ind.variabelPenyebut || ''
-              }
-            },
-            { upsert: true }
-          );
+          bulkOpsAnnual.push({
+            updateOne: {
+              filter: { id: indId },
+              update: {
+                $set: {
+                  id: indId,
+                  nodeId: node.id,
+                  tahun: node.tahun || 2026,
+                  indikator: ind.indikator,
+                  satuan: ind.satuan || '-',
+                  tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
+                  target: ind.target || '0',
+                  penanggungJawab: ind.penanggungJawab || node.penanggungJawab || null,
+                  definisiOperasional: ind.definisiOperasional || '',
+                  metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+                  variabelJumlah: ind.variabelJumlah || '',
+                  variabelPembilang: ind.variabelPembilang || '',
+                  variabelPenyebut: ind.variabelPenyebut || ''
+                }
+              },
+              upsert: true
+            }
+          });
           migratedAnnualCount++;
         }
         
         // Bersihkan array lama di node utama
-        await CascadingAnnual.updateOne({ id: node.id }, { $set: { indicators: [] } });
+        bulkNodeUpdatesAnnual.push({
+          updateOne: {
+            filter: { id: node.id },
+            update: { $set: { indicators: [] } }
+          }
+        });
       }
+    }
+
+    if (bulkOpsAnnual.length > 0) {
+      await IndicatorAnnual.bulkWrite(bulkOpsAnnual);
+    }
+    if (bulkNodeUpdatesAnnual.length > 0) {
+      await CascadingAnnual.bulkWrite(bulkNodeUpdatesAnnual);
     }
 
     console.log(`[Auto-Migration] Sukses memindahkan ${migrated5YCount} indikator Renstra & ${migratedAnnualCount} indikator Renja.`);

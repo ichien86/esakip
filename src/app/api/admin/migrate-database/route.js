@@ -18,6 +18,7 @@ export async function POST() {
     // 1. Migrate CascadingAnnual (Renja)
     const annualNodes = await CascadingAnnual.find({});
     let annualUpdatedCount = 0;
+    const bulkOpsAnnual = [];
     
     for (const node of annualNodes) {
       let needsSave = false;
@@ -67,15 +68,24 @@ export async function POST() {
       }
 
       if (needsSave) {
-        Object.assign(node, updates);
-        await node.save();
+        bulkOpsAnnual.push({
+          updateOne: {
+            filter: { _id: node._id },
+            update: { $set: updates }
+          }
+        });
         annualUpdatedCount++;
       }
+    }
+
+    if (bulkOpsAnnual.length > 0) {
+      await CascadingAnnual.bulkWrite(bulkOpsAnnual);
     }
 
     // 2. Migrate Cascading5Years (Renstra)
     const fiveYearNodes = await Cascading5Years.find({});
     let fiveYearsUpdatedCount = 0;
+    const bulkOpsFiveYears = [];
 
     for (const node of fiveYearNodes) {
       let needsSave = false;
@@ -131,10 +141,18 @@ export async function POST() {
       }
 
       if (needsSave) {
-        Object.assign(node, updates);
-        await node.save();
+        bulkOpsFiveYears.push({
+          updateOne: {
+            filter: { _id: node._id },
+            update: { $set: updates }
+          }
+        });
         fiveYearsUpdatedCount++;
       }
+    }
+
+    if (bulkOpsFiveYears.length > 0) {
+      await Cascading5Years.bulkWrite(bulkOpsFiveYears);
     }
 
     return NextResponse.json({
