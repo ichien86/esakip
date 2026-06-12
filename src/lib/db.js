@@ -29,6 +29,19 @@ async function dbConnect() {
 
   try {
     cached.conn = await cached.promise;
+    
+    // Auto-migration check (Opsi A) - Runs once per process boot
+    if (!cached.migrated) {
+      cached.migrated = true;
+      setTimeout(async () => {
+        try {
+          const { runAutoMigration } = await import('./auto-migrate');
+          await runAutoMigration();
+        } catch (err) {
+          console.error('[db] Auto-migration initialization failed:', err);
+        }
+      }, 0);
+    }
   } catch (e) {
     cached.promise = null;
     throw e;

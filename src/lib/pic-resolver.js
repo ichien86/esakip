@@ -8,9 +8,21 @@
  * @param {Array} annualNodes - The list of annual nodes for a given year.
  * @returns {Array} - The enriched annual nodes with resolved/derived penanggungJawab.
  */
-export function resolveTreePICs(annualNodes) {
+export function resolveTreePICs(annualNodes, annualIndicators = []) {
   const nodesById = {};
   const childrenByParentId = {};
+  const indicatorsByNodeId = {};
+
+  // Group indicators by nodeId
+  if (Array.isArray(annualIndicators)) {
+    annualIndicators.forEach(ind => {
+      const rawInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      if (!indicatorsByNodeId[rawInd.nodeId]) {
+        indicatorsByNodeId[rawInd.nodeId] = [];
+      }
+      indicatorsByNodeId[rawInd.nodeId].push(rawInd);
+    });
+  }
 
   // Initialize and standardize levels
   annualNodes.forEach(node => {
@@ -58,7 +70,13 @@ export function resolveTreePICs(annualNodes) {
 
     if (isAktivitas) {
       const pics = new Set();
-      if (node.penanggungJawab) {
+      const nodeInds = indicatorsByNodeId[nodeId] || [];
+      nodeInds.forEach(ind => {
+        if (ind.penanggungJawab) {
+          pics.add(ind.penanggungJawab);
+        }
+      });
+      if (pics.size === 0 && node.penanggungJawab) {
         pics.add(node.penanggungJawab);
       }
       cache[nodeId] = pics;
@@ -82,7 +100,17 @@ export function resolveTreePICs(annualNodes) {
         }
       }
 
-      // If no PIC resolved from child activities, fall back to subkegiatan's own penanggungJawab
+      // If no PIC resolved from child activities, fall back to subkegiatan's own indicators' penanggungJawab
+      if (pics.size === 0) {
+        const nodeInds = indicatorsByNodeId[nodeId] || [];
+        nodeInds.forEach(ind => {
+          if (ind.penanggungJawab) {
+            pics.add(ind.penanggungJawab);
+          }
+        });
+      }
+
+      // If still empty, fall back to subkegiatan's own penanggungJawab
       if (pics.size === 0 && node.penanggungJawab) {
         pics.add(node.penanggungJawab);
       }

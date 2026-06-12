@@ -1,5 +1,7 @@
 import SelectionRepository from '@/repositories/SelectionRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
+import IndicatorAnnualRepository from '@/repositories/IndicatorAnnualRepository';
+import Indicator5YearsRepository from '@/repositories/Indicator5YearsRepository';
 import Setting from '@/models/Setting';
 import Employee from '@/models/Employee';
 import Selection from '@/models/Selection';
@@ -19,18 +21,34 @@ class SelectionService {
     const allEmployees = await Employee.find({ isActive: true });
 
     // Validation phase
-    for (const [indicatorId, penanggungJawab] of Object.entries(assignments)) {
+    for (const [idKey, penanggungJawab] of Object.entries(assignments)) {
       if (!penanggungJawab) continue;
 
-      const indicator = await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
-      if (!indicator) continue;
+      let node = await CascadingAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+      let indicatorName = '';
+      let level = '';
+
+      if (node) {
+        level = node.level;
+        indicatorName = node.text;
+      } else {
+        const ind = await IndicatorAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+        if (ind) {
+          node = await CascadingAnnualRepository.findOne({ id: ind.nodeId, tahun: yearNum });
+          if (node) {
+            level = node.level;
+            indicatorName = ind.indikator;
+          }
+        }
+      }
+
+      if (!node) continue;
 
       let isValid = false;
       const targetIsJabatan = penanggungJawab.startsWith('jabatan:');
       const targetValue = penanggungJawab.replace('jabatan:', '');
 
-      // Only validate and process assignments for subkegiatan/aktivitas levels
-      if (['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(indicator.level)) {
+      if (['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(level)) {
         if (targetIsJabatan && (targetValue === 'Kepala Sub Bagian Tata Usaha' || targetValue === 'Kepala TU' || targetValue === 'Kasi TU')) {
           isValid = true;
         } else if (!targetIsJabatan) {
@@ -44,15 +62,13 @@ class SelectionService {
           }
         }
       } else {
-        // Higher levels (Tujuan, Sasaran, Program, Kegiatan) cannot be directly assigned.
-        // They are derived bottom-up, considered valid by default.
         isValid = true;
       }
 
       if (!isValid) {
-        const displayLevel = indicator.level.replace('sasaran_', '');
+        const displayLevel = level.replace('sasaran_', '');
         const targetName = targetIsJabatan ? targetValue : (allEmployees.find(e => e.id === penanggungJawab)?.nama || penanggungJawab);
-        const err = new Error(`Validasi Gagal: Indikator level '${displayLevel}' (${indicator.indikator}) tidak dapat didelegasikan ke '${targetName}'.`);
+        const err = new Error(`Validasi Gagal: Indikator level '${displayLevel}' (${indicatorName}) tidak dapat didelegasikan ke '${targetName}'.`);
         err.status = 400;
         throw err;
       }
@@ -63,45 +79,58 @@ class SelectionService {
     const matchBidangs = (b1, b2) => cleanStr(b1) === cleanStr(b2);
     const isJabatanInBidang = (jab, bid) => cleanStr(jab).includes(cleanStr(bid));
 
-    for (const [indicatorId, penanggungJawab] of Object.entries(assignments)) {
-      const indicator = await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
-      if (indicator && ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(indicator.level)) {
-        let nextPenanggungJawab = penanggungJawab || null;
+    for (const [idKey, penanggungJawab] of Object.entries(assignments)) {
+      let targetIndicators = [];
+      let parentNode = null;
 
-        // Merge caretaker if indicator is cross-cutting
-        if (indicator.bidangPengampu && indicator.bidangPengampu.length > 1 && requesterBidang) {
-          const currentVal = indicator.penanggungJawab || '';
-          const currentList = currentVal.split(',').map(s => s.trim()).filter(Boolean);
-          const otherBidangsCaretakers = [];
+      const singleInd = await IndicatorAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+      if (singleInd) {
+        targetIndicators = [singleInd];
+        parentNode = await CascadingAnnualRepository.findOne({ id: singleInd.nodeId, tahun: yearNum });
+      } else {
+        const node = await CascadingAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+        if (node) {
+          parentNode = node;
+          targetIndicators = await IndicatorAnnualRepository.find({ nodeId: idKey, tahun: yearNum });
+        }
+      }
 
-          for (const pic of currentList) {
-            let belongsToRequesterBidang = false;
-            if (pic.startsWith('jabatan:')) {
-              const position = pic.replace('jabatan:', '');
-              belongsToRequesterBidang = isJabatanInBidang(position, requesterBidang);
-            } else {
-              const emp = allEmployees.find(e => e.id === pic);
-              if (emp && emp.bidangs) {
-                belongsToRequesterBidang = emp.bidangs.some(b => matchBidangs(b, requesterBidang));
+      if (parentNode && ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(parentNode.level)) {
+        for (const indicator of targetIndicators) {
+          let nextPenanggungJawab = penanggungJawab || null;
+
+          if (parentNode.bidangPengampu && parentNode.bidangPengampu.length > 1 && requesterBidang) {
+            const currentVal = indicator.penanggungJawab || '';
+            const currentList = currentVal.split(',').map(s => s.trim()).filter(Boolean);
+            const otherBidangsCaretakers = [];
+
+            for (const pic of currentList) {
+              let belongsToRequesterBidang = false;
+              if (pic.startsWith('jabatan:')) {
+                const position = pic.replace('jabatan:', '');
+                belongsToRequesterBidang = isJabatanInBidang(position, requesterBidang);
+              } else {
+                const emp = allEmployees.find(e => e.id === pic);
+                if (emp && emp.bidangs) {
+                  belongsToRequesterBidang = emp.bidangs.some(b => matchBidangs(b, requesterBidang));
+                }
+              }
+
+              if (!belongsToRequesterBidang) {
+                otherBidangsCaretakers.push(pic);
               }
             }
 
-            if (!belongsToRequesterBidang) {
-              otherBidangsCaretakers.push(pic);
+            if (penanggungJawab) {
+              otherBidangsCaretakers.push(penanggungJawab);
             }
+
+            nextPenanggungJawab = [...new Set(otherBidangsCaretakers)].filter(Boolean).join(',') || null;
           }
 
-          if (penanggungJawab) {
-            otherBidangsCaretakers.push(penanggungJawab);
-          }
-
-          nextPenanggungJawab = [...new Set(otherBidangsCaretakers)].filter(Boolean).join(',') || null;
+          indicator.penanggungJawab = nextPenanggungJawab;
+          await IndicatorAnnualRepository.saveDocument(indicator);
         }
-
-        await CascadingAnnualRepository.updateOne(
-          { id: indicatorId, tahun: yearNum },
-          { $set: { penanggungJawab: nextPenanggungJawab } }
-        );
       }
     }
 
@@ -133,15 +162,15 @@ class SelectionService {
     });
     const cleanedSelectedIndicators = selectableIndicators.map(node => node.id);
 
-    // Clear previous direct selections for this employee for the selected year
-    await CascadingAnnualRepository.updateMany(
+    // Clear previous direct selections for this employee in the IndicatorAnnual collection for the selected year
+    await IndicatorAnnualRepository.updateMany(
       { penanggungJawab: employeeId, tahun: yearNum },
       { $set: { penanggungJawab: null } }
     );
 
-    // Apply new direct selections for this employee
-    await CascadingAnnualRepository.updateMany(
-      { id: { $in: cleanedSelectedIndicators }, tahun: yearNum },
+    // Apply new direct selections for this employee on all indicators belonging to the selected nodes
+    await IndicatorAnnualRepository.updateMany(
+      { nodeId: { $in: cleanedSelectedIndicators }, tahun: yearNum },
       { $set: { penanggungJawab: employeeId } }
     );
 

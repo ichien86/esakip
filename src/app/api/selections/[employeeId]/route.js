@@ -18,9 +18,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ employeeId, tahun: yearNum, selectedIndicators: [] });
     }
 
-    // Load all annual nodes for this year
+    // Load all annual nodes and indicators for this year
     const allNodes = await CascadingAnnual.find({ tahun: yearNum });
-    const resolvedNodes = resolveTreePICs(allNodes);
+    const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
+    const allIndicators = await IndicatorAnnual.find({ tahun: yearNum });
+    const resolvedNodes = resolveTreePICs(allNodes, allIndicators);
 
     // Filter indicators where the employee is caretaker
     const assignedIndicators = resolvedNodes.filter(node => {

@@ -306,9 +306,9 @@ export default function AdminCascading5YearsPage() {
       const item = masterSubkegiatans.find(s => s.id === selectedMasterId);
       if (item) {
         // Pertahankan data indicator yang sudah ada (jika editing), update target saja
-        const existingInd = nodeIndicators.find(ind => ind.id === `ind_master_${selectedMasterId}`);
+        const existingInd = nodeIndicators.find(ind => ind.id === `ind_master_${selectedMasterId}` || ind.id === `ind_mig_${formId}`) || nodeIndicators[0];
         nodeIndicators = [{
-          id: `ind_master_${selectedMasterId}`,
+          id: existingInd?.id || `ind_master_${selectedMasterId}`,
           indikator: item.indikator || '-',
           satuan: item.satuan || '-',
           tipeTarget: existingInd?.tipeTarget || 'Kondisi Akhir Naik',
@@ -318,7 +318,12 @@ export default function AdminCascading5YearsPage() {
           target2028: t2028 || '0',
           target2029: t2029 || '0',
           target2030: t2030 || '0',
-          targetAkhir: tAkhir || '0'
+          targetAkhir: tAkhir || '0',
+          definisiOperasional: existingInd?.definisiOperasional || '',
+          metodePenghitungan: existingInd?.metodePenghitungan || 'Jumlah',
+          variabelJumlah: existingInd?.variabelJumlah || '',
+          variabelPembilang: existingInd?.variabelPembilang || '',
+          variabelPenyebut: existingInd?.variabelPenyebut || ''
         }];
       }
     }

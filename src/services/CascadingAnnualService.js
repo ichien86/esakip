@@ -1,5 +1,7 @@
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import Cascading5YearsRepository from '@/repositories/Cascading5YearsRepository';
+import IndicatorAnnualRepository from '@/repositories/IndicatorAnnualRepository';
+import Indicator5YearsRepository from '@/repositories/Indicator5YearsRepository';
 import { resolveTreePICs } from '@/lib/pic-resolver';
 
 class CascadingAnnualService {
@@ -8,8 +10,18 @@ class CascadingAnnualService {
    */
   async getCascadingAnnualData() {
     const data = await CascadingAnnualRepository.findAll();
-    const resolvedData = resolveTreePICs(data);
+    const allIndicators = await IndicatorAnnualRepository.findAll();
+    const resolvedData = resolveTreePICs(data, allIndicators);
     
+    const indicatorsByNodeId = {};
+    allIndicators.forEach(ind => {
+      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      if (!indicatorsByNodeId[plainInd.nodeId]) {
+        indicatorsByNodeId[plainInd.nodeId] = [];
+      }
+      indicatorsByNodeId[plainInd.nodeId].push(plainInd);
+    });
+
     const mapped = resolvedData.map(node => {
       let lvl = node.level;
       if (lvl === 'program') lvl = 'sasaran_program';
@@ -18,19 +30,20 @@ class CascadingAnnualService {
       else if (lvl === 'aktivitas') lvl = 'sasaran_aktivitas';
       if (lvl === 'indikator_tujuan' || lvl === 'indikator_sasaran') return null;
 
-      let indicators = node.indicators || [];
+      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
+      let indicators = indicatorsByNodeId[plainNode.id] || [];
       if (indicators.length === 0 && node.indikator && node.indikator !== '-') {
         indicators = [{
           id: `ind_mig_${node.id}`,
+          nodeId: node.id,
+          tahun: node.tahun || 2026,
           indikator: node.indikator,
           satuan: node.satuan || '-',
           tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
-          target: node.target || '0'
+          target: node.target || '0',
+          penanggungJawab: node.penanggungJawab || null
         }];
       }
-
-      // Convert to plain object to ensure we don't return Mongoose documents directly
-      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
 
       return {
         ...plainNode,
@@ -139,7 +152,7 @@ class CascadingAnnualService {
       id: itemId,
       level,
       text,
-      indikator: indikator || '-',
+      indikator: 'Indikator Terpisah',
       target: target || '0',
       satuan: satuan || '-',
       tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
@@ -159,14 +172,46 @@ class CascadingAnnualService {
       anggaranDpa: anggaranDpa || 0,
       sasaran: sasaran || '',
       nomenklatur: nomenklatur || '',
-      indicators: indicators || []
+      indicators: [] // Empty indicators in main document
     };
 
     const savedItem = await CascadingAnnualRepository.createOrUpdate(itemData);
 
+    const yearNum = tahun || 2026;
+
+    // Save annual indicators to separate collection
+    if (Array.isArray(indicators)) {
+      const existingInds = await IndicatorAnnualRepository.find({ nodeId: itemId });
+      const existingIds = existingInds.map(ind => ind.id);
+      const incomingIds = indicators.filter(ind => ind.id).map(ind => ind.id);
+      const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
+      
+      if (idsToDelete.length > 0) {
+        await IndicatorAnnualRepository.deleteMany({ id: { $in: idsToDelete } });
+      }
+
+      for (const ind of indicators) {
+        const indId = ind.id || `ind_ann_${itemId}_${Math.random().toString(36).substring(2, 7)}`;
+        await IndicatorAnnualRepository.createOrUpdate({
+          id: indId,
+          nodeId: itemId,
+          tahun: yearNum,
+          indikator: ind.indikator,
+          target: ind.target || '0',
+          satuan: ind.satuan || '-',
+          tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
+          penanggungJawab: ind.penanggungJawab || null,
+          definisiOperasional: ind.definisiOperasional || '',
+          metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+          variabelJumlah: ind.variabelJumlah || '',
+          variabelPembilang: ind.variabelPembilang || '',
+          variabelPenyebut: ind.variabelPenyebut || ''
+        });
+      }
+    }
+
     // Sync back to Cascading5Years target & budget for the corresponding year
     try {
-      const yearNum = tahun || 2026;
       const fiveYearMatch = await Cascading5YearsRepository.findOne({
         $or: [
           { level: level, text: text },
@@ -175,15 +220,16 @@ class CascadingAnnualService {
       });
 
       if (fiveYearMatch) {
-        // Sync indicator targets inside the array
-        if (Array.isArray(indicators) && Array.isArray(fiveYearMatch.indicators)) {
-          indicators.forEach(ind => {
-            const matchInd5 = fiveYearMatch.indicators.find(i5 => i5.indikator === ind.indikator);
+        // Sync indicator targets inside the Indicator5Years collection
+        if (Array.isArray(indicators)) {
+          const fiveYearInds = await Indicator5YearsRepository.find({ nodeId: fiveYearMatch.id });
+          for (const ind of indicators) {
+            const matchInd5 = fiveYearInds.find(i5 => i5.indikator === ind.indikator);
             if (matchInd5) {
               matchInd5[`target${yearNum}`] = ind.target;
+              await Indicator5YearsRepository.saveDocument(matchInd5);
             }
-          });
-          fiveYearMatch.markModified('indicators');
+          }
         }
 
         if (level === 'sasaran_subkegiatan' || level === 'subkegiatan') {
@@ -209,7 +255,13 @@ class CascadingAnnualService {
       await this.propagateBidangUpwards(parentId);
     }
 
-    return savedItem;
+    const updatedIndicators = await IndicatorAnnualRepository.find({ nodeId: itemId });
+    const plainItem = typeof savedItem.toObject === 'function' ? savedItem.toObject() : savedItem;
+
+    return {
+      ...plainItem,
+      indicators: updatedIndicators.map(ind => typeof ind.toObject === 'function' ? ind.toObject() : ind)
+    };
   }
 }
 

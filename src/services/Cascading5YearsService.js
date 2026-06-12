@@ -1,4 +1,5 @@
 import Cascading5YearsRepository from '@/repositories/Cascading5YearsRepository';
+import Indicator5YearsRepository from '@/repositories/Indicator5YearsRepository';
 
 class Cascading5YearsService {
   /**
@@ -6,6 +7,16 @@ class Cascading5YearsService {
    */
   async getCascading5YearsData() {
     const data = await Cascading5YearsRepository.findAll();
+    const allIndicators = await Indicator5YearsRepository.findAll();
+
+    const indicatorsByNodeId = {};
+    allIndicators.forEach(ind => {
+      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      if (!indicatorsByNodeId[plainInd.nodeId]) {
+        indicatorsByNodeId[plainInd.nodeId] = [];
+      }
+      indicatorsByNodeId[plainInd.nodeId].push(plainInd);
+    });
     
     const mapped = data.map(node => {
       let lvl = node.level;
@@ -14,10 +25,13 @@ class Cascading5YearsService {
       else if (lvl === 'subkegiatan') lvl = 'sasaran_subkegiatan';
       else if (lvl === 'aktivitas') lvl = 'sasaran_aktivitas';
 
-      let indicators = node.indicators || [];
+      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
+      let indicators = indicatorsByNodeId[plainNode.id] || [];
+      
       if (indicators.length === 0 && node.indikator && node.indikator !== '-') {
         indicators = [{
           id: `ind_mig_${node.id}`,
+          nodeId: node.id,
           indikator: node.indikator,
           satuan: node.satuan || '-',
           tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik',
@@ -30,9 +44,6 @@ class Cascading5YearsService {
           targetAkhir: node.targetAkhir || '0'
         }];
       }
-
-      // Pastikan mengembalikan plain object
-      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
 
       return {
         ...plainNode,
@@ -147,7 +158,7 @@ class Cascading5YearsService {
       id: itemId,
       level,
       text,
-      indikator: indikator || '-',
+      indikator: 'Indikator Terpisah', // placeholder for schema field if required, or keep '-'
       satuan: satuan || '-',
       tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
       parentId: parentId || null,
@@ -176,20 +187,59 @@ class Cascading5YearsService {
       variabelPenyebut: variabelPenyebut || '',
       sasaran: sasaran || '',
       nomenklatur: nomenklatur || '',
-      indicators: indicators || [],
+      indicators: [], // Empty indicator array in main document
       masterId: masterId || null
     };
 
-    const existingItem = await Cascading5YearsRepository.findOne({ id: itemId });
-
     const savedItem = await Cascading5YearsRepository.createOrUpdate(itemData);
+
+    // Save indicators to separate collection
+    if (Array.isArray(indicators)) {
+      const existingInds = await Indicator5YearsRepository.find({ nodeId: itemId });
+      const existingIds = existingInds.map(ind => ind.id);
+      const incomingIds = indicators.filter(ind => ind.id).map(ind => ind.id);
+      const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
+      
+      if (idsToDelete.length > 0) {
+        await Indicator5YearsRepository.deleteMany({ id: { $in: idsToDelete } });
+      }
+
+      for (const ind of indicators) {
+        const indId = ind.id || `ind_5y_${itemId}_${Math.random().toString(36).substring(2, 7)}`;
+        await Indicator5YearsRepository.createOrUpdate({
+          id: indId,
+          nodeId: itemId,
+          indikator: ind.indikator,
+          satuan: ind.satuan || '-',
+          tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
+          target2025: ind.target2025 || '0',
+          target2026: ind.target2026 || '0',
+          target2027: ind.target2027 || '0',
+          target2028: ind.target2028 || '0',
+          target2029: ind.target2029 || '0',
+          target2030: ind.target2030 || '0',
+          targetAkhir: ind.targetAkhir || '0',
+          definisiOperasional: ind.definisiOperasional || '',
+          metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+          variabelJumlah: ind.variabelJumlah || '',
+          variabelPembilang: ind.variabelPembilang || '',
+          variabelPenyebut: ind.variabelPenyebut || ''
+        });
+      }
+    }
 
     // Bottom-Up Propagation: Jika ini adalah child, trigger induknya untuk agregasi ulang
     if (parentId) {
       await this.propagateBidangUpwards(parentId);
     }
 
-    return savedItem;
+    const updatedIndicators = await Indicator5YearsRepository.find({ nodeId: itemId });
+    const plainItem = typeof savedItem.toObject === 'function' ? savedItem.toObject() : savedItem;
+
+    return {
+      ...plainItem,
+      indicators: updatedIndicators.map(ind => typeof ind.toObject === 'function' ? ind.toObject() : ind)
+    };
   }
 }
 

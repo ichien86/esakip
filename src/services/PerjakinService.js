@@ -51,9 +51,10 @@ class PerjakinService {
     // Untuk Kabid/Administrator, IKU Program/Kegiatan.
     // Untuk Pengawas/JFT/JFU, IKU Subkegiatan/Aktivitas.
 
-    const allIndicators = await CascadingAnnualRepository.find({ tahun: Number(tahun) });
+    const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
+    const allAnnualIndicators = await IndicatorAnnual.find({ tahun: Number(tahun) });
     
-    const assignedIndicators = allIndicators.filter(ind => {
+    const assignedIndicators = allAnnualIndicators.filter(ind => {
       if (!ind.penanggungJawab) return false;
       const pics = ind.penanggungJawab.split(',').map(s => s.trim());
       // Check exact match for employeeId
@@ -63,15 +64,26 @@ class PerjakinService {
       return false;
     });
 
+    // Load parent nodes in batch
+    const nodeIds = [...new Set(assignedIndicators.map(ind => ind.nodeId))];
+    const parentNodes = await CascadingAnnualRepository.find({ id: { $in: nodeIds }, tahun: Number(tahun) });
+    const nodesById = {};
+    parentNodes.forEach(node => {
+      nodesById[node.id] = typeof node.toObject === 'function' ? node.toObject() : node;
+    });
+
     // Urutkan dan format data indikator untuk dicetak
-    const perjakinItems = assignedIndicators.map(ind => ({
-      id: ind.id,
-      sasaran: ind.sasaran || ind.text, // Teks sasaran/kegiatan
-      indikator: ind.indikator,
-      target: ind.target,
-      satuan: ind.satuan,
-      anggaran: ind.anggaran || 0
-    }));
+    const perjakinItems = assignedIndicators.map(ind => {
+      const parentNode = nodesById[ind.nodeId] || {};
+      return {
+        id: ind.id,
+        sasaran: parentNode.sasaran || parentNode.text || '-',
+        indikator: ind.indikator,
+        target: ind.target,
+        satuan: ind.satuan,
+        anggaran: parentNode.anggaran || 0
+      };
+    });
 
     // 4. Dapatkan Status Dokumen Perjakin
     let document = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });

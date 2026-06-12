@@ -6,7 +6,9 @@ import { resolveTreePICs } from '@/lib/pic-resolver';
 class RenjaService {
   async getRenja(yearNum) {
     const annualNodes = await CascadingAnnualRepository.find({ tahun: yearNum });
-    const resolvedNodes = resolveTreePICs(annualNodes);
+    const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
+    const annualIndicators = await IndicatorAnnual.find({ tahun: yearNum });
+    const resolvedNodes = resolveTreePICs(annualNodes, annualIndicators);
     
     // Fallback to direct model query if repository is not fully migrated
     const fiveYearNodes = await Cascading5Years.find({});
@@ -112,22 +114,52 @@ class RenjaService {
   async sync(yearNum) {
     const fiveYearNodes = await Cascading5Years.find({});
 
-    // Delete existing nodes for this year
+    // Delete existing nodes & indicators for this year
     const CascadingAnnual = (await import('@/models/CascadingAnnual')).default;
+    const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
+    const Indicator5Years = (await import('@/models/Indicator5Years')).default;
     await CascadingAnnual.deleteMany({ tahun: yearNum });
+    await IndicatorAnnual.deleteMany({ tahun: yearNum });
+
+    // Load five-year indicators to sync from
+    const all5YIndicators = await Indicator5Years.find({});
+    const indicatorsByNodeId = {};
+    all5YIndicators.forEach(ind => {
+      if (!indicatorsByNodeId[ind.nodeId]) {
+        indicatorsByNodeId[ind.nodeId] = [];
+      }
+      indicatorsByNodeId[ind.nodeId].push(ind);
+    });
+
+    const cAnnualToInsert = [];
+    const indicatorsToInsert = [];
 
     // Map and clone
-    const cAnnualToInsert = fiveYearNodes.map(c5 => {
-      const mappedIndicators = (c5.indicators || []).map(ind => ({
-        id: ind.id || `ind_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        indikator: ind.indikator,
-        satuan: ind.satuan,
-        tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
-        target: ind[`target${yearNum}`] || '0'
-      }));
+    for (const c5 of fiveYearNodes) {
+      const nodeAnnualId = `${c5.id}_${yearNum}`;
+      
+      const node5YIndicators = indicatorsByNodeId[c5.id] || [];
+      node5YIndicators.forEach(ind => {
+        const annIndId = `${ind.id}_${yearNum}`;
+        indicatorsToInsert.push({
+          id: annIndId,
+          nodeId: nodeAnnualId,
+          tahun: yearNum,
+          indikator: ind.indikator,
+          target: ind[`target${yearNum}`] || '0',
+          satuan: ind.satuan,
+          tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
+          penanggungJawab: null,
+          definisiOperasional: ind.definisiOperasional || '',
+          metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+          variabelJumlah: ind.variabelJumlah || '',
+          variabelPembilang: ind.variabelPembilang || '',
+          variabelPenyebut: ind.variabelPenyebut || ''
+        });
+      });
 
-      return {
-        id: `${c5.id}_${yearNum}`,
+      cAnnualToInsert.push({
+        id: nodeAnnualId,
         level: c5.level,
         text: c5.text,
         indikator: c5.indikator || '-',
@@ -144,18 +176,21 @@ class RenjaService {
         anggaranDpa: 0,
         sasaran: c5.sasaran || '',
         nomenklatur: c5.nomenklatur || '',
-        indicators: mappedIndicators,
+        indicators: [], // Keep empty in db
         sasaranSubkegiatan: c5.sasaranSubkegiatan || '',
         definisiOperasional: c5.definisiOperasional || '',
         metodePenghitungan: c5.metodePenghitungan || 'Jumlah',
         variabelJumlah: c5.variabelJumlah || '',
         variabelPembilang: c5.variabelPembilang || '',
         variabelPenyebut: c5.variabelPenyebut || ''
-      };
-    });
+      });
+    }
 
     if (cAnnualToInsert.length > 0) {
       await CascadingAnnual.insertMany(cAnnualToInsert);
+    }
+    if (indicatorsToInsert.length > 0) {
+      await IndicatorAnnual.insertMany(indicatorsToInsert);
     }
 
     return cAnnualToInsert.length;
