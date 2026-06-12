@@ -71,14 +71,35 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: 'Node tidak ditemukan' }, { status: 404 });
     }
 
-    node.definisiOperasional = definisiOperasional !== undefined ? definisiOperasional : node.definisiOperasional;
-    node.metodePenghitungan = metodePenghitungan !== undefined ? metodePenghitungan : node.metodePenghitungan;
-    node.variabelJumlah = variabelJumlah !== undefined ? variabelJumlah : node.variabelJumlah;
-    node.variabelPembilang = variabelPembilang !== undefined ? variabelPembilang : node.variabelPembilang;
-    node.variabelPenyebut = variabelPenyebut !== undefined ? variabelPenyebut : node.variabelPenyebut;
+    const Indicator5Years = (await import('@/models/Indicator5Years')).default;
+    let indicator = await Indicator5Years.findOne({ nodeId: id });
+    if (!indicator) {
+      indicator = new Indicator5Years({
+        id: `ind_5y_${id}_${Math.random().toString(36).substring(2, 7)}`,
+        nodeId: id,
+        indikator: node.indikator || '-',
+        satuan: node.satuan || '-',
+        tipeTarget: node.tipeTarget || 'Kondisi Akhir Naik'
+      });
+    }
 
+    indicator.definisiOperasional = definisiOperasional !== undefined ? definisiOperasional : indicator.definisiOperasional;
+    indicator.metodePenghitungan = metodePenghitungan !== undefined ? metodePenghitungan : indicator.metodePenghitungan;
+    indicator.variabelJumlah = variabelJumlah !== undefined ? variabelJumlah : indicator.variabelJumlah;
+    indicator.variabelPembilang = variabelPembilang !== undefined ? variabelPembilang : indicator.variabelPembilang;
+    indicator.variabelPenyebut = variabelPenyebut !== undefined ? variabelPenyebut : indicator.variabelPenyebut;
+
+    await indicator.save();
+
+    // Clean node root fields
+    node.definisiOperasional = '';
+    node.metodePenghitungan = 'Jumlah';
+    node.variabelJumlah = '';
+    node.variabelPembilang = '';
+    node.variabelPenyebut = '';
     await node.save();
-    return NextResponse.json({ message: 'Definisi operasional berhasil diperbarui', data: node });
+
+    return NextResponse.json({ message: 'Definisi operasional berhasil diperbarui', data: indicator });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
