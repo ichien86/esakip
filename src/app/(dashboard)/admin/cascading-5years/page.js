@@ -8,6 +8,7 @@ export default function AdminCascading5YearsPage() {
   const { fetchWithAuth, activeRole, activeBidang, refreshMetadata } = useSimulation();
 
   const [nodes, setNodes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [masterPrograms, setMasterPrograms] = useState([]);
   const [masterKegiatans, setMasterKegiatans] = useState([]);
   const [masterSubkegiatans, setMasterSubkegiatans] = useState([]);
@@ -104,6 +105,7 @@ export default function AdminCascading5YearsPage() {
   };
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const res = await fetchWithAuth('/api/cascading5years');
       if (res.ok) setNodes(await res.json());
@@ -118,6 +120,8 @@ export default function AdminCascading5YearsPage() {
       if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
     } catch (e) {
       console.error('Failed to load cascading data', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1450,13 +1454,21 @@ export default function AdminCascading5YearsPage() {
             display: 'flex', 
             alignItems: 'center', 
             gap: '8px',
-            opacity: nodes.some(n => n.level === 'tujuan') ? 0.5 : 1,
-            cursor: nodes.some(n => n.level === 'tujuan') ? 'not-allowed' : 'pointer'
+            opacity: (loading || nodes.some(n => n.level === 'tujuan')) ? 0.5 : 1,
+            cursor: (loading || nodes.some(n => n.level === 'tujuan')) ? 'not-allowed' : 'pointer'
           }}
           onClick={() => openAddModal(null)}
-          disabled={nodes.some(n => n.level === 'tujuan')}
+          disabled={loading || nodes.some(n => n.level === 'tujuan')}
         >
-          <i className="fa-solid fa-plus-circle"></i> Tambah Tujuan
+          {loading ? (
+            <>
+              <i className="fa-solid fa-spinner fa-spin"></i> Memuat...
+            </>
+          ) : (
+            <>
+              <i className="fa-solid fa-plus-circle"></i> Tambah Tujuan
+            </>
+          )}
         </button>
       </div>
 
@@ -1511,7 +1523,12 @@ export default function AdminCascading5YearsPage() {
           </div>
 
           <div className={`cascading-tree-editor ${printMode === 'cascading' || printMode === 'orgchart' ? 'print-exclude' : ''}`} style={{ display: viewMode === 'list' ? 'block' : 'none' }}>
-            {nodes.filter(n => n.parentId === null).length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
+                <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
+                <p>Memuat data Indikator Renstra...</p>
+              </div>
+            ) : nodes.filter(n => n.parentId === null).length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
                 <i className="fa-solid fa-folder-open" style={{ fontSize: '32px', marginBottom: '12px', color: 'var(--text-muted)' }}></i>
                 <p>Belum ada data Indikator Renstra. Klik &quot;Tambah Tujuan&quot; untuk memulai.</p>
@@ -1525,7 +1542,12 @@ export default function AdminCascading5YearsPage() {
             <div className={`org-chart-container ${printMode === 'cascading' || printMode === 'tree' ? 'print-exclude' : ''}`}>
               <div className="org-chart-wrapper">
                 <div className="org-chart">
-                  {nodes.filter(n => n.parentId === null).length === 0 ? (
+                  {loading ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
+                      <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
+                      <p>Memuat data Indikator Renstra...</p>
+                    </div>
+                  ) : nodes.filter(n => n.parentId === null).length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
                       <p>Belum ada data Indikator Renstra.</p>
                     </div>
