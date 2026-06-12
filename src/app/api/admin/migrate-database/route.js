@@ -3,6 +3,10 @@ import dbConnect from '@/lib/db';
 import CascadingAnnual from '@/models/CascadingAnnual';
 import Cascading5Years from '@/models/Cascading5Years';
 
+export async function GET() {
+  return POST();
+}
+
 export async function POST() {
   try {
     await dbConnect();
