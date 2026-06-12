@@ -1,6 +1,8 @@
 import Cascading5YearsRepository from '@/repositories/Cascading5YearsRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import RenaksiRepository from '@/repositories/RenaksiRepository';
+import Indicator5YearsRepository from '@/repositories/Indicator5YearsRepository';
+import IndicatorAnnualRepository from '@/repositories/IndicatorAnnualRepository';
 
 class MonitoringService {
   /**
@@ -11,24 +13,53 @@ class MonitoringService {
     const items = await Cascading5YearsRepository.findAll();
     const annualNodes = await CascadingAnnualRepository.findAll();
     const renaksis = await RenaksiRepository.findAll();
+    const all5YIndicators = await Indicator5YearsRepository.findAll();
+    const allAnnualIndicators = await IndicatorAnnualRepository.findAll();
+
+    const indicators5YByNodeId = {};
+    all5YIndicators.forEach(ind => {
+      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      if (!indicators5YByNodeId[plainInd.nodeId]) {
+        indicators5YByNodeId[plainInd.nodeId] = [];
+      }
+      indicators5YByNodeId[plainInd.nodeId].push(plainInd);
+    });
+
+    const indicatorsAnnualByNodeId = {};
+    allAnnualIndicators.forEach(ind => {
+      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      if (!indicatorsAnnualByNodeId[plainInd.nodeId]) {
+        indicatorsAnnualByNodeId[plainInd.nodeId] = [];
+      }
+      indicatorsAnnualByNodeId[plainInd.nodeId].push(plainInd);
+    });
+
+    const enrichedAnnualNodes = annualNodes.map(node => {
+      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
+      return {
+        ...plainNode,
+        indicators: indicatorsAnnualByNodeId[plainNode.id] || []
+      };
+    });
 
     const monitoringData = [];
 
     for (const item of items) {
-      let indicators = item.indicators || [];
-      if (indicators.length === 0 && item.indikator && item.indikator !== '-') {
+      const plainItem = typeof item.toObject === 'function' ? item.toObject() : item;
+      let indicators = indicators5YByNodeId[plainItem.id] || [];
+      if (indicators.length === 0 && plainItem.indikator && plainItem.indikator !== '-') {
         indicators = [{
-          id: `ind_mig_${item.id}`,
-          indikator: item.indikator,
-          satuan: item.satuan || '-',
-          tipeTarget: item.tipeTarget || 'Kondisi Akhir Naik',
-          target2025: item.target2025 || '0',
-          target2026: item.target2026 || '0',
-          target2027: item.target2027 || '0',
-          target2028: item.target2028 || '0',
-          target2029: item.target2029 || '0',
-          target2030: item.target2030 || '0',
-          targetAkhir: item.targetAkhir || '0'
+          id: `ind_mig_${plainItem.id}`,
+          indikator: plainItem.indikator,
+          satuan: plainItem.satuan || '-',
+          tipeTarget: plainItem.tipeTarget || 'Kondisi Akhir Naik',
+          target2025: plainItem.target2025 || '0',
+          target2026: plainItem.target2026 || '0',
+          target2027: plainItem.target2027 || '0',
+          target2028: plainItem.target2028 || '0',
+          target2029: plainItem.target2029 || '0',
+          target2030: plainItem.target2030 || '0',
+          targetAkhir: plainItem.targetAkhir || '0'
         }];
       }
 
@@ -41,8 +72,8 @@ class MonitoringService {
           const yearTarget = parseFloat(indicator[`target${year}`]) || 0;
 
           // Find matching annual nodes that share indicators and fields (bidang)
-          const matchingAnnualNodes = annualNodes.filter(c => {
-            const sharesBidang = c.bidangPengampu.some(b => item.bidangPengampu.includes(b));
+          const matchingAnnualNodes = enrichedAnnualNodes.filter(c => {
+            const sharesBidang = c.bidangPengampu.some(b => plainItem.bidangPengampu.includes(b));
             if (!sharesBidang) return false;
 
             let cIndicators = c.indicators || [];
@@ -89,7 +120,7 @@ class MonitoringService {
 
         // if the model is a mongoose document, toObject() will exist.
         // Otherwise, it's just an object or plain object.
-        const baseItem = typeof item.toObject === 'function' ? item.toObject() : item;
+        const baseItem = plainItem;
 
         monitoringData.push({
           ...baseItem,

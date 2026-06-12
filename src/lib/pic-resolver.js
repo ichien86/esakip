@@ -132,7 +132,7 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
     return pics;
   }
 
-  // Enrich each node with derived penanggungJawab
+  // Enrich each node with derived penanggungJawab and populate indicators
   return annualNodes.map(node => {
     const rawObj = typeof node.toObject === 'function' ? node.toObject() : node;
     const resolvedSet = getCaretakers(rawObj.id);
@@ -140,7 +140,8 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
     
     return {
       ...rawObj,
-      penanggungJawab: resolvedPICs.length > 0 ? resolvedPICs.join(',') : null
+      penanggungJawab: resolvedPICs.length > 0 ? resolvedPICs.join(',') : null,
+      indicators: indicatorsByNodeId[rawObj.id] || []
     };
   });
 }
