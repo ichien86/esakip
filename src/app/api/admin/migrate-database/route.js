@@ -7,6 +7,10 @@ export async function POST() {
   try {
     await dbConnect();
     
+    // Run the newest indicator separation auto-migration (Opsi A)
+    const { runAutoMigration } = await import('@/lib/auto-migrate');
+    await runAutoMigration();
+    
     // 1. Migrate CascadingAnnual (Renja)
     const annualNodes = await CascadingAnnual.find({});
     let annualUpdatedCount = 0;
