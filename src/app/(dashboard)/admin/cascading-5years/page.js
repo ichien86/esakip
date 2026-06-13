@@ -1371,7 +1371,7 @@ export default function AdminCascading5YearsPage() {
                 </div>
 
                 <div className="tree-node-actions" style={{ display: 'flex', gap: '6px', alignSelf: 'flex-start', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '300px' }}>
-                  {node.level === 'sasaran_subkegiatan' && (
+                  {node.level !== 'sasaran_subkegiatan' && (
                     <button 
                       className="btn btn-sm btn-info" 
                       style={{ padding: '3px 8px', fontSize: '10px', width: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }}
