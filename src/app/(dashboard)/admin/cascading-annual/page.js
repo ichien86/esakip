@@ -88,20 +88,57 @@ export default function AdminCascadingAnnualPage() {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeMatchIndex, setActiveMatchIndex] = useState(0);
   const searchInputRef = useRef(null);
+
+  // Reset activeMatchIndex when searchQuery changes
+  useEffect(() => {
+    setActiveMatchIndex(0);
+  }, [searchQuery]);
 
   // Smooth scroll search matches into view
   useEffect(() => {
     if (searchQuery.trim()) {
       const timer = setTimeout(() => {
-        const firstMatch = document.querySelector('.matched-node');
-        if (firstMatch) {
-          firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const matches = document.querySelectorAll('.matched-node');
+        
+        // Remove active class from all first
+        matches.forEach(el => {
+          el.classList.remove('active-matched-node');
+          // Update styles back to normal matched state
+          if (el.classList.contains('org-chart-node')) {
+            el.style.border = '3px solid var(--primary-orange)';
+            el.style.boxShadow = '0 0 15px rgba(255, 107, 0, 0.45)';
+            el.style.background = 'rgba(255, 107, 0, 0.12)';
+          } else {
+            el.style.border = '2px solid var(--primary-orange)';
+            el.style.boxShadow = '0 0 15px rgba(255, 107, 0, 0.25)';
+            el.style.background = 'rgba(255, 107, 0, 0.12)';
+          }
+        });
+
+        if (matches.length > 0) {
+          const index = activeMatchIndex % matches.length;
+          const activeEl = matches[index];
+          if (activeEl) {
+            activeEl.classList.add('active-matched-node');
+            // Give active match an extra prominent style!
+            if (activeEl.classList.contains('org-chart-node')) {
+              activeEl.style.border = '3px solid #ff4500'; // More intense reddish orange
+              activeEl.style.boxShadow = '0 0 25px rgba(255, 69, 0, 0.7)';
+              activeEl.style.background = 'rgba(255, 69, 0, 0.2)';
+            } else {
+              activeEl.style.border = '2px solid #ff4500';
+              activeEl.style.boxShadow = '0 0 25px rgba(255, 69, 0, 0.5)';
+              activeEl.style.background = 'rgba(255, 69, 0, 0.2)';
+            }
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [searchQuery]);
+  }, [searchQuery, activeMatchIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1054,6 +1091,21 @@ export default function AdminCascadingAnnualPage() {
     );
   };
 
+  const getDirectMatches = () => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase().trim();
+    return nodes.filter(node => 
+      (node.text || '').toLowerCase().includes(query) ||
+      (node.nomenklatur || '').toLowerCase().includes(query) ||
+      (node.sasaran || '').toLowerCase().includes(query) ||
+      (node.indicators && node.indicators.some(ind => 
+        (ind.indikator || '').toLowerCase().includes(query)
+      ))
+    );
+  };
+  const directMatches = getDirectMatches();
+  const totalMatches = directMatches.length;
+
   return (
     <section>
       <div className="glass-panel print-exclude" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -1140,11 +1192,46 @@ export default function AdminCascadingAnnualPage() {
                 ref={searchInputRef}
                 type="text"
                 className="form-control"
-                style={{ paddingLeft: '35px', margin: 0 }}
+                style={{ paddingLeft: '35px', paddingRight: searchQuery ? '90px' : '12px', margin: 0 }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (totalMatches > 0) {
+                      setActiveMatchIndex(prev => (prev + 1) % totalMatches);
+                    }
+                  }
+                }}
                 placeholder="Cari indikator, sasaran, atau nomenklatur... (Tekan '/')"
               />
+              {searchQuery && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'absolute', right: '35px', top: '50%', transform: 'translateY(-50%)' }}>
+                  <span style={{
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {totalMatches > 0 ? `${activeMatchIndex + 1} / ${totalMatches}` : '0 hasil'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (totalMatches > 0) {
+                        setActiveMatchIndex(prev => (prev + 1) % totalMatches);
+                      }
+                    }}
+                    title="Cari berikutnya (Enter)"
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+                  >
+                    <i className="fa-solid fa-chevron-down" style={{ fontSize: '10px' }}></i>
+                  </button>
+                </div>
+              )}
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
