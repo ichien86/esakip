@@ -54,11 +54,17 @@ class Cascading5YearsService {
       if (cType === 'shared') cType = 'bersama';
       if (cType === 'split') cType = 'digabung';
 
+      const sortedIndicators = [...indicators].sort((a, b) => {
+        if (a.indikator === 'Indikator Terpisah' || a.indikator === '-') return 1;
+        if (b.indikator === 'Indikator Terpisah' || b.indikator === '-') return -1;
+        return 0;
+      });
+
       return {
         ...plainNode,
         crossCuttingType: cType,
         level: lvl,
-        indicators,
+        indicators: sortedIndicators,
         sasaran: plainNode.sasaran || plainNode.sasaranSubkegiatan || '',
         nomenklatur: plainNode.nomenklatur || (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(lvl) ? plainNode.text : '')
       };
@@ -256,9 +262,17 @@ class Cascading5YearsService {
     const updatedIndicators = await Indicator5YearsRepository.find({ nodeId: itemId });
     const plainItem = typeof savedItem.toObject === 'function' ? savedItem.toObject() : savedItem;
 
+    const sortedIndicators = updatedIndicators
+      .map(ind => typeof ind.toObject === 'function' ? ind.toObject() : ind)
+      .sort((a, b) => {
+        if (a.indikator === 'Indikator Terpisah' || a.indikator === '-') return 1;
+        if (b.indikator === 'Indikator Terpisah' || b.indikator === '-') return -1;
+        return 0;
+      });
+
     return {
       ...plainItem,
-      indicators: updatedIndicators.map(ind => typeof ind.toObject === 'function' ? ind.toObject() : ind)
+      indicators: sortedIndicators
     };
   }
 }

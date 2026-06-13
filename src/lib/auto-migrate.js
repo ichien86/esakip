@@ -11,12 +11,12 @@ export async function runAutoMigration() {
     
     const hasSingular5Y = await Cascading5Years.findOne({
       level: { $in: ['tujuan', 'sasaran', 'sasaran_subkegiatan', 'subkegiatan'] },
-      indikator: { $ne: '-' }
+      indikator: { $ne: '-', $nin: ['Indikator Terpisah'] }
     });
     
     const hasSingularAnn = await CascadingAnnual.findOne({
       level: { $in: ['tujuan', 'sasaran', 'sasaran_subkegiatan', 'subkegiatan'] },
-      indikator: { $ne: '-' }
+      indikator: { $ne: '-', $nin: ['Indikator Terpisah'] }
     });
 
     if (!hasOld5Y && !hasOldAnn && !hasSingular5Y && !hasSingularAnn) {
@@ -36,7 +36,7 @@ export async function runAutoMigration() {
       let inds = node.indicators || [];
       
       // Gunakan fallback jika array kosong tapi field singular di root ada isinya
-      if (inds.length === 0 && node.indikator && node.indikator !== '-') {
+      if (inds.length === 0 && node.indikator && node.indikator !== '-' && node.indikator !== 'Indikator Terpisah') {
         inds = [{
           id: `ind_mig_${node.id}`,
           indikator: node.indikator,
@@ -116,7 +116,7 @@ export async function runAutoMigration() {
     for (const node of nodesAnnual) {
       let inds = node.indicators || [];
 
-      if (inds.length === 0 && node.indikator && node.indikator !== '-') {
+      if (inds.length === 0 && node.indikator && node.indikator !== '-' && node.indikator !== 'Indikator Terpisah') {
         inds = [{
           id: `ind_mig_${node.id}`,
           indikator: node.indikator,
