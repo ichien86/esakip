@@ -90,6 +90,19 @@ export default function AdminCascadingAnnualPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
 
+  // Smooth scroll search matches into view
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      const timer = setTimeout(() => {
+        const firstMatch = document.querySelector('.matched-node');
+        if (firstMatch) {
+          firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showFormModal || showDpaImportModal || confirmMessage || alertMessage) return;
@@ -848,89 +861,111 @@ export default function AdminCascadingAnnualPage() {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: parentId ? '16px' : '0', borderLeft: parentId ? '1px dashed var(--glass-border)' : 'none' }}>
-        {levelNodes.map(node => (
-          <div key={node.id} className="tree-node" style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-            <div className="tree-node-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-              <div className="tree-node-info" style={{ flexGrow: 1 }}>
-                <h4>
-                  <span style={{
-                    fontSize: '10px',
-                    background: levelColors[node.level] || 'var(--primary-orange)',
-                    color: '#fff',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    marginRight: '8px',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase'
-                  }}>{levelLabels[node.level] || node.level}</span>
-                  {node.nomenklatur && (
-                    <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold', marginRight: '6px' }}>
-                      [{node.nomenklatur}]
-                    </span>
-                  )}
-                  {node.text}
-                </h4>
+        {levelNodes.map(node => {
+          const isDirectMatch = searchQuery.trim() && (
+            (node.text || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.nomenklatur || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.sasaran || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.indicators && node.indicators.some(ind => 
+              (ind.indikator || '').toLowerCase().includes(searchQuery.toLowerCase().trim())
+            ))
+          );
 
-                {node.indicators && node.indicators.length > 0 ? (
-                  <div style={{ marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid var(--primary-orange)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {node.indicators.map((ind, iIdx) => (
-                      <div key={ind.id || iIdx} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        • Indikator: <strong>{ind.indikator}</strong> | Target Rencana {tahun}: <strong>{ind.target} {ind.satuan}</strong>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted" style={{ marginTop: '6px', fontSize: '11px', fontStyle: 'italic' }}>
-                    Belum ada indikator.
-                  </p>
-                )}
+          return (
+            <div 
+              key={node.id} 
+              className={`tree-node ${isDirectMatch ? 'matched-node' : ''}`} 
+              style={{ 
+                background: isDirectMatch ? 'rgba(255, 107, 0, 0.12)' : 'rgba(255, 255, 255, 0.02)', 
+                padding: '12px', 
+                borderRadius: '8px', 
+                border: isDirectMatch ? '2px solid var(--primary-orange)' : '1px solid var(--glass-border)',
+                boxShadow: isDirectMatch ? '0 0 15px rgba(255, 107, 0, 0.25)' : 'none',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div className="tree-node-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                <div className="tree-node-info" style={{ flexGrow: 1 }}>
+                  <h4>
+                    <span style={{
+                      fontSize: '10px',
+                      background: levelColors[node.level] || 'var(--primary-orange)',
+                      color: '#fff',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      marginRight: '8px',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase'
+                    }}>{levelLabels[node.level] || node.level}</span>
+                    {node.nomenklatur && (
+                      <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold', marginRight: '6px' }}>
+                        [{node.nomenklatur}]
+                      </span>
+                    )}
+                    {node.text}
+                  </h4>
 
-                <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                  {node.level === 'sasaran_subkegiatan' || node.level === 'subkegiatan' ? (
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                      <span style={{ color: 'var(--success)' }}>
-                        Anggaran Renja: <strong>{formatCurrency(node.anggaran || 0)}</strong>
-                      </span>
-                      <span style={{ color: 'var(--info)' }}>
-                        Anggaran DPA: <strong>{formatCurrency(node.anggaranDpa || 0)}</strong>
-                      </span>
+                  {node.indicators && node.indicators.length > 0 ? (
+                    <div style={{ marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid var(--primary-orange)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {node.indicators.map((ind, iIdx) => (
+                        <div key={ind.id || iIdx} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          • Indikator: <strong>{ind.indikator}</strong> | Target Rencana {tahun}: <strong>{ind.target} {ind.satuan}</strong>
+                        </div>
+                      ))}
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                      <span style={{ color: 'var(--success)' }}>
-                        Anggaran Renja Akumulasi: <strong>{formatCurrency(calculateNodeBudget(node.id, 'Renja'))}</strong>
-                      </span>
-                      <span style={{ color: 'var(--info)' }}>
-                        Anggaran DPA Akumulasi: <strong>{formatCurrency(calculateNodeBudget(node.id, 'DPA'))}</strong>
-                      </span>
-                    </div>
+                    <p className="text-muted" style={{ marginTop: '6px', fontSize: '11px', fontStyle: 'italic' }}>
+                      Belum ada indikator.
+                    </p>
                   )}
-                </div>
 
-                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                  {node.bidangPengampu && node.bidangPengampu.map(b => (
-                    <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>
-                  ))}
-                  {node.bidangPengampu && node.bidangPengampu.length > 1 && (
-                    <span className="badge badge-score" style={{ fontSize: '9px' }}>
-                      Cross-cutting: {node.crossCuttingType === 'split' ? 'Split' : 'Shared'}
-                    </span>
-                  )}
+                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
+                    {node.level === 'sasaran_subkegiatan' || node.level === 'subkegiatan' ? (
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <span style={{ color: 'var(--success)' }}>
+                          Anggaran Renja: <strong>{formatCurrency(node.anggaran || 0)}</strong>
+                        </span>
+                        <span style={{ color: 'var(--info)' }}>
+                          Anggaran DPA: <strong>{formatCurrency(node.anggaranDpa || 0)}</strong>
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <span style={{ color: 'var(--success)' }}>
+                          Anggaran Renja Akumulasi: <strong>{formatCurrency(calculateNodeBudget(node.id, 'Renja'))}</strong>
+                        </span>
+                        <span style={{ color: 'var(--info)' }}>
+                          Anggaran DPA Akumulasi: <strong>{formatCurrency(calculateNodeBudget(node.id, 'DPA'))}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                    {node.bidangPengampu && node.bidangPengampu.map(b => (
+                      <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>
+                    ))}
+                    {node.bidangPengampu && node.bidangPengampu.length > 1 && (
+                      <span className="badge badge-score" style={{ fontSize: '9px' }}>
+                        Cross-cutting: {node.crossCuttingType === 'split' ? 'Split' : 'Shared'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="print-exclude" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
+                  <button 
+                    className="btn btn-sm btn-secondary" 
+                    style={{ padding: '3px 8px', fontSize: '10px', width: 'auto', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }}
+                    onClick={() => openEditModal(node)}
+                  >
+                    Edit
+                  </button>
                 </div>
               </div>
-              <div className="print-exclude" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
-                <button 
-                  className="btn btn-sm btn-secondary" 
-                  style={{ padding: '3px 8px', fontSize: '10px', width: 'auto', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }}
-                  onClick={() => openEditModal(node)}
-                >
-                  Edit
-                </button>
-              </div>
+              {renderTreeNodes(node.id)}
             </div>
-            {renderTreeNodes(node.id)}
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -945,60 +980,76 @@ export default function AdminCascadingAnnualPage() {
 
     return (
       <ul>
-        {levelNodes.map(node => (
-          <li key={node.id}>
-            <div className="org-chart-node org-node-box" style={{
-              border: `2px solid ${levelColors[node.level] || '#ccc'}`,
-              padding: '10px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
-              minWidth: '160px',
-              maxWidth: '240px',
-              textAlign: 'center',
-              display: 'inline-block',
-              position: 'relative'
-            }}>
-              {/* Level Badge */}
-              <div className="org-level-badge" style={{
-                fontSize: '8px',
-                fontWeight: 'bold',
-                color: '#ffffff',
-                background: levelColors[node.level] || '#666',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                marginBottom: '6px',
-                textTransform: 'uppercase',
-                display: 'inline-block'
-              }}>
-                {levelLabels[node.level]?.substring(3) || node.level}
-              </div>
+        {levelNodes.map(node => {
+          const isDirectMatch = searchQuery.trim() && (
+            (node.text || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.nomenklatur || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.sasaran || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+            (node.indicators && node.indicators.some(ind => 
+              (ind.indikator || '').toLowerCase().includes(searchQuery.toLowerCase().trim())
+            ))
+          );
 
-              {/* Title / Description */}
-              <div style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.3', wordBreak: 'break-word' }}>
-                {node.level === 'tujuan' || node.level === 'sasaran' ? node.text : (node.sasaran || node.text)}
-              </div>
-
-              {/* Nomenklatur for program/kegiatan/subkegiatan */}
-              {node.nomenklatur && (
-                <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
-                  {node.nomenklatur}
+          return (
+            <li key={node.id}>
+              <div 
+                className={`org-chart-node org-node-box ${isDirectMatch ? 'matched-node' : ''}`} 
+                style={{
+                  border: isDirectMatch ? '3px solid var(--primary-orange)' : `2px solid ${levelColors[node.level] || '#ccc'}`,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  boxShadow: isDirectMatch ? '0 0 15px rgba(255, 107, 0, 0.45)' : '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)',
+                  background: isDirectMatch ? 'rgba(255, 107, 0, 0.12)' : undefined,
+                  minWidth: '160px',
+                  maxWidth: '240px',
+                  textAlign: 'center',
+                  display: 'inline-block',
+                  position: 'relative',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {/* Level Badge */}
+                <div className="org-level-badge" style={{
+                  fontSize: '8px',
+                  fontWeight: 'bold',
+                  color: '#ffffff',
+                  background: levelColors[node.level] || '#666',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  marginBottom: '6px',
+                  textTransform: 'uppercase',
+                  display: 'inline-block'
+                }}>
+                  {levelLabels[node.level]?.substring(3) || node.level}
                 </div>
-              )}
 
-              {/* Indicators */}
-              {node.indicators && node.indicators.length > 0 && (
-                <div style={{ marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px', textAlign: 'left' }}>
-                  {node.indicators.map((ind, i) => (
-                    <div key={i} style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: '1.2', marginBottom: '2px' }}>
-                      • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                    </div>
-                  ))}
+                {/* Title / Description */}
+                <div style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                  {node.level === 'tujuan' || node.level === 'sasaran' ? node.text : (node.sasaran || node.text)}
                 </div>
-              )}
-            </div>
-            {renderOrgChartTree(node.id)}
-          </li>
-        ))}
+
+                {/* Nomenklatur for program/kegiatan/subkegiatan */}
+                {node.nomenklatur && (
+                  <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+                    {node.nomenklatur}
+                  </div>
+                )}
+
+                {/* Indicators */}
+                {node.indicators && node.indicators.length > 0 && (
+                  <div style={{ marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px', textAlign: 'left' }}>
+                    {node.indicators.map((ind, i) => (
+                      <div key={i} style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: '1.2', marginBottom: '2px' }}>
+                        • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {renderOrgChartTree(node.id)}
+            </li>
+          );
+        })}
       </ul>
     );
   };
