@@ -31,61 +31,32 @@ export default function EmployeeSelectIndicatorsPage() {
   const getPenanggungJawabOptionsForNode = (node) => {
     const options = [];
 
-    // 1. Level Tujuan & Sasaran: Only Kepala Badan (Kepala Pelaksana)
-    if (node.level === 'tujuan' || node.level === 'sasaran') {
-      const kb = allEmployees.find(e => 
-        e.isActive !== false && 
-        (e.jabatan === 'Kepala Pelaksana' || (e.roles.includes('pemimpin') && e.bidangs.includes('Badan')))
-      );
-      options.push({ value: 'jabatan:Kepala Pelaksana', label: 'Jabatan: Kepala Pelaksana', type: 'jabatan' });
-      if (kb) {
-        options.push({ value: kb.id, label: `${kb.nama} (Kepala Pelaksana)`, type: 'staff' });
-      }
-    }
-    // 2. Level Program: Only Sekretaris or Kepala Bidang
-    else if (node.level === 'program' || node.level === 'sasaran_program') {
-      const officialJab = getOfficialLeaderJabatan(activeBidang);
-      if (officialJab === 'Sekretaris' || officialJab.startsWith('Kepala Bidang')) {
-        options.push({ value: `jabatan:${officialJab}`, label: `Jabatan: ${officialJab}`, type: 'jabatan' });
-      }
-      
-      const unitLeaders = allEmployees.filter(e => 
-        e.isActive !== false && 
-        e.roles.includes('pemimpin') && 
-        e.bidangs.includes(activeBidang) &&
-        (e.jabatan.includes('Sekretaris') || e.jabatan.includes('Kepala Bidang') || e.jabatan.includes('Kabid'))
-      );
-      unitLeaders.forEach(l => {
-        options.push({ value: l.id, label: `${l.nama} (${l.jabatan})`, type: 'staff' });
-      });
-    }
-    // 3. Level Kegiatan, Subkegiatan, & Aktivitas: Pemimpin Tata Usaha (Kasi/Kasubag TU) or Staf
-    else {
-      if (activeBidang === 'Tata Usaha') {
-        const officialJab = getOfficialLeaderJabatan('Tata Usaha');
-        options.push({ value: `jabatan:${officialJab}`, label: `Jabatan: ${officialJab}`, type: 'jabatan' });
-        
-        const tuLeaders = allEmployees.filter(e => 
-          e.isActive !== false && 
-          e.roles.includes('pemimpin') && 
-          e.bidangs.includes('Tata Usaha')
-        );
-        tuLeaders.forEach(l => {
-          options.push({ value: l.id, label: `${l.nama} (${l.jabatan})`, type: 'staff' });
-        });
-      }
+    // 1. Leader positions in this unit (excluding Kepala Pelaksana / Kalaksa / Kepala Badan)
+    const unitLeaders = allEmployees.filter(e =>
+      e.isActive !== false &&
+      e.roles.includes('pemimpin') &&
+      e.bidangs.includes(activeBidang) &&
+      e.scopeLeader !== 'Badan' &&
+      !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
+      !e.jabatan.toLowerCase().includes('kalaksa')
+    );
 
-      // Add all active staff in this unit
-      const staffInUnit = allEmployees.filter(e => 
-        e.isActive !== false && 
-        e.id !== 'admin' &&
-        !e.roles.includes('pemimpin') &&
-        e.bidangs.includes(activeBidang)
-      );
-      staffInUnit.forEach(s => {
-        options.push({ value: s.id, label: `${s.nama} (${s.jabatan})`, type: 'staff' });
-      });
-    }
+    // Get unique leader positions
+    const uniqueLeaderJabatans = [...new Set(unitLeaders.map(l => l.jabatan))];
+    uniqueLeaderJabatans.forEach(jab => {
+      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+    });
+
+    // 2. Active staff (non-pemimpin) employees in this unit
+    const staffInUnit = allEmployees.filter(e =>
+      e.isActive !== false &&
+      e.id !== 'admin' &&
+      !e.roles.includes('pemimpin') &&
+      e.bidangs.includes(activeBidang)
+    );
+    staffInUnit.forEach(s => {
+      options.push({ value: s.id, label: `${s.nama} (${s.jabatan})`, type: 'staff' });
+    });
 
     return options;
   };
@@ -96,10 +67,16 @@ export default function EmployeeSelectIndicatorsPage() {
       if (res.ok) {
         const nodes = await res.json();
         // Filter nodes that match employee's active bidang
-        const filtered = nodes.filter(n =>
-          n.bidangPengampu.includes(activeBidang) ||
-          activeBidang === 'Pimpinan'
-        );
+        const filtered = nodes.filter(n => {
+          const belongsToBidang = n.bidangPengampu.includes(activeBidang) || activeBidang === 'Pimpinan';
+          if (!belongsToBidang) return false;
+
+          // If cross-cutting type is bersama, only selectedBidang can select it
+          if (n.crossCuttingType === 'bersama' && n.selectedBidang && activeBidang !== 'Pimpinan') {
+            return n.selectedBidang === activeBidang;
+          }
+          return true;
+        });
         setAnnualNodes(filtered);
 
         // Populate assignments map for Admin Unit Kerja
@@ -285,7 +262,7 @@ export default function EmployeeSelectIndicatorsPage() {
                                 <label style={{ fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 'bold', margin: 0 }}>
                                   Penanggung Jawab:
                                 </label>
-                                {['tujuan', 'sasaran', 'program', 'sasaran_program', 'kegiatan', 'sasaran_kegiatan'].includes(node.level) ? (
+                                {['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(node.level) ? (
                                   <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--glass-border)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', minWidth: '220px' }}>
                                     <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
                                     <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>

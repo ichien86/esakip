@@ -22,8 +22,9 @@ export default function AdminCascadingAnnualPage() {
   const [nomenklatur, setNomenklatur] = useState('');
   const [selectedMasterId, setSelectedMasterId] = useState('');
   const [selectedBidangs, setSelectedBidangs] = useState([]);
-  const [crossCuttingType, setCrossCuttingType] = useState('shared');
+  const [crossCuttingType, setCrossCuttingType] = useState('bersama');
   const [splitTargets, setSplitTargets] = useState({});
+  const [selectedBidang, setSelectedBidang] = useState(null);
   const tahun = activeYear;
   const [anggaran, setAnggaran] = useState(0);
   const [anggaranDpa, setAnggaranDpa] = useState(0);
@@ -197,6 +198,7 @@ export default function AdminCascadingAnnualPage() {
       parentId: level === 'tujuan' ? null : parentId,
       bidangPengampu: selectedBidangs,
       crossCuttingType,
+      selectedBidang,
       splitTargets,
       target: '0',
       tahun,
@@ -239,8 +241,13 @@ export default function AdminCascadingAnnualPage() {
     setNomenklatur(node.nomenklatur || '');
     setSelectedMasterId(node.masterId || '');
     setSelectedBidangs(node.bidangPengampu || []);
-    setCrossCuttingType(node.crossCuttingType || 'shared');
+    let cType = node.crossCuttingType || 'bersama';
+    if (cType === 'shared') cType = 'bersama';
+    if (cType === 'split') cType = 'digabung';
+    setCrossCuttingType(cType);
+    
     setSplitTargets(node.splitTargets || {});
+    setSelectedBidang(node.selectedBidang || null);
     setAnggaran(node.anggaran || 0);
     setAnggaranDpa(node.anggaranDpa || 0);
     setTempIndicators(node.indicators || []);
@@ -1269,6 +1276,94 @@ export default function AdminCascadingAnnualPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Cross-cutting options if >1 bidang selected */}
+              {selectedBidangs.length > 1 && (
+                <div className="form-group mb-3" style={{ background: 'rgba(255, 107, 0, 0.05)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(255, 107, 0, 0.2)' }}>
+                  <label style={{ fontWeight: 'bold', color: 'var(--primary-orange)', display: 'block', marginBottom: '8px' }}>
+                    <i className="fa-solid fa-people-group mr-2"></i> Kolaborasi Cross-cutting
+                  </label>
+                  <div style={{ display: 'flex', gap: '20px', marginBottom: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="radio" 
+                        name="crossCutting" 
+                        checked={crossCuttingType === 'bersama'} 
+                        onChange={() => {
+                          setCrossCuttingType('bersama');
+                          if (!selectedBidang && selectedBidangs.length > 0) {
+                            setSelectedBidang(selectedBidangs[0]);
+                          }
+                        }} 
+                      />
+                      Bersama (Joint)
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', margin: 0 }}>
+                      <input 
+                        type="radio" 
+                        name="crossCutting" 
+                        checked={crossCuttingType === 'digabung'} 
+                        onChange={() => {
+                          setCrossCuttingType('digabung');
+                          setSelectedBidang(null);
+                        }} 
+                      />
+                      Digabung (Combined)
+                    </label>
+                  </div>
+
+                  {crossCuttingType === 'bersama' && (
+                    <div className="form-group mb-0" style={{ marginTop: '10px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>
+                        Bidang Penanggung Jawab Utama
+                      </label>
+                      {(() => {
+                        const isProgram = level === 'program' || level === 'sasaran_program';
+                        const canEdit = isProgram 
+                          ? (activeRole === 'admin' || activeRole === 'perencana')
+                          : (activeRole === 'admin' || activeRole === 'perencana' || activeRole === 'admin_bidang');
+                        
+                        return (
+                          <select
+                            className="form-control"
+                            style={{ padding: '6px 10px', fontSize: '12.5px', background: 'var(--glass-bg)', color: 'white', borderColor: 'var(--glass-border)' }}
+                            value={selectedBidang || ''}
+                            disabled={!canEdit}
+                            onChange={(e) => setSelectedBidang(e.target.value || null)}
+                          >
+                            <option value="">-- Pilih Bidang Penanggung Jawab Utama --</option>
+                            {selectedBidangs.map(b => (
+                              <option key={b} value={b}>{b}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                        * Level Program diatur oleh Admin Perencana. Level Kegiatan, Subkegiatan, & Aktivitas diatur oleh Admin Unit Kerja.
+                      </span>
+                    </div>
+                  )}
+
+                  {crossCuttingType === 'digabung' && (
+                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Bagi porsi target ke masing-masing bidang pengampu:</p>
+                      {selectedBidangs.map(bidang => (
+                        <div key={bidang} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <span style={{ fontSize: '12px', color: 'white' }}>{bidang}</span>
+                          <input
+                            type="text"
+                            className="form-control"
+                            style={{ width: '80px', padding: '4px 8px', fontSize: '12px', textAlign: 'right' }}
+                            value={splitTargets[bidang] || ''}
+                            onChange={(e) => handleSplitTargetChange(bidang, e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

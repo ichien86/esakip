@@ -40,7 +40,7 @@ class RenaksiService {
       const node = await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
       if (node && node.tipeTarget === 'Akumulatif') {
         let annualTarget = parseFloat(node.target);
-        if (node.crossCuttingType === 'split' && node.splitTargets && userBidang) {
+        if ((node.crossCuttingType === 'digabung' || node.crossCuttingType === 'split') && node.splitTargets && userBidang) {
           const portion = parseFloat(node.splitTargets[userBidang]);
           if (!isNaN(portion)) {
             annualTarget = portion;

@@ -119,7 +119,43 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
       return pics;
     }
 
-    // For higher levels: kegiatan, program, sasaran, tujuan
+    if (lvl === 'sasaran_kegiatan' || lvl === 'kegiatan') {
+      const pics = new Set();
+      // Look for subkegiatan children
+      const childSubkegIds = childrenIds.filter(cid => {
+        const c = nodesById[cid];
+        return c && (c.standardLevel === 'sasaran_subkegiatan' || c.standardLevel === 'subkegiatan');
+      });
+
+      if (childSubkegIds.length > 0) {
+        for (const cid of childSubkegIds) {
+          const subPics = getCaretakers(cid);
+          for (const p of subPics) {
+            pics.add(p);
+          }
+        }
+      }
+
+      // If no PIC resolved from child subkegiatans, fall back to kegiatan's own indicators' penanggungJawab
+      if (pics.size === 0) {
+        const nodeInds = indicatorsByNodeId[nodeId] || [];
+        nodeInds.forEach(ind => {
+          if (ind.penanggungJawab) {
+            pics.add(ind.penanggungJawab);
+          }
+        });
+      }
+
+      // If still empty, fall back to kegiatan's own penanggungJawab
+      if (pics.size === 0 && node.penanggungJawab) {
+        pics.add(node.penanggungJawab);
+      }
+
+      cache[nodeId] = pics;
+      return pics;
+    }
+
+    // For higher levels: program, sasaran, tujuan
     const pics = new Set();
     for (const cid of childrenIds) {
       const childPics = getCaretakers(cid);

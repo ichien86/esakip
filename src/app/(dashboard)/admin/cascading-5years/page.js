@@ -27,8 +27,9 @@ export default function AdminCascading5YearsPage() {
   const [hasAktivitasPlan, setHasAktivitasPlan] = useState(false);
   
   // Cross-cutting states
-  const [crossCuttingType, setCrossCuttingType] = useState('shared');
+  const [crossCuttingType, setCrossCuttingType] = useState('bersama');
   const [splitTargets, setSplitTargets] = useState({}); 
+  const [selectedBidang, setSelectedBidang] = useState(null);
 
   // Budget (Anggaran) inputs for subkegiatan
   const [b2025, setB2025] = useState('0');
@@ -342,6 +343,7 @@ export default function AdminCascading5YearsPage() {
       parentId: level === 'tujuan' ? null : parentId,
       bidangPengampu: (level === 'sasaran_subkegiatan' && hasAktivitasPlan) ? [] : selectedBidangs,
       crossCuttingType,
+      selectedBidang,
       splitTargets,
       anggaran2025: level === 'sasaran_subkegiatan' ? b2025 : '0',
       anggaran2026: level === 'sasaran_subkegiatan' ? b2026 : '0',
@@ -390,8 +392,14 @@ export default function AdminCascading5YearsPage() {
     setSelectedMasterId(node.masterId || '');
     setSelectedBidangs(node.bidangPengampu || []);
     setHasAktivitasPlan(nodes.some(n => n.parentId === node.id));
-    setCrossCuttingType(node.crossCuttingType || 'shared');
+    
+    let cType = node.crossCuttingType || 'bersama';
+    if (cType === 'shared') cType = 'bersama';
+    if (cType === 'split') cType = 'digabung';
+    setCrossCuttingType(cType);
+    
     setSplitTargets(node.splitTargets || {});
+    setSelectedBidang(node.selectedBidang || null);
     
     setB2025(node.anggaran2025 || '0');
     setB2026(node.anggaran2026 || '0');
@@ -422,8 +430,9 @@ export default function AdminCascading5YearsPage() {
     setSelectedMasterId('');
     setSelectedBidangs([]);
     setHasAktivitasPlan(false);
-    setCrossCuttingType('shared');
+    setCrossCuttingType('bersama');
     setSplitTargets({});
+    setSelectedBidang(null);
     
     setB2025('0');
     setB2026('0');
@@ -1914,40 +1923,7 @@ export default function AdminCascading5YearsPage() {
                 </div>
               )}
 
-              {/* Cross-cutting options if >1 bidang selected */}
-              {selectedBidangs.length > 1 && (
-                <div className="form-group mb-3" style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                  <label style={{ fontWeight: 'bold', color: 'var(--info)' }}>Pengaturan Kolaborasi Cross-cutting</label>
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
-                      <input type="radio" name="crossCutting" checked={crossCuttingType === 'shared'} onChange={() => setCrossCuttingType('shared')} />
-                      Digabung (Shared)
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
-                      <input type="radio" name="crossCutting" checked={crossCuttingType === 'split'} onChange={() => setCrossCuttingType('split')} />
-                      Dipecah (Split)
-                    </label>
-                  </div>
-                  {crossCuttingType === 'split' && (
-                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bagi porsi target ke masing-masing bidang pengampu:</p>
-                      {selectedBidangs.map(bidang => (
-                        <div key={bidang} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                          <span style={{ fontSize: '12px' }}>{bidang}</span>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ width: '80px', padding: '4px 8px' }}
-                            value={splitTargets[bidang] || ''}
-                            onChange={(e) => handleSplitTargetChange(bidang, e.target.value)}
-                            placeholder="Target"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+
 
               {/* Target Kinerja & Anggaran per tahun untuk subkegiatan */}
               {level === 'sasaran_subkegiatan' && (

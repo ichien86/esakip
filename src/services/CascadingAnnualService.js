@@ -50,8 +50,13 @@ class CascadingAnnualService {
         }];
       }
 
+      let cType = plainNode.crossCuttingType || 'bersama';
+      if (cType === 'shared') cType = 'bersama';
+      if (cType === 'split') cType = 'digabung';
+
       return {
         ...plainNode,
+        crossCuttingType: cType,
         level: lvl,
         indicators,
         sasaran: plainNode.sasaran || plainNode.sasaranSubkegiatan || '',
@@ -109,7 +114,7 @@ class CascadingAnnualService {
   async saveCascadingAnnualData(body) {
     const {
       id, level, text, indikator, target, satuan, tipeTarget, parentId, bidangPengampu,
-      crossCuttingType, splitTargets, tahun,
+      crossCuttingType, selectedBidang, splitTargets, tahun,
       requesterRole, requesterBidang,
       sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut,
       masterId, anggaran, anggaranDpa, sasaran, nomenklatur, indicators
@@ -153,6 +158,15 @@ class CascadingAnnualService {
       }
     }
 
+    let resolvedCrossCuttingType = crossCuttingType || 'bersama';
+    if (resolvedCrossCuttingType === 'shared') resolvedCrossCuttingType = 'bersama';
+    if (resolvedCrossCuttingType === 'split') resolvedCrossCuttingType = 'digabung';
+
+    let resolvedSelectedBidang = selectedBidang || null;
+    if (resolvedCrossCuttingType === 'digabung') {
+      resolvedSelectedBidang = null;
+    }
+
     const itemData = {
       id: itemId,
       level,
@@ -163,7 +177,8 @@ class CascadingAnnualService {
       tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
       parentId: parentId || null,
       bidangPengampu: finalBidang,
-      crossCuttingType: crossCuttingType || 'shared',
+      crossCuttingType: resolvedCrossCuttingType,
+      selectedBidang: resolvedSelectedBidang,
       splitTargets: splitTargets || {},
       tahun: tahun || 2026,
       sasaranSubkegiatan: sasaranSubkegiatan || '',

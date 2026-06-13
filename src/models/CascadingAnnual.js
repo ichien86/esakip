@@ -10,7 +10,8 @@ const CascadingAnnualSchema = new mongoose.Schema({
   tipeTarget: { type: String, required: true }, // Akumulatif, Kondisi Akhir Menurun, Kondisi Akhir Naik
   parentId: { type: String, default: null },
   bidangPengampu: { type: [String], default: [] }, // Array of bidang names (cross-cutting)
-  crossCuttingType: { type: String, default: 'shared' }, // shared, split
+  crossCuttingType: { type: String, default: 'bersama' }, // bersama, digabung
+  selectedBidang: { type: String, default: null },
   splitTargets: { type: mongoose.Schema.Types.Mixed, default: {} }, // { "Bidang A": 5, "Bidang B": 5 }
   tahun: { type: Number, required: true, default: 2026 },
   masterId: { type: String, default: null },

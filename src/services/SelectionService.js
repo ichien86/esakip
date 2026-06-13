@@ -44,25 +44,49 @@ class SelectionService {
 
       if (!node) continue;
 
+      if (node.crossCuttingType === 'bersama' && node.selectedBidang && requesterBidang && requesterBidang !== 'Pimpinan') {
+        if (node.selectedBidang !== requesterBidang) {
+          const err = new Error(`Validasi Gagal: Hanya Bidang Penanggung Jawab Utama (${node.selectedBidang}) yang dapat mengelola penanggung jawab untuk indikator "${indicatorName}".`);
+          err.status = 400;
+          throw err;
+        }
+      }
+
       let isValid = false;
       const targetIsJabatan = penanggungJawab.startsWith('jabatan:');
       const targetValue = penanggungJawab.replace('jabatan:', '');
 
-      if (['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(level)) {
-        if (targetIsJabatan && (targetValue === 'Kepala Sub Bagian Tata Usaha' || targetValue === 'Kepala TU' || targetValue === 'Kasi TU')) {
-          isValid = true;
-        } else if (!targetIsJabatan) {
-          const emp = allEmployees.find(e => e.id === penanggungJawab);
-          if (emp) {
-            const isTULeader = emp.roles.includes('pemimpin') && emp.bidangs.includes('Tata Usaha');
-            const isStaff = !emp.roles.includes('pemimpin') && emp.id !== 'admin';
-            if (isTULeader || isStaff) {
+      if (targetIsJabatan) {
+        // Must be a leader position (excluding Kepala Pelaksana / Plt. Kepala Pelaksana / Kalaksa)
+        const matchedLeader = allEmployees.find(e =>
+          e.isActive !== false &&
+          e.roles.includes('pemimpin') &&
+          e.jabatan === targetValue &&
+          e.scopeLeader !== 'Badan' &&
+          !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
+          !e.jabatan.toLowerCase().includes('kalaksa')
+        );
+        if (matchedLeader) {
+          if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
+            if (matchedLeader.bidangs.includes(node.selectedBidang)) {
               isValid = true;
             }
+          } else {
+            isValid = true;
           }
         }
       } else {
-        isValid = true;
+        // Must be a non-leader (staff) active employee
+        const emp = allEmployees.find(e => e.id === penanggungJawab);
+        if (emp && emp.isActive !== false && !emp.roles.includes('pemimpin') && emp.id !== 'admin') {
+          if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
+            if (emp.bidangs.includes(node.selectedBidang)) {
+              isValid = true;
+            }
+          } else {
+            isValid = true;
+          }
+        }
       }
 
       if (!isValid) {
@@ -95,7 +119,7 @@ class SelectionService {
         }
       }
 
-      if (parentNode && ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(parentNode.level)) {
+      if (parentNode && ['kegiatan', 'sasaran_kegiatan', 'subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(parentNode.level)) {
         for (const indicator of targetIndicators) {
           let nextPenanggungJawab = penanggungJawab || null;
 
@@ -154,12 +178,23 @@ class SelectionService {
       throw err;
     }
 
-    // Filter selection to only allow subkegiatan and aktivitas levels
-    const selectableIndicators = await CascadingAnnualRepository.find({
+    // Filter selection to only allow kegiatan, subkegiatan, and aktivitas levels
+    const allSelectable = await CascadingAnnualRepository.find({
       id: { $in: selectedIndicators },
-      level: { $in: ['subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'] },
+      level: { $in: ['kegiatan', 'sasaran_kegiatan', 'subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'] },
       tahun: yearNum
     });
+
+    const employee = await Employee.findOne({ id: employeeId });
+    const empBidangs = employee ? (employee.bidangs || []) : [];
+
+    const selectableIndicators = allSelectable.filter(node => {
+      if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
+        return empBidangs.includes(node.selectedBidang);
+      }
+      return true;
+    });
+
     const cleanedSelectedIndicators = selectableIndicators.map(node => node.id);
 
     // Clear previous direct selections for this employee in the IndicatorAnnual collection for the selected year
@@ -184,7 +219,6 @@ class SelectionService {
       await SelectionRepository.saveDocument(selection);
     }
 
-    const employee = await Employee.findOne({ id: employeeId });
     const isKabid = employee && employee.roles && (employee.roles.includes('kabid') || (employee.roles.includes('pemimpin') && (employee.scopeLeader === 'Bidang' || employee.bidangs.some(b => b.startsWith('Bidang')))));
     let finalSelected = [...cleanedSelectedIndicators];
     
