@@ -74,6 +74,7 @@ export default function AdminCascading5YearsPage() {
   const [showIndicatorModal, setShowIndicatorModal] = useState(false);
   const [selectedNodeForIndicators, setSelectedNodeForIndicators] = useState(null);
   const [tempIndicators, setTempIndicators] = useState([]);
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   // Operational Definition Modal states
   const [showOpDefModal, setShowOpDefModal] = useState(false);
@@ -1137,6 +1138,34 @@ export default function AdminCascading5YearsPage() {
     setTempIndicators(tempIndicators.filter((_, i) => i !== index));
   };
 
+  const handleIndicatorDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+    setDraggedIndex(index);
+  };
+
+  const handleIndicatorDragOver = (e, index) => {
+    e.preventDefault();
+  };
+
+  const handleIndicatorDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const sourceIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (isNaN(sourceIndex) || sourceIndex === targetIndex) return;
+
+    const updated = [...tempIndicators];
+    const [removed] = updated.splice(sourceIndex, 1);
+    updated.splice(targetIndex, 0, removed);
+    
+    // Assign order values
+    const reordered = updated.map((ind, i) => ({
+      ...ind,
+      order: i
+    }));
+    setTempIndicators(reordered);
+    setDraggedIndex(null);
+  };
+
   const openOpDefModal = (index) => {
     setActiveIndicatorIndex(index);
     const ind = tempIndicators[index];
@@ -2141,9 +2170,30 @@ export default function AdminCascading5YearsPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {tempIndicators.map((ind, idx) => (
-                    <div key={ind.id || idx} style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div 
+                      key={ind.id || idx} 
+                      draggable 
+                      onDragStart={(e) => handleIndicatorDragStart(e, idx)}
+                      onDragOver={(e) => handleIndicatorDragOver(e, idx)}
+                      onDrop={(e) => handleIndicatorDrop(e, idx)}
+                      style={{ 
+                        background: draggedIndex === idx ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.02)', 
+                        padding: '12px', 
+                        borderRadius: '8px', 
+                        border: draggedIndex === idx ? '1px dashed var(--info)' : '1px solid var(--glass-border)', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '10px',
+                        cursor: 'grab',
+                        transition: 'all 0.2s ease',
+                        opacity: draggedIndex === idx ? 0.6 : 1
+                      }}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong style={{ color: 'var(--primary-orange)' }}>Indikator #{idx + 1}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <i className="fa-solid fa-grip-vertical text-muted" style={{ marginRight: '4px', cursor: 'grab' }}></i>
+                          <strong style={{ color: 'var(--primary-orange)' }}>Indikator #{idx + 1}</strong>
+                        </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button type="button" className="btn btn-sm btn-info" style={{ width: 'auto', padding: '2px 8px', fontSize: '10px' }} onClick={() => openOpDefModal(idx)}>
                             <i className="fa-solid fa-book mr-1"></i> Definisi Operasional

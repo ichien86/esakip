@@ -4,12 +4,12 @@ import IndicatorAnnual from '@/models/IndicatorAnnual';
 export class IndicatorAnnualRepository {
   async findAll() {
     await dbConnect();
-    return IndicatorAnnual.find({});
+    return IndicatorAnnual.find({}).sort({ order: 1 });
   }
 
   async find(filter) {
     await dbConnect();
-    return IndicatorAnnual.find(filter);
+    return IndicatorAnnual.find(filter).sort({ order: 1 });
   }
 
   async findOne(filter) {

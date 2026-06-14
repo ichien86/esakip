@@ -21,7 +21,8 @@ const Indicator5YearsSchema = new mongoose.Schema({
   metodePenghitungan: { type: String, default: 'Jumlah' }, // Jumlah, Persentase, Lainnya
   variabelJumlah: { type: String, default: '' },
   variabelPembilang: { type: String, default: '' },
-  variabelPenyebut: { type: String, default: '' }
+  variabelPenyebut: { type: String, default: '' },
+  order: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // Buat indeks pencarian cepat untuk nodeId

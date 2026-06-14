@@ -7,7 +7,7 @@ class RenjaService {
   async getRenja(yearNum) {
     const annualNodes = await CascadingAnnualRepository.find({ tahun: yearNum });
     const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
-    const annualIndicators = await IndicatorAnnual.find({ tahun: yearNum });
+    const annualIndicators = await IndicatorAnnual.find({ tahun: yearNum }).sort({ order: 1 });
     const resolvedNodes = resolveTreePICs(annualNodes, annualIndicators);
     
     // Fallback to direct model query if repository is not fully migrated
@@ -154,7 +154,8 @@ class RenjaService {
           metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
           variabelJumlah: ind.variabelJumlah || '',
           variabelPembilang: ind.variabelPembilang || '',
-          variabelPenyebut: ind.variabelPenyebut || ''
+          variabelPenyebut: ind.variabelPenyebut || '',
+          order: ind.order !== undefined ? ind.order : 0
         });
       });
 

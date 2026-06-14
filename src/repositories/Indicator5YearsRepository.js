@@ -4,12 +4,12 @@ import Indicator5Years from '@/models/Indicator5Years';
 export class Indicator5YearsRepository {
   async findAll() {
     await dbConnect();
-    return Indicator5Years.find({});
+    return Indicator5Years.find({}).sort({ order: 1 });
   }
 
   async find(filter) {
     await dbConnect();
-    return Indicator5Years.find(filter);
+    return Indicator5Years.find(filter).sort({ order: 1 });
   }
 
   async findOne(filter) {

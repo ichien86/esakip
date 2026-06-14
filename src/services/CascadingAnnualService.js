@@ -55,6 +55,9 @@ class CascadingAnnualService {
       if (cType === 'split') cType = 'digabung';
 
       const sortedIndicators = [...indicators].sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 0;
+        const orderB = b.order !== undefined ? b.order : 0;
+        if (orderA !== orderB) return orderA - orderB;
         if (a.indikator === 'Indikator Terpisah' || a.indikator === '-') return 1;
         if (b.indikator === 'Indikator Terpisah' || b.indikator === '-') return -1;
         return 0;
@@ -216,6 +219,7 @@ class CascadingAnnualService {
         await IndicatorAnnualRepository.deleteMany({ id: { $in: idsToDelete } });
       }
 
+      let orderIndex = 0;
       for (const ind of indicators) {
         const indId = ind.id || `ind_ann_${itemId}_${Math.random().toString(36).substring(2, 7)}`;
         await IndicatorAnnualRepository.createOrUpdate({
@@ -231,8 +235,10 @@ class CascadingAnnualService {
           metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
           variabelJumlah: ind.variabelJumlah || '',
           variabelPembilang: ind.variabelPembilang || '',
-          variabelPenyebut: ind.variabelPenyebut || ''
+          variabelPenyebut: ind.variabelPenyebut || '',
+          order: ind.order !== undefined ? ind.order : orderIndex
         });
+        orderIndex++;
       }
     }
 
@@ -287,6 +293,9 @@ class CascadingAnnualService {
     const sortedIndicators = updatedIndicators
       .map(ind => typeof ind.toObject === 'function' ? ind.toObject() : ind)
       .sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 0;
+        const orderB = b.order !== undefined ? b.order : 0;
+        if (orderA !== orderB) return orderA - orderB;
         if (a.indikator === 'Indikator Terpisah' || a.indikator === '-') return 1;
         if (b.indikator === 'Indikator Terpisah' || b.indikator === '-') return -1;
         return 0;

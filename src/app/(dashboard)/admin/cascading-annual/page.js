@@ -200,6 +200,71 @@ export default function AdminCascadingAnnualPage() {
     return children.reduce((sum, child) => sum + calculateNodeBudget(child.id, type), 0);
   };
 
+  const getIndicatorMismatch = (renjaInd, node) => {
+    if (!fiveYearNodes || fiveYearNodes.length === 0 || !node) return null;
+    
+    const renstraNodeId = node.id.replace(new RegExp(`_${tahun}$`), '');
+    let renstraNode = fiveYearNodes.find(c5 => c5.id === renstraNodeId);
+    if (!renstraNode) {
+      renstraNode = fiveYearNodes.find(c5 => {
+        if (node.level === 'tujuan' || node.level === 'sasaran') {
+          return c5.level === node.level && c5.text === node.text;
+        }
+        return c5.level === node.level && c5.masterId === node.masterId;
+      });
+    }
+
+    if (!renstraNode || !renstraNode.indicators) return null;
+
+    const expectedRenstraId = renjaInd.id.replace(new RegExp(`_${tahun}$`), '');
+    let renstraInd = renstraNode.indicators.find(i5 => i5.id === expectedRenstraId);
+    if (!renstraInd) {
+      renstraInd = renstraNode.indicators.find(i5 => i5.indikator === renjaInd.indikator);
+    }
+
+    if (!renstraInd) {
+      return {
+        isMismatch: true,
+        reason: 'Indikator ini tidak ditemukan di Renstra (5 tahunan)'
+      };
+    }
+
+    const mismatches = [];
+    if ((renjaInd.indikator || '').trim() !== (renstraInd.indikator || '').trim()) {
+      mismatches.push(`Uraian Indikator berbeda ("${renjaInd.indikator}" vs "${renstraInd.indikator}")`);
+    }
+    if ((renjaInd.satuan || '').trim() !== (renstraInd.satuan || '').trim()) {
+      mismatches.push(`Satuan berbeda ("${renjaInd.satuan}" vs "${renstraInd.satuan}")`);
+    }
+    if (renjaInd.tipeTarget !== renstraInd.tipeTarget) {
+      mismatches.push(`Tipe Target berbeda ("${renjaInd.tipeTarget}" vs "${renstraInd.tipeTarget}")`);
+    }
+    if ((renjaInd.definisiOperasional || '').trim() !== (renstraInd.definisiOperasional || '').trim()) {
+      mismatches.push('Definisi Operasional berbeda');
+    }
+    if (renjaInd.metodePenghitungan !== renstraInd.metodePenghitungan) {
+      mismatches.push(`Metode Penghitungan berbeda ("${renjaInd.metodePenghitungan}" vs "${renstraInd.metodePenghitungan}")`);
+    }
+    if ((renjaInd.variabelJumlah || '').trim() !== (renstraInd.variabelJumlah || '').trim()) {
+      mismatches.push('Variabel Jumlah berbeda');
+    }
+    if ((renjaInd.variabelPembilang || '').trim() !== (renstraInd.variabelPembilang || '').trim()) {
+      mismatches.push('Variabel Pembilang berbeda');
+    }
+    if ((renjaInd.variabelPenyebut || '').trim() !== (renstraInd.variabelPenyebut || '').trim()) {
+      mismatches.push('Variabel Penyebut berbeda');
+    }
+
+    if (mismatches.length > 0) {
+      return {
+        isMismatch: true,
+        reason: mismatches.join(', ')
+      };
+    }
+
+    return null;
+  };
+
   const loadData = async () => {
     try {
       const res = await fetchWithAuth(`/api/renja/${tahun}`);
@@ -944,11 +1009,19 @@ export default function AdminCascadingAnnualPage() {
 
                   {node.indicators && node.indicators.length > 0 ? (
                     <div style={{ marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid var(--primary-orange)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {node.indicators.map((ind, iIdx) => (
-                        <div key={ind.id || iIdx} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          • Indikator: <strong>{ind.indikator}</strong> | Target Rencana {tahun}: <strong>{ind.target} {ind.satuan}</strong>
-                        </div>
-                      ))}
+                      {node.indicators.map((ind, iIdx) => {
+                        const mismatch = getIndicatorMismatch(ind, node);
+                        return (
+                          <div key={ind.id || iIdx} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            • Indikator: <strong>{ind.indikator}</strong> | Target Rencana {tahun}: <strong>{ind.target} {ind.satuan}</strong>
+                            {mismatch && (
+                              <div style={{ color: '#eab308', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '10px', marginLeft: '8px', background: 'rgba(234, 179, 8, 0.1)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(234, 179, 8, 0.3)' }} title={mismatch.reason}>
+                                <i className="fa-solid fa-triangle-exclamation"></i> Berbeda dengan Renstra
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-muted" style={{ marginTop: '6px', fontSize: '11px', fontStyle: 'italic' }}>
@@ -1075,11 +1148,17 @@ export default function AdminCascadingAnnualPage() {
                 {/* Indicators */}
                 {node.indicators && node.indicators.length > 0 && (
                   <div style={{ marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px', textAlign: 'left' }}>
-                    {node.indicators.map((ind, i) => (
-                      <div key={i} style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: '1.2', marginBottom: '2px' }}>
-                        • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                      </div>
-                    ))}
+                    {node.indicators.map((ind, i) => {
+                      const mismatch = getIndicatorMismatch(ind, node);
+                      return (
+                        <div key={i} style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: '1.2', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                          {mismatch && (
+                            <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1392,27 +1471,38 @@ export default function AdminCascadingAnnualPage() {
                     Edit Target Kinerja Tahunan
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {tempIndicators.map((ind, idx) => (
-                      <div key={ind.id || idx} style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>{ind.indikator}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          <div className="form-group">
-                            <label style={{ fontSize: '10px', margin: 0 }}>Target</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              style={{ padding: '4px 8px', fontSize: '12px' }} 
-                              value={ind.target} 
-                              onChange={(e) => handleTempIndicatorTargetChange(idx, e.target.value)} 
-                            />
+                    {tempIndicators.map((ind, idx) => {
+                      const editingNode = nodes.find(n => n.id === formId);
+                      const mismatch = editingNode ? getIndicatorMismatch(ind, editingNode) : null;
+                      return (
+                        <div key={ind.id || idx} style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px', border: mismatch ? '1px solid rgba(234, 179, 8, 0.5)' : '1px solid var(--glass-border)' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {ind.indikator}
+                            {mismatch && (
+                              <span style={{ color: '#eab308', background: 'rgba(234, 179, 8, 0.1)', padding: '1px 5px', borderRadius: '3px', fontSize: '9px', fontWeight: 'normal', border: '1px solid rgba(234, 179, 8, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title={mismatch.reason}>
+                                <i className="fa-solid fa-triangle-exclamation"></i> Berbeda dengan Renstra
+                              </span>
+                            )}
                           </div>
-                          <div className="form-group">
-                            <label style={{ fontSize: '10px', margin: 0 }}>Satuan</label>
-                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '12px', background: 'rgba(0,0,0,0.2)' }} value={ind.satuan} disabled />
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                            <div className="form-group">
+                              <label style={{ fontSize: '10px', margin: 0 }}>Target</label>
+                              <input 
+                                type="text" 
+                                className="form-control" 
+                                style={{ padding: '4px 8px', fontSize: '12px' }} 
+                                value={ind.target} 
+                                onChange={(e) => handleTempIndicatorTargetChange(idx, e.target.value)} 
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label style={{ fontSize: '10px', margin: 0 }}>Satuan</label>
+                              <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '12px', background: 'rgba(0,0,0,0.2)' }} value={ind.satuan} disabled />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1680,11 +1770,17 @@ export default function AdminCascadingAnnualPage() {
                         {path.tujuan && (
                           <>
                             <div style={{ fontWeight: 'bold' }}>{path.tujuan.text}</div>
-                            {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.tujuan);
+                              return (
+                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </td>
@@ -1694,11 +1790,17 @@ export default function AdminCascadingAnnualPage() {
                         {path.sasaran && (
                           <>
                             <div style={{ fontWeight: 'bold' }}>{path.sasaran.text}</div>
-                            {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.sasaran);
+                              return (
+                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </td>
@@ -1709,11 +1811,17 @@ export default function AdminCascadingAnnualPage() {
                           <>
                             <div style={{ fontWeight: 'bold' }}>{path.sasaran_program.text}</div>
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_program.nomenklatur}</div>
-                            {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.sasaran_program);
+                              return (
+                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </td>
@@ -1724,11 +1832,17 @@ export default function AdminCascadingAnnualPage() {
                           <>
                             <div style={{ fontWeight: 'bold' }}>{path.sasaran_kegiatan.text}</div>
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_kegiatan.nomenklatur}</div>
-                            {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.sasaran_kegiatan);
+                              return (
+                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </>
                         )}
                       </td>
@@ -1739,11 +1853,17 @@ export default function AdminCascadingAnnualPage() {
                           <>
                             <div style={{ fontWeight: 'bold' }}>{path.sasaran_subkegiatan.text}</div>
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_subkegiatan.nomenklatur}</div>
-                            {path.sasaran_subkegiatan.indicators && path.sasaran_subkegiatan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.sasaran_subkegiatan.indicators && path.sasaran_subkegiatan.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.sasaran_subkegiatan);
+                              return (
+                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                             <div style={{ fontSize: '10px', color: 'green', marginTop: '4px' }}>
                               Anggaran Renja: {formatCurrency(path.sasaran_subkegiatan.anggaran || 0)}<br />
                               Anggaran DPA: {formatCurrency(path.sasaran_subkegiatan.anggaranDpa || 0)}
@@ -1753,11 +1873,17 @@ export default function AdminCascadingAnnualPage() {
                         {path.sasaran_aktivitas && (
                           <div style={{ fontSize: '9px', color: '#555', marginTop: '4px', paddingLeft: '8px', borderLeft: '1px dashed #aaa' }}>
                             Aktivitas: <strong>{path.sasaran_aktivitas.text}</strong> ({path.sasaran_aktivitas.nomenklatur})
-                            {path.sasaran_aktivitas.indicators && path.sasaran_aktivitas.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '8px', color: '#666' }}>
-                                - {ind.indikator} (Target: {ind.target} {ind.satuan})
-                              </div>
-                            ))}
+                            {path.sasaran_aktivitas.indicators && path.sasaran_aktivitas.indicators.map((ind, i) => {
+                              const mismatch = getIndicatorMismatch(ind, path.sasaran_aktivitas);
+                              return (
+                                <div key={i} style={{ fontSize: '8px', color: '#666', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  - {ind.indikator} (Target: {ind.target} {ind.satuan})
+                                  {mismatch && (
+                                    <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }} title={`Berbeda dengan Renstra: ${mismatch.reason}`}></i>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </td>

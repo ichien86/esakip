@@ -10,12 +10,12 @@ const IndicatorAnnualSchema = new mongoose.Schema({
   tipeTarget: { type: String, required: true },
   penanggungJawab: { type: String, default: null }, // PIC per indikator!
 
-  // Definisi operasional & variabel penghitungan
   definisiOperasional: { type: String, default: '' },
   metodePenghitungan: { type: String, default: 'Jumlah' }, // Jumlah, Persentase, Lainnya
   variabelJumlah: { type: String, default: '' },
   variabelPembilang: { type: String, default: '' },
-  variabelPenyebut: { type: String, default: '' }
+  variabelPenyebut: { type: String, default: '' },
+  order: { type: Number, default: 0 }
 }, { timestamps: true });
 
 // Indeks pencarian
