@@ -39,41 +39,43 @@ export async function GET(request) {
       const masterId = node.masterId;
       let isMismatch = false;
       let masterNama = '';
+      let masterKinerja = '';
       let masterIndikator = '';
       let masterSatuan = '';
 
-      if (node.level === 'program') {
+      let hasNameMismatch = false;
+      let hasKinerjaMismatch = false;
+      let hasIndicatorMismatch = false;
+
+      if (node.level === 'program' || node.level === 'sasaran_program') {
         const master = programMap.get(masterId);
         if (master) {
           masterNama = master.nama;
-          isMismatch = node.text !== master.nama;
+          hasNameMismatch = node.nomenklatur !== master.nama;
+          isMismatch = hasNameMismatch;
         }
-      } else if (node.level === 'kegiatan') {
+      } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
         const master = kegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
-          isMismatch = node.text !== master.nama;
+          hasNameMismatch = node.nomenklatur !== master.nama;
+          isMismatch = hasNameMismatch;
         }
-      } else if (node.level === 'subkegiatan') {
+      } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
         const master = subkegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
+          masterKinerja = master.kinerja || master.nama;
           masterIndikator = master.indikator;
           masterSatuan = master.satuan;
-          isMismatch = node.text !== master.nama || node.indikator !== master.indikator || node.satuan !== master.satuan;
-        }
-      } else if (node.level === 'sasaran_subkegiatan') {
-        // Sasaran subkegiatan: bandingkan indikator dan satuan (teks sasaran dibandingkan dengan field kinerja)
-        const master = subkegiatanMap.get(masterId);
-        if (master) {
-          masterNama = master.nama;
-          masterIndikator = master.indikator;
-          masterSatuan = master.satuan;
-          isMismatch = node.indikator !== master.indikator || node.satuan !== master.satuan;
+
+          hasNameMismatch = node.nomenklatur !== master.nama;
+          hasKinerjaMismatch = node.text !== masterKinerja;
+          hasIndicatorMismatch = node.indikator !== master.indikator || node.satuan !== master.satuan;
+
+          isMismatch = hasNameMismatch || hasKinerjaMismatch || hasIndicatorMismatch;
         }
       }
-      // Level sasaran_program, sasaran_kegiatan, aktivitas
-      // TIDAK dibandingkan karena tidak ada padanannya di kamus data master.
 
       if (isMismatch) {
         warnings.push({
@@ -81,19 +83,28 @@ export async function GET(request) {
           type,
           level: node.level,
           text: node.text,
+          nomenklatur: node.nomenklatur,
           indikator: node.indikator,
           satuan: node.satuan,
           masterId,
           masterNama,
+          masterKinerja,
           masterIndikator,
           masterSatuan,
+          hasNameMismatch,
+          hasKinerjaMismatch,
+          hasIndicatorMismatch,
           bidangPengampu: node.bidangPengampu
         });
       }
     };
 
     // Hanya filter node yang level-nya ada padanannya di master
-    const relevantLevels = ['program', 'kegiatan', 'subkegiatan', 'sasaran_subkegiatan'];
+    const relevantLevels = [
+      'program', 'sasaran_program',
+      'kegiatan', 'sasaran_kegiatan',
+      'subkegiatan', 'sasaran_subkegiatan'
+    ];
     annualNodes.filter(n => relevantLevels.includes(n.level)).forEach(node => checkNode(node, 'annual'));
     fiveYearNodes.filter(n => relevantLevels.includes(n.level)).forEach(node => checkNode(node, '5years'));
 
@@ -127,21 +138,22 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Node tidak ditemukan atau tidak terhubung ke data master.' }, { status: 404 });
     }
 
-    const masterId = node.masterId;
     let masterNama = '';
+    let masterKinerja = '';
     let masterIndikator = '';
     let masterSatuan = '';
 
-    if (node.level === 'program') {
+    if (node.level === 'program' || node.level === 'sasaran_program') {
       const master = await MasterProgram.findOne({ id: masterId });
       if (master) masterNama = master.nama;
-    } else if (node.level === 'kegiatan') {
+    } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
       const master = await MasterKegiatan.findOne({ id: masterId });
       if (master) masterNama = master.nama;
     } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
       const master = await MasterSubkegiatan.findOne({ id: masterId });
       if (master) {
         masterNama = master.nama;
+        masterKinerja = master.kinerja || master.nama;
         masterIndikator = master.indikator;
         masterSatuan = master.satuan;
       }
@@ -153,9 +165,20 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Kamus data master sudah dihapus atau tidak ditemukan.' }, { status: 404 });
     }
 
-    node.text = masterNama;
-    if (masterIndikator) node.indikator = masterIndikator;
-    if (masterSatuan) node.satuan = masterSatuan;
+    if (node.level === 'program' || node.level === 'sasaran_program') {
+      node.nomenklatur = masterNama;
+    } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
+      node.nomenklatur = masterNama;
+    } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
+      node.nomenklatur = masterNama;
+      node.text = masterKinerja;
+      node.sasaran = masterKinerja;
+      if (node.sasaranSubkegiatan !== undefined) {
+        node.sasaranSubkegiatan = masterKinerja;
+      }
+      if (masterIndikator) node.indikator = masterIndikator;
+      if (masterSatuan) node.satuan = masterSatuan;
+    }
 
     await node.save();
 

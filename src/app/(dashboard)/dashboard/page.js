@@ -3,6 +3,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 
+const formatLevel = (lvl) => {
+  if (lvl === 'sasaran_program' || lvl === 'program') return 'Sasaran Program';
+  if (lvl === 'sasaran_kegiatan' || lvl === 'kegiatan') return 'Sasaran Kegiatan';
+  if (lvl === 'sasaran_subkegiatan' || lvl === 'subkegiatan') return 'Sasaran Subkegiatan';
+  return lvl;
+};
+
 export default function DashboardPage() {
   const { fetchWithAuth, currentUser, activeRole, activeBidang, activeYear } = useSimulation();
   const [summaryData, setSummaryData] = useState([]);
@@ -332,28 +339,55 @@ export default function DashboardPage() {
                     }}>
                       <div style={{ flex: '1 1 300px' }}>
                         <span className="badge" style={{ fontSize: '9px', textTransform: 'uppercase', background: 'rgba(255, 107, 0, 0.2)', color: 'var(--primary-orange)', padding: '2px 6px', borderRadius: '4px' }}>
-                          {warning.level} ({warning.type === 'annual' ? 'Indikator Renja' : 'Indikator Renstra'})
+                          {formatLevel(warning.level)} ({warning.type === 'annual' ? 'Renja' : 'Renstra'})
                         </span>
                         
-                        <div style={{ marginTop: '8px' }}>
-                          <span style={{ fontSize: '11px', color: '#EF4444' }}>Data Saat Ini:</span>
-                          <h4 style={{ fontSize: '13px', margin: '2px 0 6px 0', color: 'white' }}>{warning.text}</h4>
-                          {warning.masterNama && (
-                            <>
-                              <span style={{ fontSize: '11px', color: '#10B981' }}>Kamus Terbaru:</span>
-                              <h4 style={{ fontSize: '13px', margin: '2px 0 0 0', color: 'white', fontWeight: 'bold' }}>{warning.masterNama}</h4>
-                            </>
-                          )}
-                        </div>
+                        {/* Name Mismatch */}
+                        {warning.hasNameMismatch && (
+                          <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Nama Nomenklatur Berubah:</span>
+                            <div style={{ color: '#EF4444', textDecoration: 'line-through', margin: '2px 0' }}>
+                              Lama: {warning.nomenklatur || '-'}
+                            </div>
+                            <div style={{ color: '#10B981', fontWeight: 'bold' }}>
+                              Baru: {warning.masterNama}
+                            </div>
+                          </div>
+                        )}
 
-                        {warning.masterIndikator && (warning.indikator !== warning.masterIndikator || warning.satuan !== warning.masterSatuan) && (
-                          <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                            <div style={{ color: 'var(--text-muted)' }}>
-                              Indikator lama: {warning.indikator} ({warning.satuan})
+                        {/* Kinerja (Sasaran) Mismatch */}
+                        {warning.hasKinerjaMismatch && (
+                          <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Uraian Sasaran Kinerja Berubah:</span>
+                            <div style={{ color: '#EF4444', textDecoration: 'line-through', margin: '2px 0' }}>
+                              Lama: {warning.text}
                             </div>
-                            <div style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>
-                              Indikator baru: {warning.masterIndikator} ({warning.masterSatuan})
+                            <div style={{ color: '#10B981', fontWeight: 'bold' }}>
+                              Baru: {warning.masterKinerja}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Indicator Mismatch */}
+                        {warning.hasIndicatorMismatch && (
+                          <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Indikator & Satuan Berubah:</span>
+                            <div style={{ color: '#EF4444', textDecoration: 'line-through', margin: '2px 0' }}>
+                              Lama: {warning.indikator} ({warning.satuan})
+                            </div>
+                            <div style={{ color: '#10B981', fontWeight: 'bold' }}>
+                              Baru: {warning.masterIndikator} ({warning.masterSatuan})
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Fallback for legacy data/warnings with no mismatch flags */}
+                        {!warning.hasNameMismatch && !warning.hasKinerjaMismatch && !warning.hasIndicatorMismatch && (
+                          <div style={{ marginTop: '8px' }}>
+                            <span style={{ fontSize: '11px', color: '#EF4444' }}>Data Saat Ini:</span>
+                            <h4 style={{ fontSize: '13px', margin: '2px 0 6px 0', color: 'white' }}>{warning.text}</h4>
+                            <span style={{ fontSize: '11px', color: '#10B981' }}>Kamus Terbaru:</span>
+                            <h4 style={{ fontSize: '13px', margin: '2px 0 0 0', color: 'white', fontWeight: 'bold' }}>{warning.masterNama}</h4>
                           </div>
                         )}
                       </div>
