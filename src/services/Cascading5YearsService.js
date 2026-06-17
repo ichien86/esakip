@@ -62,7 +62,7 @@ class Cascading5YearsService {
       const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
       let indicators = indicatorsByNodeId[plainNode.id] || [];
       
-      if (indicators.length === 0 && node.indikator && node.indikator !== '-') {
+      if (indicators.length === 0 && node.indikator && node.indikator !== '-' && node.indikator !== 'Indikator Terpisah') {
         indicators = [{
           id: `ind_mig_${node.id}`,
           nodeId: node.id,

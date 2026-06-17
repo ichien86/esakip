@@ -5,6 +5,8 @@ import Cascading5Years from '@/models/Cascading5Years';
 import MasterProgram from '@/models/MasterProgram';
 import MasterKegiatan from '@/models/MasterKegiatan';
 import MasterSubkegiatan from '@/models/MasterSubkegiatan';
+import IndicatorAnnual from '@/models/IndicatorAnnual';
+import Indicator5Years from '@/models/Indicator5Years';
 
 export async function GET(request) {
   try {
@@ -19,6 +21,27 @@ export async function GET(request) {
 
     const annualNodes = await CascadingAnnual.find({ masterId: { $ne: null } });
     const fiveYearNodes = await Cascading5Years.find({ masterId: { $ne: null } });
+
+    // Fetch indicators to populate node.indicators
+    const annualNodeIds = annualNodes.map(n => n.id);
+    const annualIndicators = await IndicatorAnnual.find({ nodeId: { $in: annualNodeIds } });
+    const annualIndicatorsMap = new Map();
+    annualIndicators.forEach(ind => {
+      if (!annualIndicatorsMap.has(ind.nodeId)) {
+        annualIndicatorsMap.set(ind.nodeId, []);
+      }
+      annualIndicatorsMap.get(ind.nodeId).push(ind);
+    });
+
+    const fiveYearNodeIds = fiveYearNodes.map(n => n.id);
+    const fiveYearIndicators = await Indicator5Years.find({ nodeId: { $in: fiveYearNodeIds } });
+    const fiveYearIndicatorsMap = new Map();
+    fiveYearIndicators.forEach(ind => {
+      if (!fiveYearIndicatorsMap.has(ind.nodeId)) {
+        fiveYearIndicatorsMap.set(ind.nodeId, []);
+      }
+      fiveYearIndicatorsMap.get(ind.nodeId).push(ind);
+    });
 
     const masterPrograms = await MasterProgram.find({});
     const masterKegiatans = await MasterKegiatan.find({});
@@ -36,7 +59,15 @@ export async function GET(request) {
         if (!belongsToBidang) return;
       }
 
-      const masterId = node.masterId;
+      // Populate indicators dynamically
+      const nodePlain = typeof node.toObject === 'function' ? node.toObject() : node;
+      if (type === 'annual') {
+        nodePlain.indicators = annualIndicatorsMap.get(node.id) || [];
+      } else {
+        nodePlain.indicators = fiveYearIndicatorsMap.get(node.id) || [];
+      }
+
+      const masterId = nodePlain.masterId;
       let isMismatch = false;
       let masterNama = '';
       let masterKinerja = '';
@@ -47,21 +78,21 @@ export async function GET(request) {
       let hasKinerjaMismatch = false;
       let hasIndicatorMismatch = false;
 
-      if (node.level === 'program' || node.level === 'sasaran_program') {
+      if (nodePlain.level === 'program' || nodePlain.level === 'sasaran_program') {
         const master = programMap.get(masterId);
         if (master) {
           masterNama = master.nama;
-          hasNameMismatch = node.nomenklatur !== master.nama;
+          hasNameMismatch = nodePlain.nomenklatur !== master.nama;
           isMismatch = hasNameMismatch;
         }
-      } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
+      } else if (nodePlain.level === 'kegiatan' || nodePlain.level === 'sasaran_kegiatan') {
         const master = kegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
-          hasNameMismatch = node.nomenklatur !== master.nama;
+          hasNameMismatch = nodePlain.nomenklatur !== master.nama;
           isMismatch = hasNameMismatch;
         }
-      } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
+      } else if (nodePlain.level === 'subkegiatan' || nodePlain.level === 'sasaran_subkegiatan') {
         const master = subkegiatanMap.get(masterId);
         if (master) {
           masterNama = master.nama;
@@ -69,23 +100,41 @@ export async function GET(request) {
           masterIndikator = master.indikator;
           masterSatuan = master.satuan;
 
-          hasNameMismatch = node.nomenklatur !== master.nama;
-          hasKinerjaMismatch = node.text !== masterKinerja;
-          hasIndicatorMismatch = node.indikator !== master.indikator || node.satuan !== master.satuan;
+          // Extract actual local indicator/unit from indicators array if present
+          let localIndikator = nodePlain.indikator;
+          let localSatuan = nodePlain.satuan;
+          if (nodePlain.indicators && nodePlain.indicators.length > 0 && nodePlain.indicators[0]) {
+            localIndikator = nodePlain.indicators[0].indikator || localIndikator;
+            localSatuan = nodePlain.indicators[0].satuan || localSatuan;
+          }
+
+          hasNameMismatch = nodePlain.nomenklatur !== master.nama;
+          hasKinerjaMismatch = nodePlain.text !== masterKinerja;
+          hasIndicatorMismatch = localIndikator !== master.indikator || localSatuan !== master.satuan;
 
           isMismatch = hasNameMismatch || hasKinerjaMismatch || hasIndicatorMismatch;
         }
       }
 
       if (isMismatch) {
+        // Use extracted local indicator for warning display
+        let warningIndikator = nodePlain.indikator;
+        let warningSatuan = nodePlain.satuan;
+        if (nodePlain.level === 'subkegiatan' || nodePlain.level === 'sasaran_subkegiatan') {
+          if (nodePlain.indicators && nodePlain.indicators.length > 0 && nodePlain.indicators[0]) {
+            warningIndikator = nodePlain.indicators[0].indikator || warningIndikator;
+            warningSatuan = nodePlain.indicators[0].satuan || warningSatuan;
+          }
+        }
+
         warnings.push({
-          nodeId: node.id,
+          nodeId: nodePlain.id,
           type,
-          level: node.level,
-          text: node.text,
-          nomenklatur: node.nomenklatur,
-          indikator: node.indikator,
-          satuan: node.satuan,
+          level: nodePlain.level,
+          text: nodePlain.text,
+          nomenklatur: nodePlain.nomenklatur,
+          indikator: warningIndikator,
+          satuan: warningSatuan,
           masterId,
           masterNama,
           masterKinerja,
@@ -94,7 +143,7 @@ export async function GET(request) {
           hasNameMismatch,
           hasKinerjaMismatch,
           hasIndicatorMismatch,
-          bidangPengampu: node.bidangPengampu
+          bidangPengampu: nodePlain.bidangPengampu
         });
       }
     };
@@ -178,6 +227,18 @@ export async function POST(request) {
       }
       if (masterIndikator) node.indikator = masterIndikator;
       if (masterSatuan) node.satuan = masterSatuan;
+
+      // Update actual indicator inside indicators array
+      if (node.indicators && node.indicators.length > 0 && node.indicators[0]) {
+        const updatedIndicators = [...node.indicators];
+        updatedIndicators[0] = {
+          ...updatedIndicators[0],
+          indikator: masterIndikator || updatedIndicators[0].indikator,
+          satuan: masterSatuan || updatedIndicators[0].satuan
+        };
+        node.indicators = updatedIndicators;
+        node.markModified('indicators');
+      }
     }
 
     await node.save();
