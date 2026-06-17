@@ -7,6 +7,7 @@ import Renaksi from '@/models/Renaksi';
 import RealisasiSchedule from '@/models/RealisasiSchedule';
 import PerjakinDocument from '@/models/PerjakinDocument';
 import Employee from '@/models/Employee';
+import { resolveTreePICs } from '@/lib/pic-resolver';
 
 class DashboardService {
   async getSummary(yearNum) {
@@ -41,12 +42,23 @@ class DashboardService {
     const tasks = [];
     const activeMonthTargets = [];
 
-    // 1. Get assigned indicators for this employee
+    // 1. Get assigned indicators for this employee using resolved tree PICs
+    const allNodes = await CascadingAnnual.find({ tahun: yearNum });
     const allAnnualIndicators = await IndicatorAnnual.find({ tahun: yearNum });
-    const assignedIndicators = allAnnualIndicators.filter(ind => {
-      if (!ind.penanggungJawab) return false;
-      const pics = ind.penanggungJawab.split(',').map(s => s.trim());
-      return pics.includes(employeeId) || (jabatan && pics.includes(`jabatan:${jabatan}`));
+    const resolvedNodes = resolveTreePICs(allNodes, allAnnualIndicators);
+
+    const assignedIndicators = [];
+    resolvedNodes.forEach(node => {
+      const inds = node.indicators || [];
+      inds.forEach(ind => {
+        if (ind.penanggungJawab) {
+          const pics = ind.penanggungJawab.split(',').map(s => s.trim());
+          const isMatch = pics.includes(employeeId) || (jabatan && pics.includes(`jabatan:${jabatan}`));
+          if (isMatch) {
+            assignedIndicators.push(ind);
+          }
+        }
+      });
     });
 
     // A. IF USER IS ADMIN UNIT KERJA (role === 'admin_bidang')

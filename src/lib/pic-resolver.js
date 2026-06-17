@@ -68,6 +68,34 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
       return pics;
     }
 
+    if (lvl === 'sasaran_program' || lvl === 'program') {
+      const pics = new Set();
+      const adminMap = {
+        'Sekretariat': 'Sekretaris',
+        'Pencegahan & Kesiapsiagaan': 'Kepala Bidang Pencegahan dan Kesiapsiagaan',
+        'Kedaruratan & Logistik': 'Kepala Bidang Kedaruratan dan Logistik',
+        'Rehabilitasi & Rekonstruksi': 'Kepala Bidang Rehabilitasi dan Rekonstruksi',
+        'Pimpinan': 'Kepala Pelaksana'
+      };
+
+      if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
+        const b = node.selectedBidang;
+        const jab = adminMap[b] || `Kepala ${b}`;
+        pics.add(`jabatan:${jab}`);
+      } else {
+        const bidangs = node.bidangPengampu || [];
+        bidangs.forEach(b => {
+          const jab = adminMap[b] || `Kepala ${b}`;
+          pics.add(`jabatan:${jab}`);
+        });
+      }
+      if (pics.size === 0) {
+        pics.add('jabatan:Kepala Pelaksana');
+      }
+      cache[nodeId] = pics;
+      return pics;
+    }
+
     if (isAktivitas) {
       const pics = new Set();
       const nodeInds = indicatorsByNodeId[nodeId] || [];
@@ -173,11 +201,22 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
     const rawObj = typeof node.toObject === 'function' ? node.toObject() : node;
     const resolvedSet = getCaretakers(rawObj.id);
     const resolvedPICs = Array.from(resolvedSet).filter(Boolean);
+    const nodePIC = resolvedPICs.length > 0 ? resolvedPICs.join(',') : null;
     
+    // For each indicator, set its penanggungJawab to the node's penanggungJawab if the indicator level is tujuan, sasaran, or program!
+    const inds = (indicatorsByNodeId[rawObj.id] || []).map(ind => {
+      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
+      const isHigherLevel = ['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(rawObj.level);
+      return {
+        ...plainInd,
+        penanggungJawab: isHigherLevel ? nodePIC : (plainInd.penanggungJawab || nodePIC)
+      };
+    });
+
     return {
       ...rawObj,
-      penanggungJawab: resolvedPICs.length > 0 ? resolvedPICs.join(',') : null,
-      indicators: indicatorsByNodeId[rawObj.id] || []
+      penanggungJawab: nodePIC,
+      indicators: inds
     };
   });
 }

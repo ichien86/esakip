@@ -16,6 +16,9 @@ export default function DashboardLayout({ children }) {
     return false;
   });
 
+  const [isHoverExpanded, setIsHoverExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
   const toggleSidebar = () => {
     setIsSidebarCollapsed(prev => {
       const next = !prev;
@@ -23,6 +26,28 @@ export default function DashboardLayout({ children }) {
       return next;
     });
   };
+
+  // Handle responsive layout and resize events
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (mobile) {
+        setIsSidebarCollapsed(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Collapse sidebar on page/route changes
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarCollapsed(true);
+    }
+    setIsHoverExpanded(false);
+  }, [pathname, isMobile]);
   const {
     user,
     simulatedUser,
@@ -89,8 +114,50 @@ export default function DashboardLayout({ children }) {
     <div className="app-container">
       <div className="background-glow"></div>
 
+      {/* Mobile Sidebar Backdrop */}
+      {isMobile && !isSidebarCollapsed && (
+        <div 
+          className="sidebar-backdrop print-exclude"
+          onClick={() => setIsSidebarCollapsed(true)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 998
+          }}
+        />
+      )}
+
+      {/* Hover Reveal Trigger for Desktop */}
+      {!isMobile && isSidebarCollapsed && !isHoverExpanded && (
+        <div 
+          className="sidebar-hover-trigger print-exclude"
+          onMouseEnter={() => setIsHoverExpanded(true)}
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            width: '15px',
+            height: '100vh',
+            zIndex: 99,
+            background: 'transparent'
+          }}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`sidebar print-exclude ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside 
+        className={`sidebar print-exclude ${isSidebarCollapsed ? 'collapsed' : ''} ${(!isMobile && isHoverExpanded) ? 'hover-expanded' : ''}`}
+        onMouseLeave={() => {
+          if (!isMobile && isSidebarCollapsed) {
+            setIsHoverExpanded(false);
+          }
+        }}
+      >
         <div className="sidebar-brand">
           <div className="logo-wrapper">
             <i className="fa-solid fa-triangle-exclamation orange-glow"></i>

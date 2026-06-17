@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Cascading5Years from '@/models/Cascading5Years';
 import { checkPlanningLock } from '@/lib/lock-check';
+import Cascading5YearsService from '@/services/Cascading5YearsService';
 
 export async function DELETE(request, { params }) {
   try {
@@ -43,7 +44,13 @@ export async function DELETE(request, { params }) {
       });
     }
 
+    const parentId = node.parentId;
     await Cascading5Years.deleteMany({ id: { $in: idsToDelete } });
+
+    if (parentId) {
+      await Cascading5YearsService.propagateBidangUpwards(parentId);
+    }
+
     return NextResponse.json({ message: 'Berhasil menghapus item cascading 5 tahunan beserta turunannya' });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

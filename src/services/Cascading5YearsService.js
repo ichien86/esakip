@@ -9,6 +9,40 @@ class Cascading5YearsService {
     const data = await Cascading5YearsRepository.findAll();
     const allIndicators = await Indicator5YearsRepository.findAll();
 
+    // Self-repair parent bidangPengampu inconsistencies (bottom-up cleanup level-by-level)
+    const levelGroups = [
+      ['sasaran_subkegiatan', 'subkegiatan'],
+      ['sasaran_kegiatan', 'kegiatan'],
+      ['sasaran_program', 'program']
+    ];
+
+    for (const levels of levelGroups) {
+      const parents = data.filter(p => levels.includes(p.level));
+      for (const parent of parents) {
+        const children = data.filter(c => c.parentId === parent.id);
+        const isSubkegiatan = ['sasaran_subkegiatan', 'subkegiatan'].includes(parent.level);
+        
+        if (children.length === 0) {
+          if (!isSubkegiatan && parent.bidangPengampu && parent.bidangPengampu.length > 0) {
+            parent.bidangPengampu = [];
+            await Cascading5YearsRepository.saveDocument(parent);
+          }
+        } else {
+          const aggregated = new Set();
+          children.forEach(c => {
+            if (Array.isArray(c.bidangPengampu)) {
+              c.bidangPengampu.forEach(b => aggregated.add(b));
+            }
+          });
+          const newBidangs = Array.from(aggregated);
+          if (JSON.stringify(parent.bidangPengampu || []) !== JSON.stringify(newBidangs)) {
+            parent.bidangPengampu = newBidangs;
+            await Cascading5YearsRepository.saveDocument(parent);
+          }
+        }
+      }
+    }
+
     const indicatorsByNodeId = {};
     allIndicators.forEach(ind => {
       const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;

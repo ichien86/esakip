@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 import DocumentPreviewModal from '@/components/DocumentPreviewModal';
+import { parseBuktiDukung } from '@/utils/linkPreview';
 
 export default function SupervisorEvaluationPage() {
   const { fetchWithAuth, currentUser, activeRole, activeYear, allEmployees } = useSimulation();
@@ -654,18 +655,40 @@ export default function SupervisorEvaluationPage() {
                             )}
                           </div>
 
-                          {item.buktiDukung && (
-                            <div>
-                              <button 
-                                type="button" 
-                                onClick={() => setPreviewUrl(item.buktiDukung)} 
-                                className="btn btn-sm btn-secondary" 
-                                style={{ padding: '4px 10px', fontSize: '11px', marginTop: '4px', width: 'auto' }}
-                              >
-                                <i className="fa-solid fa-file-lines"></i> Lihat Bukti Dukung
-                              </button>
-                            </div>
-                          )}
+                          {(() => {
+                            const files = parseBuktiDukung(item.buktiDukung);
+                            if (files.length === 0) return null;
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', marginBottom: '8px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                  <i className="fa-solid fa-folder-open text-orange"></i> Bukti Dukung ({files.length}):
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                  {files.map((file, idx) => (
+                                    <button 
+                                      key={idx}
+                                      type="button" 
+                                      onClick={() => setPreviewUrl(file.url)} 
+                                      className="btn btn-sm btn-secondary" 
+                                      style={{ 
+                                        padding: '4px 10px', 
+                                        fontSize: '11px', 
+                                        width: 'auto', 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px',
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid var(--glass-border)'
+                                      }}
+                                      title={file.url}
+                                    >
+                                      <i className="fa-solid fa-file-lines text-orange"></i> {file.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Analysis and constraints info */}
                           <div style={{
@@ -814,16 +837,36 @@ export default function SupervisorEvaluationPage() {
                                   )}
                                 </td>
                                 <td>
-                                  {rx.buktiDukung && (
-                                    <button 
-                                      type="button" 
-                                      onClick={() => setPreviewUrl(rx.buktiDukung)} 
-                                      className="btn btn-sm btn-secondary" 
-                                      style={{ padding: '2px 8px' }}
-                                    >
-                                      <i className="fa-solid fa-file-lines"></i> Lihat
-                                    </button>
-                                  )}
+                                  {(() => {
+                                    const files = parseBuktiDukung(rx.buktiDukung);
+                                    if (files.length === 0) return <span className="text-muted" style={{ fontSize: '11px' }}>-</span>;
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {files.map((file, idx) => (
+                                          <button 
+                                            key={idx}
+                                            type="button" 
+                                            onClick={() => setPreviewUrl(file.url)} 
+                                            className="btn btn-sm btn-secondary" 
+                                            style={{ 
+                                              padding: '2px 6px', 
+                                              fontSize: '10px', 
+                                              display: 'inline-flex', 
+                                              alignItems: 'center', 
+                                              gap: '4px',
+                                              whiteSpace: 'nowrap',
+                                              width: 'auto',
+                                              textAlign: 'left'
+                                            }}
+                                            title={file.name}
+                                          >
+                                            <i className="fa-solid fa-file-lines text-orange"></i>
+                                            <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
                                 <td>
                                   {isUnderperform ? (

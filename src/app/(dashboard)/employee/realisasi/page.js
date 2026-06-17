@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
+import { parseBuktiDukung, getFilenameFromUrl } from '@/utils/linkPreview';
+import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 
 export default function EmployeeRealisasiPage() {
   const { fetchWithAuth, currentUser, activeBidang, activeYear } = useSimulation();
@@ -16,9 +18,7 @@ export default function EmployeeRealisasiPage() {
 
   // Input states
   const [realisasiValue, setRealisasiValue] = useState('');
-  const [buktiDukung, setBuktiDukung] = useState('');
-  const [verifyStatus, setVerifyStatus] = useState(null); // { isDrive, isPublic, message }
-  const [checkingLink, setCheckingLink] = useState(false);
+  const [buktiDukungFiles, setBuktiDukungFiles] = useState([{ name: '', url: '', verifyStatus: null, checking: false }]);
 
   // Operational variables inputs
   const [variabelJumlahVal, setVariabelJumlahVal] = useState('');
@@ -116,27 +116,26 @@ export default function EmployeeRealisasiPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (activeRecord) {
-        setRealisasiValue(activeRecord.realisasiBulanan !== null ? activeRecord.realisasiBulanan.toString() : '');
-        setVariabelJumlahVal(activeRecord.variabelJumlahVal !== null ? activeRecord.variabelJumlahVal.toString() : '');
-        setVariabelPembilangVal(activeRecord.variabelPembilangVal !== null ? activeRecord.variabelPembilangVal.toString() : '');
-        setVariabelPenyebutVal(activeRecord.variabelPenyebutVal !== null ? activeRecord.variabelPenyebutVal.toString() : '');
-        setBuktiDukung(activeRecord.buktiDukung || '');
+        setRealisasiValue(activeRecord.realisasiBulanan !== null ? formatNumberForDisplay(activeRecord.realisasiBulanan) : '');
+        setVariabelJumlahVal(activeRecord.variabelJumlahVal !== null ? formatNumberForDisplay(activeRecord.variabelJumlahVal) : '');
+        setVariabelPembilangVal(activeRecord.variabelPembilangVal !== null ? formatNumberForDisplay(activeRecord.variabelPembilangVal) : '');
+        setVariabelPenyebutVal(activeRecord.variabelPenyebutVal !== null ? formatNumberForDisplay(activeRecord.variabelPenyebutVal) : '');
+        const parsed = parseBuktiDukung(activeRecord.buktiDukung || '');
+        setBuktiDukungFiles(parsed.length > 0 ? parsed.map(f => ({ ...f, verifyStatus: null, checking: false })) : [{ name: '', url: '', verifyStatus: null, checking: false }]);
         setKendala(activeRecord.kendala || '');
         setSolusi(activeRecord.solusi || '');
         setPendorong(activeRecord.faktorPendorong || '');
         setInovasi(activeRecord.inovasi || '');
-        setVerifyStatus(null);
       } else {
         setRealisasiValue('');
         setVariabelJumlahVal('');
         setVariabelPembilangVal('');
         setVariabelPenyebutVal('');
-        setBuktiDukung('');
+        setBuktiDukungFiles([{ name: '', url: '', verifyStatus: null, checking: false }]);
         setKendala('');
         setSolusi('');
         setPendorong('');
         setInovasi('');
-        setVerifyStatus(null);
       }
     }, 0);
     return () => clearTimeout(timer);
@@ -147,18 +146,18 @@ export default function EmployeeRealisasiPage() {
     const timer = setTimeout(() => {
       if (activeNode) {
         if (activeNode.metodePenghitungan === 'Persentase') {
-          const p = parseFloat(variabelPembilangVal);
-          const y = parseFloat(variabelPenyebutVal);
+          const p = parseFloat(parseToStandardNumber(variabelPembilangVal));
+          const y = parseFloat(parseToStandardNumber(variabelPenyebutVal));
           if (!isNaN(p) && !isNaN(y) && y !== 0) {
             const calc = ((p / y) * 100).toFixed(2);
-            setRealisasiValue(parseFloat(calc).toString());
+            setRealisasiValue(formatNumberForDisplay(parseFloat(calc)));
           } else {
             setRealisasiValue('');
           }
         } else if (activeNode.metodePenghitungan === 'Jumlah') {
-          const v = parseFloat(variabelJumlahVal);
+          const v = parseFloat(parseToStandardNumber(variabelJumlahVal));
           if (!isNaN(v)) {
-            setRealisasiValue(v.toString());
+            setRealisasiValue(formatNumberForDisplay(v));
           } else {
             setRealisasiValue('');
           }
@@ -168,31 +167,116 @@ export default function EmployeeRealisasiPage() {
     return () => clearTimeout(timer);
   }, [variabelJumlahVal, variabelPembilangVal, variabelPenyebutVal, activeNode]);
 
-  // Google Drive link verification
-  const handleVerifyLink = async (url) => {
-    setBuktiDukung(url);
+  // Multi-file input handlers
+  const handleAddFileRow = () => {
+    setBuktiDukungFiles([...buktiDukungFiles, { name: '', url: '', verifyStatus: null, checking: false }]);
+  };
+
+  const handleRemoveFileRow = (index) => {
+    const newFiles = [...buktiDukungFiles];
+    newFiles.splice(index, 1);
+    setBuktiDukungFiles(newFiles.length > 0 ? newFiles : [{ name: '', url: '', verifyStatus: null, checking: false }]);
+  };
+
+  const handleNameChange = (index, name) => {
+    const newFiles = [...buktiDukungFiles];
+    newFiles[index].name = name;
+    setBuktiDukungFiles(newFiles);
+  };
+
+  const handleUrlChange = async (index, url) => {
+    const newFiles = [...buktiDukungFiles];
+    newFiles[index].url = url;
+    
+    if (url) {
+      newFiles[index].name = getFilenameFromUrl(url);
+    } else {
+      newFiles[index].name = '';
+    }
+    
+    setBuktiDukungFiles([...newFiles]);
+
     if (!url) {
-      setVerifyStatus(null);
+      newFiles[index].verifyStatus = null;
+      setBuktiDukungFiles([...newFiles]);
       return;
     }
-    setCheckingLink(true);
-    setVerifyStatus({ checking: true, message: 'Memverifikasi link...' });
+
+    newFiles[index].checking = true;
+    newFiles[index].verifyStatus = { checking: true, message: 'Memverifikasi link...' };
+    setBuktiDukungFiles([...newFiles]);
+
     try {
       const res = await fetchWithAuth('/api/verify-link', {
         method: 'POST',
         body: JSON.stringify({ url })
       });
+      // Retrieve fresh state reference to avoid stale closures in fast typing
+      setBuktiDukungFiles(currentFiles => {
+        const updated = [...currentFiles];
+        if (updated[index]) {
+          if (res.ok) {
+            updated[index].verifyStatus = res.json ? null : res; // Will parse below
+          } else {
+            updated[index].verifyStatus = { isDrive: false, isPublic: false, message: 'Gagal menghubungi server verifikasi.' };
+          }
+          updated[index].checking = false;
+        }
+        return updated;
+      });
+
       if (res.ok) {
         const result = await res.json();
-        setVerifyStatus(result);
-      } else {
-        setVerifyStatus({ isDrive: false, isPublic: false, message: 'Gagal menghubungi server verifikasi.' });
+        setBuktiDukungFiles(currentFiles => {
+          const updated = [...currentFiles];
+          if (updated[index]) {
+            updated[index].verifyStatus = result;
+          }
+          return updated;
+        });
       }
     } catch (e) {
-      setVerifyStatus({ isDrive: false, isPublic: false, message: 'Kesalahan jaringan.' });
-    } finally {
-      setCheckingLink(false);
+      setBuktiDukungFiles(currentFiles => {
+        const updated = [...currentFiles];
+        if (updated[index]) {
+          updated[index].verifyStatus = { isDrive: false, isPublic: false, message: 'Kesalahan jaringan.' };
+          updated[index].checking = false;
+        }
+        return updated;
+      });
     }
+  };
+
+  const getVerifyBadgeForFile = (file) => {
+    if (!file.verifyStatus) return null;
+    if (file.verifyStatus.checking) {
+      return (
+        <div className="verify-badge checking" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', marginTop: '4px' }}>
+          <i className="fa-solid fa-spinner fa-spin text-orange"></i> {file.verifyStatus.message}
+        </div>
+      );
+    }
+    
+    if (file.verifyStatus.isDrive) {
+      if (file.verifyStatus.isPublic) {
+        return (
+          <div className="verify-badge verified-public" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--success)', marginTop: '4px' }}>
+            <i className="fa-solid fa-circle-check"></i> Link Publik (Siap diverifikasi)
+          </div>
+        );
+      } else {
+        return (
+          <div className="verify-badge verified-private" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }}>
+            <i className="fa-solid fa-circle-xmark"></i> Link Privat (Butuh Akses / Login)
+          </div>
+        );
+      }
+    }
+    return (
+      <div className="verify-badge verified-external" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--info)', marginTop: '4px' }}>
+        <i className="fa-solid fa-link"></i> {file.verifyStatus.message}
+      </div>
+    );
   };
 
   const handleSaveRealisasi = async (e) => {
@@ -206,13 +290,13 @@ export default function EmployeeRealisasiPage() {
     }
 
     const target = activeRecord.targetBulanan;
-    let realisasi = parseFloat(realisasiValue);
+    let realisasi = parseFloat(parseToStandardNumber(realisasiValue));
 
     // Validate variables on client-side too
     if (activeNode) {
       if (activeNode.metodePenghitungan === 'Persentase') {
-        const p = parseFloat(variabelPembilangVal);
-        const y = parseFloat(variabelPenyebutVal);
+        const p = parseFloat(parseToStandardNumber(variabelPembilangVal));
+        const y = parseFloat(parseToStandardNumber(variabelPenyebutVal));
         if (isNaN(p) || isNaN(y)) {
           setError('Variabel pembilang dan penyebut wajib diisi angka.');
           return;
@@ -223,7 +307,7 @@ export default function EmployeeRealisasiPage() {
         }
         realisasi = parseFloat(((p / y) * 100).toFixed(2));
       } else if (activeNode.metodePenghitungan === 'Jumlah') {
-        const v = parseFloat(variabelJumlahVal);
+        const v = parseFloat(parseToStandardNumber(variabelJumlahVal));
         if (isNaN(v)) {
           setError('Variabel jumlah wajib diisi angka.');
           return;
@@ -237,7 +321,21 @@ export default function EmployeeRealisasiPage() {
       }
     }
 
-    // Validation condition
+    // Filter out rows without a URL
+    const validFiles = buktiDukungFiles.filter(f => f.url.trim() !== '');
+    if (validFiles.length === 0) {
+      setError('Minimal satu link Bukti Dukung wajib diisi.');
+      return;
+    }
+
+    // Ensure all valid files have a name (fallback to domain/filename)
+    const finalFiles = validFiles.map(f => ({
+      name: f.name.trim() || getFilenameFromUrl(f.url),
+      url: f.url.trim()
+    }));
+
+    const buktiDukungJson = JSON.stringify(finalFiles);
+
     const isDecreasing = activeNode && activeNode.tipeTarget === 'Kondisi Akhir Menurun';
     const isUnderperforming = isDecreasing ? realisasi > target : realisasi < target;
 
@@ -246,15 +344,15 @@ export default function EmployeeRealisasiPage() {
       indicatorId: selectedId,
       bulan: parseInt(selectedBulan),
       realisasiBulanan: realisasi,
-      buktiDukung,
+      buktiDukung: buktiDukungJson,
       kendala: isUnderperforming ? kendala : '',
       solusi: isUnderperforming ? solusi : '',
       faktorPendorong: isUnderperforming ? '' : pendorong,
       inovasi: isUnderperforming ? '' : inovasi,
       status: 'Diajukan',
-      variabelJumlahVal: activeNode?.metodePenghitungan === 'Jumlah' ? variabelJumlahVal : '',
-      variabelPembilangVal: activeNode?.metodePenghitungan === 'Persentase' ? variabelPembilangVal : '',
-      variabelPenyebutVal: activeNode?.metodePenghitungan === 'Persentase' ? variabelPenyebutVal : ''
+      variabelJumlahVal: activeNode?.metodePenghitungan === 'Jumlah' ? parseToStandardNumber(variabelJumlahVal) : '',
+      variabelPembilangVal: activeNode?.metodePenghitungan === 'Persentase' ? parseToStandardNumber(variabelPembilangVal) : '',
+      variabelPenyebutVal: activeNode?.metodePenghitungan === 'Persentase' ? parseToStandardNumber(variabelPenyebutVal) : ''
     };
 
     try {
@@ -404,12 +502,11 @@ export default function EmployeeRealisasiPage() {
                         {activeNode.variabelPembilang || "Variabel Pembilang (Numerator)"}
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         className="form-control"
                         disabled={!isRealisasiEditable}
                         value={variabelPembilangVal}
-                        onChange={(e) => setVariabelPembilangVal(e.target.value)}
+                        onChange={(e) => setVariabelPembilangVal(formatIndonesianInput(e.target.value))}
                         required
                         placeholder="Masukkan nilai pembilang"
                       />
@@ -419,12 +516,11 @@ export default function EmployeeRealisasiPage() {
                         {activeNode.variabelPenyebut || "Variabel Penyebut (Denominator)"}
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
                         className="form-control"
                         disabled={!isRealisasiEditable}
                         value={variabelPenyebutVal}
-                        onChange={(e) => setVariabelPenyebutVal(e.target.value)}
+                        onChange={(e) => setVariabelPenyebutVal(formatIndonesianInput(e.target.value))}
                         required
                         placeholder="Masukkan nilai penyebut"
                       />
@@ -440,46 +536,124 @@ export default function EmployeeRealisasiPage() {
                   <div className="form-group mb-3">
                     <label>{activeNode.variabelJumlah || "Jumlah Capaian"}</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       className="form-control"
                       disabled={!isRealisasiEditable}
                       value={variabelJumlahVal}
-                      onChange={(e) => setVariabelJumlahVal(e.target.value)}
+                      onChange={(e) => setVariabelJumlahVal(formatIndonesianInput(e.target.value))}
                       required
                       placeholder="Masukkan angka capaian"
                     />
                   </div>
                 ) : (
                   <div className="form-group mb-3">
-                    <label>Angka Realisasi Capaian</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>Angka Realisasi Capaian</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
                       className="form-control"
                       disabled={!isRealisasiEditable}
                       value={realisasiValue}
-                      onChange={(e) => setRealisasiValue(e.target.value)}
+                      onChange={(e) => setRealisasiValue(formatIndonesianInput(e.target.value))}
                       required
                       placeholder="Masukkan angka pencapaian"
                     />
                   </div>
                 )}
 
-                <div className="form-group mb-3">
-                  <label>Link Data Dukung (Google Drive / Spreadsheet Publik)</label>
-                  <div className="input-verify-wrapper">
-                    <input
-                      type="text"
-                      className="form-control"
-                      disabled={!isRealisasiEditable}
-                      value={buktiDukung}
-                      onChange={(e) => handleVerifyLink(e.target.value)}
-                      placeholder="Contoh: https://drive.google.com/file/d/.../view"
-                      required
-                    />
-                    {getVerifyBadge()}
+                <div className="form-group mb-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <label style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fa-solid fa-folder-open text-orange"></i> File / Link Bukti Dukung Realisasi
+                  </label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {buktiDukungFiles.map((file, index) => (
+                      <div 
+                        key={index} 
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.02)', 
+                          border: '1px solid var(--glass-border)', 
+                          padding: '12px 16px', 
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          position: 'relative'
+                        }}
+                      >
+                        {buktiDukungFiles.length > 1 && (
+                          <button
+                            type="button"
+                            disabled={!isRealisasiEditable}
+                            onClick={() => handleRemoveFileRow(index)}
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--danger)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              fontSize: '14px',
+                              opacity: isRealisasiEditable ? 0.7 : 0.3
+                            }}
+                            title="Hapus File Bukti Dukung"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingRight: buktiDukungFiles.length > 1 ? '24px' : '0' }}>
+                          <div className="form-group">
+                            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Link / URL Bukti Dukung:</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              disabled={!isRealisasiEditable}
+                              value={file.url}
+                              onChange={(e) => handleUrlChange(index, e.target.value)}
+                              placeholder="Contoh: https://drive.google.com/file/d/.../view"
+                              required={index === 0}
+                            />
+                            {getVerifyBadgeForFile(file)}
+                          </div>
+                          
+                          <div className="form-group">
+                            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Nama Dokumen / Keterangan:</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              disabled={!isRealisasiEditable}
+                              value={file.name}
+                              onChange={(e) => handleNameChange(index, e.target.value)}
+                              placeholder="Masukkan nama dokumen pendukung..."
+                              required={file.url.trim() !== ''}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+
+                  {isRealisasiEditable && (
+                    <button
+                      type="button"
+                      onClick={handleAddFileRow}
+                      className="btn btn-sm btn-secondary"
+                      style={{ 
+                        alignSelf: 'flex-start', 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        padding: '6px 12px', 
+                        fontSize: '12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid var(--glass-border)'
+                      }}
+                    >
+                      <i className="fa-solid fa-plus-circle text-orange"></i> Tambah File Bukti Dukung
+                    </button>
+                  )}
                 </div>
 
                 {/* Case A: Underperform (requires Kendala & Solusi) */}

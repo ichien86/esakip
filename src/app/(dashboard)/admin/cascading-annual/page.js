@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
+import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 
 export default function AdminCascadingAnnualPage() {
   const { fetchWithAuth, activeRole, activeBidang, activeYear } = useSimulation();
@@ -26,8 +27,9 @@ export default function AdminCascadingAnnualPage() {
   const [splitTargets, setSplitTargets] = useState({});
   const [selectedBidang, setSelectedBidang] = useState(null);
   const tahun = activeYear;
-  const [anggaran, setAnggaran] = useState(0);
-  const [anggaranDpa, setAnggaranDpa] = useState(0);
+  const [anggaran, setAnggaran] = useState('0');
+  const [anggaranDpa, setAnggaranDpa] = useState('0');
+  const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -306,29 +308,46 @@ export default function AdminCascadingAnnualPage() {
     return false;
   };
 
-  const loadData = async () => {
+  const loadStaticMetadata = async () => {
     try {
-      const res = await fetchWithAuth(`/api/renja/${tahun}`);
-      if (res.ok) setNodes(await res.json());
-
-      const fRes = await fetchWithAuth('/api/cascading5years');
-      if (fRes.ok) setFiveYearNodes(await fRes.json());
-
-      const mpRes = await fetchWithAuth('/api/master/program');
+      const [mpRes, mkRes, mskRes] = await Promise.all([
+        fetchWithAuth('/api/master/program'),
+        fetchWithAuth('/api/master/kegiatan'),
+        fetchWithAuth('/api/master/subkegiatan')
+      ]);
+      
       if (mpRes.ok) setMasterPrograms(await mpRes.json());
-
-      const mkRes = await fetchWithAuth('/api/master/kegiatan');
       if (mkRes.ok) setMasterKegiatans(await mkRes.json());
-
-      const mskRes = await fetchWithAuth('/api/master/subkegiatan');
       if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
     } catch (e) {
-      console.error('Failed to load cascading data', e);
+      console.error('Failed to load static metadata', e);
     }
   };
 
+  const loadTreeData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
+    try {
+      const [res, fRes] = await Promise.all([
+        fetchWithAuth(`/api/renja/${tahun}`),
+        fetchWithAuth('/api/cascading5years')
+      ]);
+      if (res.ok) setNodes(await res.json());
+      if (fRes.ok) setFiveYearNodes(await fRes.json());
+    } catch (e) {
+      console.error('Failed to load tree data', e);
+    } finally {
+      if (!isSilent) setLoading(false);
+    }
+  };
+
+  // Load static master data only once on mount
   useEffect(() => {
-    loadData();
+    loadStaticMetadata();
+  }, []);
+
+  // Load tree data when tahun changes
+  useEffect(() => {
+    loadTreeData(false);
   }, [tahun]);
 
   const handleBidangChange = (bidang) => {
@@ -363,9 +382,12 @@ export default function AdminCascadingAnnualPage() {
       sasaran,
       nomenklatur,
       masterId: selectedMasterId || null,
-      anggaran: level === 'sasaran_subkegiatan' ? (Number(anggaran) || 0) : 0,
-      anggaranDpa: level === 'sasaran_subkegiatan' ? (Number(anggaranDpa) || 0) : 0,
-      indicators: tempIndicators
+      anggaran: level === 'sasaran_subkegiatan' ? (Number(parseToStandardNumber(anggaran)) || 0) : 0,
+      anggaranDpa: level === 'sasaran_subkegiatan' ? (Number(parseToStandardNumber(anggaranDpa)) || 0) : 0,
+      indicators: tempIndicators.map(ind => ({
+        ...ind,
+        target: parseToStandardNumber(ind.target)
+      }))
     };
 
     try {
@@ -376,7 +398,7 @@ export default function AdminCascadingAnnualPage() {
       });
       if (res.ok) {
         setSuccess('Item Indikator Renja berhasil disimpan.');
-        loadData();
+        loadTreeData(true);
         setShowFormModal(false);
       } else {
         const err = await res.json();
@@ -404,14 +426,19 @@ export default function AdminCascadingAnnualPage() {
     
     setSplitTargets(node.splitTargets || {});
     setSelectedBidang(node.selectedBidang || null);
-    setAnggaran(node.anggaran || 0);
-    setAnggaranDpa(node.anggaranDpa || 0);
-    setTempIndicators(node.indicators || []);
+    setAnggaran(formatNumberForDisplay(node.anggaran || 0));
+    setAnggaranDpa(formatNumberForDisplay(node.anggaranDpa || 0));
+    
+    const formattedIndicators = (node.indicators || []).map(ind => ({
+      ...ind,
+      target: formatNumberForDisplay(ind.target || '0')
+    }));
+    setTempIndicators(formattedIndicators);
   };
 
   const handleTempIndicatorTargetChange = (idx, value) => {
     const updated = [...tempIndicators];
-    updated[idx].target = value;
+    updated[idx].target = formatIndonesianInput(value);
     setTempIndicators(updated);
   };
 
@@ -902,7 +929,7 @@ export default function AdminCascadingAnnualPage() {
           });
           if (res.ok) {
             setSuccess('Berhasil menyinkronkan data pohon dan indikator dari Renstra!');
-            loadData();
+            loadTreeData(true);
           } else {
             const err = await res.json();
             setError(err.error || 'Gagal menyinkronkan data.');
@@ -936,7 +963,7 @@ export default function AdminCascadingAnnualPage() {
       if (res.ok) {
         const result = await res.json();
         setImportDpaSuccess(`Sukses! Berhasil memperbarui anggaran DPA pada ${result.updatedCount} subkegiatan.`);
-        loadData();
+        loadTreeData(true);
         setTimeout(() => {
           setShowDpaImportModal(false);
           setDpaFile(null);
@@ -1312,7 +1339,14 @@ export default function AdminCascadingAnnualPage() {
 
       <div className="glass-panel" style={{ width: '100%' }}>
         <div className="panel-header justify-between">
-          <h3><i className="fa-solid fa-network-wired text-orange"></i> Struktur Indikator Renja {tahun}</h3>
+          <h3>
+            <i className="fa-solid fa-network-wired text-orange"></i> Struktur Indikator Renja {tahun}
+            {loading && nodes.length > 0 && (
+              <span className="badge" style={{ marginLeft: '12px', fontSize: '10px', background: 'rgba(255,107,0,0.15)', color: 'var(--primary-orange)', border: '1px solid rgba(255,107,0,0.3)', verticalAlign: 'middle', textTransform: 'none', fontWeight: 'normal' }}>
+                <i className="fa-solid fa-spinner fa-spin mr-1"></i> Memperbarui data...
+              </span>
+            )}
+          </h3>
           <div className="print-exclude" style={{ display: 'flex', gap: '8px' }}>
             <button 
               type="button"
@@ -1393,7 +1427,12 @@ export default function AdminCascadingAnnualPage() {
           </div>
 
           <div className={`cascading-tree-editor ${printMode === 'cascading' || printMode === 'orgchart' ? 'print-exclude' : ''}`} style={{ display: viewMode === 'list' ? 'block' : 'none' }}>
-            {nodes.filter(n => n.parentId === null).length === 0 ? (
+            {loading && nodes.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
+                <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
+                <p>Memuat data Indikator Renja...</p>
+              </div>
+            ) : nodes.filter(n => n.parentId === null).length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
                 <i className="fa-solid fa-folder-open" style={{ fontSize: '32px', marginBottom: '12px', color: 'var(--text-muted)' }}></i>
                 <p>Belum ada data Indikator Renja tahun {tahun}. Klik &quot;Sinkronisasi dari Renstra&quot; untuk memulai.</p>
@@ -1407,7 +1446,12 @@ export default function AdminCascadingAnnualPage() {
             <div className={`org-chart-container ${printMode === 'cascading' || printMode === 'tree' ? 'print-exclude' : ''}`}>
               <div className="org-chart-wrapper">
                 <div className="org-chart">
-                  {nodes.filter(n => n.parentId === null).length === 0 ? (
+                  {loading && nodes.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
+                      <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
+                      <p>Memuat data Indikator Renja...</p>
+                    </div>
+                  ) : nodes.filter(n => n.parentId === null).length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
                       <p>Belum ada data Indikator Renja.</p>
                     </div>
@@ -1514,20 +1558,20 @@ export default function AdminCascadingAnnualPage() {
                   <div className="form-group">
                     <label style={{ fontWeight: 600, color: 'var(--success)' }}>Anggaran Renja (Rupiah)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="form-control"
                       value={anggaran}
-                      onChange={(e) => setAnggaran(e.target.value)}
+                      onChange={(e) => setAnggaran(formatIndonesianInput(e.target.value))}
                       required
                     />
                   </div>
                   <div className="form-group">
                     <label style={{ fontWeight: 600, color: 'var(--info)' }}>Anggaran DPA (Rupiah)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="form-control"
                       value={anggaranDpa}
-                      onChange={(e) => setAnggaranDpa(e.target.value)}
+                      onChange={(e) => setAnggaranDpa(formatIndonesianInput(e.target.value))}
                       required
                     />
                   </div>

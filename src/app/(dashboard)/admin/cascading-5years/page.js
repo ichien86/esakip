@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
+import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 
 export default function AdminCascading5YearsPage() {
   const { fetchWithAuth, activeRole, activeBidang, refreshMetadata } = useSimulation();
@@ -107,29 +108,44 @@ export default function AdminCascading5YearsPage() {
     sasaran_aktivitas: '#64748b'
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadMasterData = async () => {
+    try {
+      const [mpRes, mkRes, mskRes] = await Promise.all([
+        fetchWithAuth('/api/master/program'),
+        fetchWithAuth('/api/master/kegiatan'),
+        fetchWithAuth('/api/master/subkegiatan')
+      ]);
+      
+      if (mpRes.ok) setMasterPrograms(await mpRes.json());
+      if (mkRes.ok) setMasterKegiatans(await mkRes.json());
+      if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
+    } catch (e) {
+      console.error('Failed to load master data', e);
+    }
+  };
+
+  const loadTreeData = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const res = await fetchWithAuth('/api/cascading5years');
       if (res.ok) setNodes(await res.json());
-
-      const mpRes = await fetchWithAuth('/api/master/program');
-      if (mpRes.ok) setMasterPrograms(await mpRes.json());
-
-      const mkRes = await fetchWithAuth('/api/master/kegiatan');
-      if (mkRes.ok) setMasterKegiatans(await mkRes.json());
-
-      const mskRes = await fetchWithAuth('/api/master/subkegiatan');
-      if (mskRes.ok) setMasterSubkegiatans(await mskRes.json());
     } catch (e) {
-      console.error('Failed to load cascading data', e);
+      console.error('Failed to load cascading tree data', e);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    const initLoad = async () => {
+      setLoading(true);
+      await Promise.all([
+        loadTreeData(true),
+        loadMasterData()
+      ]);
+      setLoading(false);
+    };
+    initLoad();
   }, []);
 
   // Auto-close alert after 10 seconds
@@ -149,12 +165,12 @@ export default function AdminCascading5YearsPage() {
 
   // Auto calculate Budget Akhir (always the sum of 2025-2030 budgets)
   useEffect(() => {
-    const val2025 = parseFloat(b2025) || 0;
-    const val2026 = parseFloat(b2026) || 0;
-    const val2027 = parseFloat(b2027) || 0;
-    const val2028 = parseFloat(b2028) || 0;
-    const val2029 = parseFloat(b2029) || 0;
-    const val2030 = parseFloat(b2030) || 0;
+    const val2025 = parseFloat(parseToStandardNumber(b2025)) || 0;
+    const val2026 = parseFloat(parseToStandardNumber(b2026)) || 0;
+    const val2027 = parseFloat(parseToStandardNumber(b2027)) || 0;
+    const val2028 = parseFloat(parseToStandardNumber(b2028)) || 0;
+    const val2029 = parseFloat(parseToStandardNumber(b2029)) || 0;
+    const val2030 = parseFloat(parseToStandardNumber(b2030)) || 0;
     const sum = val2025 + val2026 + val2027 + val2028 + val2029 + val2030;
     setBudgetAkhir(sum.toString());
   }, [b2025, b2026, b2027, b2028, b2029, b2030]);
@@ -188,7 +204,6 @@ export default function AdminCascading5YearsPage() {
   // Handle level switch: reset fields
   useEffect(() => {
     if (!isEditing) {
-      setParentId('');
       setText('');
       setSasaran('');
       setNomenklatur('');
@@ -340,13 +355,13 @@ export default function AdminCascading5YearsPage() {
           indikator: item.indikator || '-',
           satuan: item.satuan || '-',
           tipeTarget: existingInd?.tipeTarget || 'Kondisi Akhir Naik',
-          target2025: t2025 || '0',
-          target2026: t2026 || '0',
-          target2027: t2027 || '0',
-          target2028: t2028 || '0',
-          target2029: t2029 || '0',
-          target2030: t2030 || '0',
-          targetAkhir: tAkhir || '0',
+          target2025: parseToStandardNumber(t2025),
+          target2026: parseToStandardNumber(t2026),
+          target2027: parseToStandardNumber(t2027),
+          target2028: parseToStandardNumber(t2028),
+          target2029: parseToStandardNumber(t2029),
+          target2030: parseToStandardNumber(t2030),
+          targetAkhir: parseToStandardNumber(tAkhir),
           definisiOperasional: existingInd?.definisiOperasional || '',
           metodePenghitungan: existingInd?.metodePenghitungan || 'Jumlah',
           variabelJumlah: existingInd?.variabelJumlah || '',
@@ -368,13 +383,13 @@ export default function AdminCascading5YearsPage() {
       crossCuttingType,
       selectedBidang,
       splitTargets,
-      anggaran2025: level === 'sasaran_subkegiatan' ? b2025 : '0',
-      anggaran2026: level === 'sasaran_subkegiatan' ? b2026 : '0',
-      anggaran2027: level === 'sasaran_subkegiatan' ? b2027 : '0',
-      anggaran2028: level === 'sasaran_subkegiatan' ? b2028 : '0',
-      anggaran2029: level === 'sasaran_subkegiatan' ? b2029 : '0',
-      anggaran2030: level === 'sasaran_subkegiatan' ? b2030 : '0',
-      anggaranAkhir: level === 'sasaran_subkegiatan' ? budgetAkhir : '0',
+      anggaran2025: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2025) : '0',
+      anggaran2026: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2026) : '0',
+      anggaran2027: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2027) : '0',
+      anggaran2028: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2028) : '0',
+      anggaran2029: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2029) : '0',
+      anggaran2030: level === 'sasaran_subkegiatan' ? parseToStandardNumber(b2030) : '0',
+      anggaranAkhir: level === 'sasaran_subkegiatan' ? parseToStandardNumber(budgetAkhir) : '0',
       requesterRole: activeRole,
       requesterBidang: activeBidang,
       sasaran: level === 'sasaran_subkegiatan' ? sasaran : text,
@@ -392,7 +407,7 @@ export default function AdminCascading5YearsPage() {
       if (res.ok) {
         setSuccess('Item Indikator Renstra berhasil disimpan.');
         resetForm();
-        loadData();
+        loadTreeData(true);
         if (refreshMetadata) refreshMetadata();
         setShowFormModal(false);
       } else {
@@ -424,28 +439,28 @@ export default function AdminCascading5YearsPage() {
     setSplitTargets(node.splitTargets || {});
     setSelectedBidang(node.selectedBidang || null);
     
-    setB2025(node.anggaran2025 || '0');
-    setB2026(node.anggaran2026 || '0');
-    setB2027(node.anggaran2027 || '0');
-    setB2028(node.anggaran2028 || '0');
-    setB2029(node.anggaran2029 || '0');
-    setB2030(node.anggaran2030 || '0');
+    setB2025(formatNumberForDisplay(node.anggaran2025 || '0'));
+    setB2026(formatNumberForDisplay(node.anggaran2026 || '0'));
+    setB2027(formatNumberForDisplay(node.anggaran2027 || '0'));
+    setB2028(formatNumberForDisplay(node.anggaran2028 || '0'));
+    setB2029(formatNumberForDisplay(node.anggaran2029 || '0'));
+    setB2030(formatNumberForDisplay(node.anggaran2030 || '0'));
 
     // Load target kinerja dari indicator pertama (subkegiatan hanya punya 1 indikator)
     const firstInd = node.indicators && node.indicators.length > 0 ? node.indicators[0] : {};
-    setT2025(firstInd.target2025 || '0');
-    setT2026(firstInd.target2026 || '0');
-    setT2027(firstInd.target2027 || '0');
-    setT2028(firstInd.target2028 || '0');
-    setT2029(firstInd.target2029 || '0');
-    setT2030(firstInd.target2030 || '0');
-    setTAkhir(firstInd.targetAkhir || '0');
+    setT2025(formatNumberForDisplay(firstInd.target2025 || '0'));
+    setT2026(formatNumberForDisplay(firstInd.target2026 || '0'));
+    setT2027(formatNumberForDisplay(firstInd.target2027 || '0'));
+    setT2028(formatNumberForDisplay(firstInd.target2028 || '0'));
+    setT2029(formatNumberForDisplay(firstInd.target2029 || '0'));
+    setT2030(formatNumberForDisplay(firstInd.target2030 || '0'));
+    setTAkhir(formatNumberForDisplay(firstInd.targetAkhir || '0'));
   };
 
-  const resetForm = () => {
+  const resetForm = (targetLevel = 'tujuan') => {
     setIsEditing(false);
     setFormId('');
-    setLevel('tujuan');
+    setLevel(targetLevel);
     setParentId('');
     setText('');
     setSasaran('');
@@ -1011,19 +1026,13 @@ export default function AdminCascading5YearsPage() {
   };
 
   const openAddModal = (parentNode = null, targetLevel = null) => {
-    resetForm();
+    const defaultLevel = targetLevel || (parentNode ? (getValidChildLevels(parentNode.level)[0] || 'tujuan') : 'tujuan');
+    resetForm(defaultLevel);
     if (parentNode) {
       setParentId(parentNode.id);
-      if (targetLevel) {
-        setLevel(targetLevel);
-      } else {
-        const childLevels = getValidChildLevels(parentNode.level);
-        setLevel(childLevels[0] || 'tujuan');
-      }
       setSelectedBidangs(parentNode.bidangPengampu || []);
     } else {
       setParentId('');
-      setLevel('tujuan');
       setSelectedBidangs([]);
     }
     setShowFormModal(true);
@@ -1051,7 +1060,7 @@ export default function AdminCascading5YearsPage() {
       });
       if (res.ok) {
         setSuccess('Node beserta turunannya berhasil dihapus.');
-        loadData();
+        loadTreeData(true);
         if (refreshMetadata) refreshMetadata();
       } else {
         const err = await res.json();
@@ -1244,7 +1253,7 @@ export default function AdminCascading5YearsPage() {
       if (res.ok) {
         setSuccess('Daftar indikator berhasil diperbarui.');
         setShowIndicatorModal(false);
-        loadData();
+        loadTreeData(true);
       } else {
         const err = await res.json();
         showAlert(err.error || 'Gagal menyimpan indikator.', 'error');
@@ -1596,7 +1605,14 @@ export default function AdminCascading5YearsPage() {
 
       <div className="glass-panel" style={{ width: '100%' }}>
         <div className="panel-header justify-between">
-          <h3><i className="fa-solid fa-folder-tree text-orange"></i> Struktur Indikator Renstra</h3>
+          <h3>
+            <i className="fa-solid fa-folder-tree text-orange"></i> Struktur Indikator Renstra
+            {loading && nodes.length > 0 && (
+              <span className="badge" style={{ marginLeft: '12px', fontSize: '10px', background: 'rgba(255,107,0,0.15)', color: 'var(--primary-orange)', border: '1px solid rgba(255,107,0,0.3)', verticalAlign: 'middle', textTransform: 'none', fontWeight: 'normal' }}>
+                <i className="fa-solid fa-spinner fa-spin mr-1"></i> Memperbarui data...
+              </span>
+            )}
+          </h3>
           <div className="print-exclude" style={{ display: 'flex', gap: '8px' }}>
             <button 
               type="button"
@@ -1677,7 +1693,7 @@ export default function AdminCascading5YearsPage() {
           </div>
 
           <div className={`cascading-tree-editor ${printMode === 'cascading' || printMode === 'orgchart' ? 'print-exclude' : ''}`} style={{ display: viewMode === 'list' ? 'block' : 'none' }}>
-            {loading ? (
+            {loading && nodes.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
                 <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
                 <p>Memuat data Indikator Renstra...</p>
@@ -1696,7 +1712,7 @@ export default function AdminCascading5YearsPage() {
             <div className={`org-chart-container ${printMode === 'cascading' || printMode === 'tree' ? 'print-exclude' : ''}`}>
               <div className="org-chart-wrapper">
                 <div className="org-chart">
-                  {loading ? (
+                  {loading && nodes.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '60px 0' }}>
                       <i className="fa-solid fa-circle-notch fa-spin fa-2x text-orange" style={{ marginBottom: '12px' }}></i>
                       <p>Memuat data Indikator Renstra...</p>
@@ -2089,11 +2105,11 @@ export default function AdminCascading5YearsPage() {
                           <strong style={{ fontSize: '12px', color: 'var(--primary-orange)' }}>Tahun {year}</strong>
                           <div className="form-group mt-1">
                             <label style={{ fontSize: '10px', margin: 0, color: '#34D399' }}>Target Kinerja</label>
-                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={tState} onChange={(e) => setTState(e.target.value)} placeholder="0" />
+                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={tState} onChange={(e) => setTState(formatIndonesianInput(e.target.value))} placeholder="0" />
                           </div>
                           <div className="form-group mt-1">
                             <label style={{ fontSize: '10px', margin: 0, color: 'var(--info)' }}>Anggaran (Rp)</label>
-                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={bState} onChange={(e) => setBState(e.target.value)} placeholder="0" />
+                            <input type="text" className="form-control" style={{ padding: '4px 8px', fontSize: '11px' }} value={bState} onChange={(e) => setBState(formatIndonesianInput(e.target.value))} placeholder="0" />
                           </div>
                         </div>
                       );
@@ -2103,7 +2119,7 @@ export default function AdminCascading5YearsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div className="form-group" style={{ background: 'rgba(16,185,129,0.06)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)' }}>
                       <label style={{ color: '#34D399', fontSize: '12px' }}>Target Akhir Periode</label>
-                      <input type="text" className="form-control" value={tAkhir} onChange={(e) => setTAkhir(e.target.value)} style={{ fontWeight: 'bold' }} />
+                      <input type="text" className="form-control" value={tAkhir} onChange={(e) => setTAkhir(formatIndonesianInput(e.target.value))} style={{ fontWeight: 'bold' }} />
                     </div>
                     <div className="form-group" style={{ background: 'rgba(255,255,255,0.04)', padding: '10px', borderRadius: '8px' }}>
                       <label style={{ fontSize: '12px' }}>Total Anggaran Akhir Periode</label>

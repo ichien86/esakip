@@ -58,3 +58,79 @@ export function getEmbedUrl(rawUrl) {
     return rawUrl;
   }
 }
+
+/**
+ * Extract a user-friendly document/file name from a URL.
+ */
+export function getFilenameFromUrl(url) {
+  if (!url) return '';
+  try {
+    const decoded = decodeURIComponent(url);
+    const urlObj = new URL(decoded);
+    
+    if (urlObj.hostname.includes('drive.google.com')) {
+      return 'Dokumen Google Drive';
+    }
+    if (urlObj.hostname.includes('docs.google.com')) {
+      if (urlObj.pathname.includes('/document/')) return 'Dokumen Google Docs';
+      if (urlObj.pathname.includes('/spreadsheets/')) return 'Google Sheets';
+      if (urlObj.pathname.includes('/presentation/')) return 'Google Slides';
+      if (urlObj.pathname.includes('/forms/')) return 'Google Form';
+      return 'Dokumen Google Workspace';
+    }
+    if (urlObj.hostname.includes('dropbox.com')) {
+      const pathname = urlObj.pathname;
+      const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+      return filename || 'Dokumen Dropbox';
+    }
+    if (urlObj.hostname.includes('onedrive.live.com') || urlObj.hostname.includes('sharepoint.com') || urlObj.hostname.includes('1drv.ms')) {
+      const pathname = urlObj.pathname;
+      let filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+      if (filename.includes('?')) {
+        filename = filename.substring(0, filename.indexOf('?'));
+      }
+      return filename || 'Dokumen OneDrive';
+    }
+
+    const pathname = urlObj.pathname;
+    let filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+    if (filename.includes('?')) {
+      filename = filename.substring(0, filename.indexOf('?'));
+    }
+    return filename || 'Dokumen Bukti Dukung';
+  } catch (e) {
+    const parts = url.split('/');
+    let lastPart = parts[parts.length - 1] || 'Dokumen Bukti Dukung';
+    if (lastPart.includes('?')) {
+      lastPart = lastPart.substring(0, lastPart.indexOf('?'));
+    }
+    return lastPart;
+  }
+}
+
+/**
+ * Safely parse a buktiDukung value which could be a serialized JSON array or a legacy single URL string.
+ */
+export function parseBuktiDukung(buktiDukungStr) {
+  if (!buktiDukungStr) return [];
+  const trimmed = buktiDukungStr.trim();
+  try {
+    if (trimmed.startsWith('[')) {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map(item => ({
+          name: item.name || getFilenameFromUrl(item.url),
+          url: item.url || ''
+        }));
+      }
+    }
+  } catch (e) {
+    // Fail silently and fall back to single link parsing
+  }
+
+  // Fallback to single legacy URL
+  return [{
+    name: getFilenameFromUrl(trimmed),
+    url: trimmed
+  }];
+}
