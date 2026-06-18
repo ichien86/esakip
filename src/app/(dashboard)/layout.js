@@ -284,7 +284,7 @@ export default function DashboardLayout({ children }) {
           <div className="header-title">
             <h1>E-AKIP BPBD Boyolali</h1>
             <p className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Aplikasi Evaluasi Kinerja Individu
+              Aplikasi Evaluasi Kinerja Internal Perangkat Daerah
               {systemSettings?.planning_locked && (
                 <span style={{
                   display: 'inline-flex',

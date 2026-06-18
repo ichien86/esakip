@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'E-AKIP BPBD Boyolali - Evaluasi Akuntabilitas Kinerja',
-  description: 'Aplikasi Evaluasi Akuntabilitas Kinerja Perangkat Daerah BPBD Boyolali',
+  description: 'Aplikasi Evaluasi Akuntabilitas Kinerja Internal Perangkat Daerah BPBD Boyolali',
 };
 
 export default function RootLayout({ children }) {
