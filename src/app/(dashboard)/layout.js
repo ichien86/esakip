@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Mobile Sidebar Backdrop */}
       {isMobile && !isSidebarCollapsed && (
-        <div 
+        <div
           className="sidebar-backdrop print-exclude"
           onClick={() => setIsSidebarCollapsed(true)}
           style={{
@@ -134,7 +134,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Hover Reveal Trigger for Desktop */}
       {!isMobile && isSidebarCollapsed && !isHoverExpanded && (
-        <div 
+        <div
           className="sidebar-hover-trigger print-exclude"
           onMouseEnter={() => setIsHoverExpanded(true)}
           style={{
@@ -150,7 +150,7 @@ export default function DashboardLayout({ children }) {
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`sidebar print-exclude ${isSidebarCollapsed ? 'collapsed' : ''} ${(!isMobile && isHoverExpanded) ? 'hover-expanded' : ''}`}
         onMouseLeave={() => {
           if (!isMobile && isSidebarCollapsed) {
@@ -257,35 +257,37 @@ export default function DashboardLayout({ children }) {
         </nav>
 
         <div className="sidebar-footer">
-          <p>Boyolali Metal (Melangkah Tangguh & Tanggap)</p>
+          <p>Boyolali Selalu Tersenyum</p>
         </div>
       </aside>
 
       {/* Main Content Area */}
       <main className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <header className="top-header print-exclude" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={toggleSidebar} 
-            className="sidebar-toggle-btn"
-            title={isSidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
-            style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid var(--glass-border)',
-              borderRadius: '6px',
-              color: 'white',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '16px',
-              transition: 'background 0.2s',
-              flexShrink: 0
-            }}
-          >
-            <i className={`fa-solid ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'}`}></i>
-          </button>
+          {isMobile && (
+            <button
+              onClick={toggleSidebar}
+              className="sidebar-toggle-btn"
+              title={isSidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '6px',
+                color: 'white',
+                width: '36px',
+                height: '36px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: '16px',
+                transition: 'background 0.2s',
+                flexShrink: 0
+              }}
+            >
+              <i className={`fa-solid ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'}`}></i>
+            </button>
+          )}
           <div className="header-title">
             <h1>E-AKIP BPBD Boyolali</h1>
             <p className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

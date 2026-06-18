@@ -98,6 +98,17 @@ export default function AdminCascadingAnnualPage() {
     setActiveMatchIndex(0);
   }, [searchQuery]);
 
+  // Reset printMode back to 'tree' after printing is completed or cancelled
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintMode('tree');
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   // Smooth scroll search matches into view
   useEffect(() => {
     if (searchQuery.trim()) {

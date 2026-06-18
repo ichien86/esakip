@@ -247,6 +247,17 @@ export default function AdminCascading5YearsPage() {
     };
   }, []);
 
+  // Reset printMode back to 'tree' after printing is completed or cancelled
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintMode('tree');
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
   // Reset activeMatchIndex when searchQuery changes
   useEffect(() => {
     setActiveMatchIndex(0);

@@ -187,6 +187,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Node tidak ditemukan atau tidak terhubung ke data master.' }, { status: 404 });
     }
 
+    const masterId = node.masterId;
     let masterNama = '';
     let masterKinerja = '';
     let masterIndikator = '';

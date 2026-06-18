@@ -966,6 +966,12 @@ body {
   font-family: 'Times New Roman', Times, serif;
 }
 
+@media screen {
+  .print-only-layout {
+    display: none !important;
+  }
+}
+
 .print-only-layout {
   padding: 40px;
   border: 1px solid #ddd;
