@@ -9,13 +9,7 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('sidebar-collapsed');
-      return stored !== 'false'; // Default true (collapsed) unless explicitly set to false
-    }
-    return true;
-  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   const [isHoverExpanded, setIsHoverExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);

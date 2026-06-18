@@ -608,7 +608,9 @@ export default function AdminCascading5YearsPage() {
       const levelNodes = nodes.filter(n => n.parentId === parentId);
       if (levelNodes.length === 0) return '';
 
-      let html = '<ul>';
+      const parentNode = parentId ? nodes.find(n => n.id === parentId) : null;
+      const isParentKegiatan = parentNode && parentNode.level === 'sasaran_kegiatan';
+      let html = isParentKegiatan ? '<ul class="vertical-layout">' : '<ul>';
       levelNodes.forEach(node => {
         const badgeColor = levelColors[node.level] || '#666';
         const labelText = levelLabels[node.level]?.substring(3) || node.level;
@@ -779,6 +781,43 @@ export default function AdminCascading5YearsPage() {
             width: 0;
             height: 24px;
           }
+          
+          /* Vertical layout for print */
+          .org-chart ul.vertical-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 0;
+          }
+          .org-chart ul.vertical-layout::before {
+            display: none;
+          }
+          .org-chart ul.vertical-layout > li {
+            padding: 24px 0 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .org-chart ul.vertical-layout > li::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            border-left: 2px solid #64748b;
+            width: 0;
+            transform: translateX(-50%);
+            z-index: 1;
+            display: block;
+          }
+          .org-chart ul.vertical-layout > li::after {
+            display: none;
+          }
+          .org-chart ul.vertical-layout > li:last-child::before {
+            bottom: auto;
+            height: 24px;
+          }
+          
           .org-node-box {
             background: white;
             color: black;
@@ -790,6 +829,7 @@ export default function AdminCascading5YearsPage() {
             text-align: center;
             display: inline-block;
             position: relative;
+            z-index: 2;
             transition: all 0.2s;
           }
           .org-level-badge {
@@ -1471,8 +1511,11 @@ export default function AdminCascading5YearsPage() {
     }
     if (levelNodes.length === 0) return null;
 
+    const parentNode = parentId ? nodes.find(n => n.id === parentId) : null;
+    const isParentKegiatan = parentNode && parentNode.level === 'sasaran_kegiatan';
+
     return (
-      <ul>
+      <ul className={isParentKegiatan ? 'vertical-layout' : ''}>
         {levelNodes.map(node => {
           const isDirectMatch = searchQuery.trim() && (
             (node.text || '').toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
@@ -1538,6 +1581,71 @@ export default function AdminCascading5YearsPage() {
                     ))}
                   </div>
                 )}
+
+                {/* Action buttons for editing directly in chart mode */}
+                <div className="org-node-actions print-exclude" style={{ 
+                  marginTop: '8px', 
+                  borderTop: '1px dashed rgba(255,255,255,0.15)', 
+                  paddingTop: '6px', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  gap: '4px',
+                  flexWrap: 'wrap'
+                }}>
+                  {node.level !== 'sasaran_subkegiatan' && (
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-info"
+                      style={{ padding: '2px 4px', fontSize: '8px', width: 'auto', height: '18px', display: 'flex', alignItems: 'center' }}
+                      title="Indikator"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openIndicatorModal(node);
+                      }}
+                    >
+                      <i className="fa-solid fa-list-check"></i>
+                    </button>
+                  )}
+                  {getValidChildLevels(node.level).map(childLvl => (
+                    <button 
+                      key={childLvl}
+                      type="button"
+                      className="btn btn-sm btn-orange"
+                      style={{ padding: '2px 4px', fontSize: '8px', width: 'auto', height: '18px', display: 'flex', alignItems: 'center' }}
+                      title={getChildButtonLabel(childLvl)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openAddModal(node, childLvl);
+                      }}
+                    >
+                      <i className="fa-solid fa-plus-circle"></i>
+                    </button>
+                  ))}
+                  <button 
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    style={{ padding: '2px 4px', fontSize: '8px', width: 'auto', height: '18px', display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }}
+                    title="Edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditModal(node);
+                    }}
+                  >
+                    <i className="fa-solid fa-edit"></i>
+                  </button>
+                  <button 
+                    type="button"
+                    className="btn btn-sm btn-danger"
+                    style={{ padding: '2px 4px', fontSize: '8px', width: 'auto', height: '18px', display: 'flex', alignItems: 'center' }}
+                    title="Hapus"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteConfirmModal(node);
+                    }}
+                  >
+                    <i className="fa-solid fa-trash"></i>
+                  </button>
+                </div>
               </div>
               {renderOrgChartTree(node.id)}
             </li>
@@ -2785,12 +2893,50 @@ export default function AdminCascading5YearsPage() {
           height: 24px;
         }
         
+        /* Vertical layout for screen */
+        .org-chart ul.vertical-layout {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding-top: 0;
+        }
+        .org-chart ul.vertical-layout::before {
+          display: none;
+        }
+        .org-chart ul.vertical-layout > li {
+          padding: 24px 0 0 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .org-chart ul.vertical-layout > li::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 50%;
+          border-left: 2px solid rgba(255, 107, 0, 0.4);
+          width: 0;
+          transform: translateX(-50%);
+          z-index: 1;
+          display: block;
+        }
+        .org-chart ul.vertical-layout > li::after {
+          display: none;
+        }
+        .org-chart ul.vertical-layout > li:last-child::before {
+          bottom: auto;
+          height: 24px;
+        }
+        
         .org-node-box {
-          background: rgba(30, 41, 59, 0.7) !important;
+          background: #1e293b !important;
           border: 1px solid var(--glass-border) !important;
           backdrop-filter: blur(10px);
           color: white !important;
           transition: transform 0.2s, box-shadow 0.2s;
+          position: relative;
+          z-index: 2;
         }
         .org-node-box:hover {
           transform: translateY(-2px);
@@ -2822,7 +2968,7 @@ export default function AdminCascading5YearsPage() {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .org-chart li::before, .org-chart li::after, .org-chart ul ul::before {
+          .org-chart li::before, .org-chart li::after, .org-chart ul ul::before, .org-chart ul.vertical-layout > li::before {
             border-color: #64748b !important;
           }
         }
