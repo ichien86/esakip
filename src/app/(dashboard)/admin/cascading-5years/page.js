@@ -176,6 +176,23 @@ export default function AdminCascading5YearsPage() {
     setBudgetAkhir(sum.toString());
   }, [b2025, b2026, b2027, b2028, b2029, b2030]);
 
+  // Auto calculate Target Akhir based on tipeTarget and yearly targets
+  useEffect(() => {
+    const val2025 = parseFloat(parseToStandardNumber(t2025)) || 0;
+    const val2026 = parseFloat(parseToStandardNumber(t2026)) || 0;
+    const val2027 = parseFloat(parseToStandardNumber(t2027)) || 0;
+    const val2028 = parseFloat(parseToStandardNumber(t2028)) || 0;
+    const val2029 = parseFloat(parseToStandardNumber(t2029)) || 0;
+    const val2030 = parseFloat(parseToStandardNumber(t2030)) || 0;
+
+    if (subkegiatanTipeTarget === 'Akumulatif') {
+      const sum = val2025 + val2026 + val2027 + val2028 + val2029 + val2030;
+      setTAkhir(formatNumberForDisplay(sum.toString()));
+    } else {
+      setTAkhir(formatNumberForDisplay(val2030.toString()));
+    }
+  }, [t2025, t2026, t2027, t2028, t2029, t2030, subkegiatanTipeTarget]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showFormModal || showDeleteConfirmModal || showIndicatorModal || showOpDefModal) return;
