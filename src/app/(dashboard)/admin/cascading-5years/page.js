@@ -49,6 +49,7 @@ export default function AdminCascading5YearsPage() {
   const [t2029, setT2029] = useState('0');
   const [t2030, setT2030] = useState('0');
   const [tAkhir, setTAkhir] = useState('0');
+  const [subkegiatanTipeTarget, setSubkegiatanTipeTarget] = useState('Kondisi Akhir Naik');
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -365,7 +366,7 @@ export default function AdminCascading5YearsPage() {
           id: existingInd?.id || `ind_master_${selectedMasterId}`,
           indikator: item.indikator || '-',
           satuan: item.satuan || '-',
-          tipeTarget: existingInd?.tipeTarget || 'Kondisi Akhir Naik',
+          tipeTarget: subkegiatanTipeTarget,
           target2025: parseToStandardNumber(t2025),
           target2026: parseToStandardNumber(t2026),
           target2027: parseToStandardNumber(t2027),
@@ -388,7 +389,7 @@ export default function AdminCascading5YearsPage() {
       text,
       indikator: '-',
       satuan: '-',
-      tipeTarget: 'Kondisi Akhir Naik',
+      tipeTarget: level === 'sasaran_subkegiatan' ? subkegiatanTipeTarget : 'Kondisi Akhir Naik',
       parentId: level === 'tujuan' ? null : parentId,
       bidangPengampu: (level === 'sasaran_subkegiatan' && hasAktivitasPlan) ? [] : selectedBidangs,
       crossCuttingType,
@@ -459,6 +460,7 @@ export default function AdminCascading5YearsPage() {
 
     // Load target kinerja dari indicator pertama (subkegiatan hanya punya 1 indikator)
     const firstInd = node.indicators && node.indicators.length > 0 ? node.indicators[0] : {};
+    setSubkegiatanTipeTarget(firstInd.tipeTarget || 'Kondisi Akhir Naik');
     setT2025(formatNumberForDisplay(firstInd.target2025 || '0'));
     setT2026(formatNumberForDisplay(firstInd.target2026 || '0'));
     setT2027(formatNumberForDisplay(firstInd.target2027 || '0'));
@@ -497,6 +499,7 @@ export default function AdminCascading5YearsPage() {
     setT2029('0');
     setT2030('0');
     setTAkhir('0');
+    setSubkegiatanTipeTarget('Kondisi Akhir Naik');
   };
 
   const getValidChildLevels = (parentLevel) => {
@@ -622,7 +625,7 @@ export default function AdminCascading5YearsPage() {
           node.indicators.forEach(ind => {
             indicatorsHtml += `
               <div style="font-size: 8px; color: #475569; line-height: 1.2; margin-bottom: 2px;">
-                • ${ind.indikator} (${ind.targetAkhir} ${ind.satuan})
+                • ${ind.indikator} (${ind.targetAkhir} ${ind.satuan} | ${ind.tipeTarget || 'Kondisi Akhir Naik'})
               </div>
             `;
           });
@@ -1431,7 +1434,7 @@ export default function AdminCascading5YearsPage() {
                         <div key={ind.id || i} style={{ background: 'rgba(0,0,0,0.1)', padding: '8px', borderRadius: '6px', borderLeft: '3px solid var(--primary-orange)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
                             <div>
-                              <strong>{ind.indikator}</strong> (Target Akhir: {ind.targetAkhir} {ind.satuan})
+                              <strong>{ind.indikator}</strong> (Target Akhir: {ind.targetAkhir} {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                             </div>
                             {ind.definisiOperasional && (
                               <button 
@@ -1576,7 +1579,7 @@ export default function AdminCascading5YearsPage() {
                   <div style={{ marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px', textAlign: 'left' }}>
                     {node.indicators.map((ind, i) => (
                       <div key={i} style={{ fontSize: '8px', color: 'var(--text-muted)', lineHeight: '1.2', marginBottom: '2px' }}>
-                        • {ind.indikator} ({ind.targetAkhir} {ind.satuan})
+                        • {ind.indikator} ({ind.targetAkhir} {ind.satuan} | {ind.tipeTarget || 'Kondisi Akhir Naik'})
                       </div>
                     ))}
                   </div>
@@ -2212,6 +2215,19 @@ export default function AdminCascading5YearsPage() {
                     <i className="fa-solid fa-bullseye text-orange"></i> Target Kinerja & Anggaran Renstra
                   </h4>
                   
+                  <div className="form-group mb-3" style={{ maxWidth: '300px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Tipe Target Kinerja</label>
+                    <select 
+                      className="select-sim" 
+                      value={subkegiatanTipeTarget} 
+                      onChange={(e) => setSubkegiatanTipeTarget(e.target.value)}
+                    >
+                      <option value="Kondisi Akhir Naik">Kondisi Akhir Naik</option>
+                      <option value="Kondisi Akhir Menurun">Kondisi Akhir Menurun</option>
+                      <option value="Akumulatif">Akumulatif</option>
+                    </select>
+                  </div>
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
                     {['2025', '2026', '2027', '2028', '2029', '2030'].map(year => {
                       const bState = year === '2025' ? b2025 : year === '2026' ? b2026 : year === '2027' ? b2027 : year === '2028' ? b2028 : year === '2029' ? b2029 : b2030;
@@ -2629,7 +2645,7 @@ export default function AdminCascading5YearsPage() {
                             <div style={{ fontWeight: 'bold' }}>{path.tujuan.text}</div>
                             {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => (
                               <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan})
+                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                               </div>
                             ))}
                           </>
@@ -2643,7 +2659,7 @@ export default function AdminCascading5YearsPage() {
                             <div style={{ fontWeight: 'bold' }}>{path.sasaran.text}</div>
                             {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => (
                               <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan})
+                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                               </div>
                             ))}
                           </>
@@ -2658,7 +2674,7 @@ export default function AdminCascading5YearsPage() {
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_program.nomenklatur}</div>
                             {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => (
                               <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan})
+                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                               </div>
                             ))}
                           </>
@@ -2673,7 +2689,7 @@ export default function AdminCascading5YearsPage() {
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_kegiatan.nomenklatur}</div>
                             {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => (
                               <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan})
+                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                               </div>
                             ))}
                           </>
@@ -2688,7 +2704,7 @@ export default function AdminCascading5YearsPage() {
                             <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_subkegiatan.nomenklatur}</div>
                             {path.sasaran_subkegiatan.indicators && path.sasaran_subkegiatan.indicators.map((ind, i) => (
                               <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan})
+                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                               </div>
                             ))}
                             <div style={{ fontSize: '10px', color: 'green', marginTop: '4px' }}>
