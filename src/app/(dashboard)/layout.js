@@ -11,9 +11,10 @@ export default function DashboardLayout({ children }) {
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar-collapsed') === 'true';
+      const stored = localStorage.getItem('sidebar-collapsed');
+      return stored !== 'false'; // Default true (collapsed) unless explicitly set to false
     }
-    return false;
+    return true;
   });
 
   const [isHoverExpanded, setIsHoverExpanded] = useState(false);
@@ -264,30 +265,28 @@ export default function DashboardLayout({ children }) {
       {/* Main Content Area */}
       <main className={`main-content ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <header className="top-header print-exclude" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {isMobile && (
-            <button
-              onClick={toggleSidebar}
-              className="sidebar-toggle-btn"
-              title={isSidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
-              style={{
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid var(--glass-border)',
-                borderRadius: '6px',
-                color: 'white',
-                width: '36px',
-                height: '36px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontSize: '16px',
-                transition: 'background 0.2s',
-                flexShrink: 0
-              }}
-            >
-              <i className={`fa-solid ${isSidebarCollapsed ? 'fa-indent' : 'fa-outdent'}`}></i>
-            </button>
-          )}
+          <button
+            onClick={toggleSidebar}
+            className="sidebar-toggle-btn"
+            title={isSidebarCollapsed ? "Tampilkan Sidebar" : "Sembunyikan Sidebar"}
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: '6px',
+              color: 'white',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '16px',
+              transition: 'background 0.2s',
+              flexShrink: 0
+            }}
+          >
+            <i className={`fa-solid ${isSidebarCollapsed ? 'fa-bars' : 'fa-bars-staggered'}`}></i>
+          </button>
           <div className="header-title">
             <h1>E-AKIP BPBD Boyolali</h1>
             <p className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
