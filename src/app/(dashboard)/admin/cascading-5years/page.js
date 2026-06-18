@@ -1196,19 +1196,21 @@ export default function AdminCascading5YearsPage() {
     const updated = [...tempIndicators];
     updated[index][field] = value;
     
-    // Auto calculate targetAkhir
-    const ind = updated[index];
-    const val2025 = parseFloat(ind.target2025) || 0;
-    const val2026 = parseFloat(ind.target2026) || 0;
-    const val2027 = parseFloat(ind.target2027) || 0;
-    const val2028 = parseFloat(ind.target2028) || 0;
-    const val2029 = parseFloat(ind.target2029) || 0;
-    const val2030 = parseFloat(ind.target2030) || 0;
-    
-    if (ind.tipeTarget === 'Akumulatif') {
-      ind.targetAkhir = (val2025 + val2026 + val2027 + val2028 + val2029 + val2030).toString();
-    } else {
-      ind.targetAkhir = ind.target2030 || '0';
+    // Auto calculate targetAkhir ONLY if yearly targets or tipeTarget are changed
+    if (['target2025', 'target2026', 'target2027', 'target2028', 'target2029', 'target2030', 'tipeTarget'].includes(field)) {
+      const ind = updated[index];
+      const val2025 = parseFloat(ind.target2025) || 0;
+      const val2026 = parseFloat(ind.target2026) || 0;
+      const val2027 = parseFloat(ind.target2027) || 0;
+      const val2028 = parseFloat(ind.target2028) || 0;
+      const val2029 = parseFloat(ind.target2029) || 0;
+      const val2030 = parseFloat(ind.target2030) || 0;
+      
+      if (ind.tipeTarget === 'Akumulatif') {
+        ind.targetAkhir = (val2025 + val2026 + val2027 + val2028 + val2029 + val2030).toString();
+      } else {
+        ind.targetAkhir = ind.target2030 || '0';
+      }
     }
     
     setTempIndicators(updated);
@@ -2406,7 +2408,13 @@ export default function AdminCascading5YearsPage() {
                         ))}
                         <div className="form-group">
                           <label style={{ fontSize: '9px', margin: 0 }}>Target Akhir</label>
-                          <input type="text" className="form-control" style={{ padding: '3px 6px', fontSize: '11px', fontWeight: 'bold', background: 'rgba(0,0,0,0.3)' }} value={ind.targetAkhir} readOnly />
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            style={{ padding: '3px 6px', fontSize: '11px', fontWeight: 'bold' }} 
+                            value={ind.targetAkhir || '0'} 
+                            onChange={(e) => updateTempIndicator(idx, 'targetAkhir', e.target.value)} 
+                          />
                         </div>
                       </div>
                     </div>
