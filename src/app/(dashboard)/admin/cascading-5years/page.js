@@ -2367,10 +2367,10 @@ export default function AdminCascading5YearsPage() {
             </div>
 
             <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowFormModal(false)} style={{ width: 'auto' }}>Batal</button>
               <button type="button" className="btn btn-orange" onClick={handleSubmit} style={{ width: 'auto' }}>
                 <i className="fa-solid fa-save mr-2"></i> Simpan
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowFormModal(false)} style={{ width: 'auto' }}>Batal</button>
             </div>
           </div>
         </div>
@@ -2506,10 +2506,10 @@ export default function AdminCascading5YearsPage() {
             </div>
 
             <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowIndicatorModal(false)} style={{ width: 'auto' }}>Batal</button>
               <button type="button" className="btn btn-orange" onClick={handleSaveIndicators} style={{ width: 'auto' }}>
                 <i className="fa-solid fa-save mr-2"></i> Simpan
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowIndicatorModal(false)} style={{ width: 'auto' }}>Batal</button>
             </div>
           </div>
         </div>
@@ -2570,7 +2570,6 @@ export default function AdminCascading5YearsPage() {
             </div>
 
             <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)} style={{ width: 'auto' }}>Batal</button>
               <button 
                 type="button" 
                 className="btn btn-danger" 
@@ -2580,6 +2579,7 @@ export default function AdminCascading5YearsPage() {
               >
                 Hapus Permanen
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)} style={{ width: 'auto' }}>Batal</button>
             </div>
           </div>
         </div>
@@ -2686,10 +2686,10 @@ export default function AdminCascading5YearsPage() {
             </div>
 
             <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setShowOpDefModal(false)} style={{ width: 'auto' }}>Batal</button>
               <button type="button" className="btn btn-orange" onClick={handleSaveOpDef} style={{ width: 'auto' }}>
                 <i className="fa-solid fa-check mr-2"></i> Terapkan
               </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowOpDefModal(false)} style={{ width: 'auto' }}>Batal</button>
             </div>
           </div>
         </div>
@@ -2934,15 +2934,6 @@ export default function AdminCascading5YearsPage() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
                       <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ width: 'auto' }}
-                        onClick={() => setShowImportExcelModal(false)}
-                        disabled={isImporting}
-                      >
-                        Batal
-                      </button>
-                      <button
                         type="submit"
                         className="btn btn-orange"
                         style={{ width: 'auto' }}
@@ -2957,6 +2948,15 @@ export default function AdminCascading5YearsPage() {
                             <i className="fa-solid fa-cloud-arrow-up mr-2"></i> Unggah & Proses
                           </>
                         )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ width: 'auto' }}
+                        onClick={() => setShowImportExcelModal(false)}
+                        disabled={isImporting}
+                      >
+                        Batal
                       </button>
                     </div>
                   </form>
