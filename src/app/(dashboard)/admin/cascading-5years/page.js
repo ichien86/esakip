@@ -66,6 +66,10 @@ export default function AdminCascading5YearsPage() {
 
   // Modal states
   const [showFormModal, setShowFormModal] = useState(false);
+  const [showImportExcelModal, setShowImportExcelModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importReport, setImportReport] = useState(null);
+  const [importFile, setImportFile] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState(null);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
@@ -162,6 +166,55 @@ export default function AdminCascading5YearsPage() {
   const showAlert = (msg, type = 'info') => {
     setAlertMessage(msg);
     setAlertType(type);
+  };
+
+  const handleImportSubmit = async (e) => {
+    e.preventDefault();
+    if (!importFile) {
+      showAlert('Pilih file Excel terlebih dahulu.', 'error');
+      return;
+    }
+
+    setIsImporting(true);
+    setImportReport(null);
+
+    const formData = new FormData();
+    formData.append('file', importFile);
+
+    try {
+      const res = await fetchWithAuth('/api/admin/cascading5years/import', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || 'Terjadi kesalahan saat mengunggah.');
+      }
+
+      const result = await res.json();
+      if (result.success === false) {
+        setImportReport(result);
+      } else {
+        setImportReport({
+          success: true,
+          successCount: result.successCount,
+          failCount: 0,
+          errors: []
+        });
+        setImportFile(null);
+        await loadTreeData();
+      }
+    } catch (err) {
+      setImportReport({
+        success: false,
+        successCount: 0,
+        failCount: 1,
+        errors: [{ row: '-', level: 'General', nomenklatur: '-', reason: err.message }]
+      });
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Auto calculate Budget Akhir (always the sum of 2025-2030 budgets)
@@ -1717,6 +1770,27 @@ export default function AdminCascading5YearsPage() {
           <i className="fa-solid fa-sitemap"></i> Cetak Bagan Pohon
         </button>
         <button 
+          className="btn btn-secondary" 
+          style={{ 
+            width: 'auto', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            background: 'rgba(255,255,255,0.08)',
+            opacity: (loading || nodes.length > 0) ? 0.5 : 1,
+            cursor: (loading || nodes.length > 0) ? 'not-allowed' : 'pointer'
+          }}
+          onClick={() => {
+            setImportReport(null);
+            setImportFile(null);
+            setShowImportExcelModal(true);
+          }}
+          disabled={loading || nodes.length > 0}
+          title={nodes.length > 0 ? "Fitur import dinonaktifkan karena sudah ada data cascading di dalam sistem." : "Impor seluruh data indikator renstra dari file Excel"}
+        >
+          <i className="fa-solid fa-file-import"></i> Import Excel
+        </button>
+        <button 
           className="btn btn-orange" 
           style={{ 
             width: 'auto', 
@@ -1931,30 +2005,34 @@ export default function AdminCascading5YearsPage() {
               </div>
 
               {/* Text / Uraian input */}
-              <div className="form-group mb-3">
-                <label>
-                  {level === 'tujuan' && 'Uraian Tujuan Strategis'}
-                  {level === 'sasaran' && 'Uraian Sasaran Strategis'}
-                  {level === 'sasaran_program' && 'Uraian Sasaran Program'}
-                  {level === 'sasaran_kegiatan' && 'Uraian Sasaran Kegiatan'}
-                  {level === 'sasaran_subkegiatan' && 'Uraian Sasaran Subkegiatan'}
-                  {level === 'sasaran_aktivitas' && 'Uraian Sasaran Aktivitas'}
-                </label>
-                <textarea
-                  className="form-control"
-                  rows="2"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  disabled={level === 'sasaran_subkegiatan'}
-                  required
-                  placeholder="Masukkan deskripsi..."
-                />
-              </div>
+              {level !== 'sasaran_subkegiatan' && (
+                <div className="form-group mb-3">
+                  <label>
+                    {level === 'tujuan' && 'Uraian Tujuan Strategis'}
+                    {level === 'sasaran' && 'Uraian Sasaran Strategis'}
+                    {level === 'sasaran_program' && 'Uraian Sasaran Program'}
+                    {level === 'sasaran_kegiatan' && 'Uraian Sasaran Kegiatan'}
+                    {level === 'sasaran_aktivitas' && 'Uraian Sasaran Aktivitas'}
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    required
+                    placeholder="Masukkan deskripsi..."
+                  />
+                </div>
+              )}
 
-              {/* Master Data Selection for Program/Kegiatan/Subkegiatan */}
+               {/* Master Data Selection for Program/Kegiatan/Subkegiatan */}
               {['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(level) && (
                 <div className="form-group mb-3" style={{ background: 'rgba(255, 107, 0, 0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed var(--primary-orange)' }}>
-                  <label>Pilih Nomenklatur Master Data</label>
+                  <label>
+                    {level === 'sasaran_program' && 'Pilih Nomenklatur Program'}
+                    {level === 'sasaran_kegiatan' && 'Pilih Nomenklatur Kegiatan'}
+                    {level === 'sasaran_subkegiatan' && 'Pilih Nomenklatur Subkegiatan'}
+                  </label>
                   <div ref={masterDropdownRef} style={{ position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
                       <input
@@ -2764,6 +2842,161 @@ export default function AdminCascading5YearsPage() {
           </table>
         </div>
       )}
+      {showImportExcelModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '750px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,107,0,0.3)'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3>
+                <i className="fa-solid fa-file-excel text-orange"></i> Import Data Renstra dari Excel
+              </h3>
+              <button onClick={() => setShowImportExcelModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+
+            <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {importReport && importReport.success === true ? (
+                <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <i className="fa-solid fa-circle-check text-success" style={{ fontSize: '48px', marginBottom: '12px' }}></i>
+                  <h4 style={{ color: '#34D399', fontWeight: 'bold', fontSize: '16px', marginBottom: '6px' }}>Impor Berhasil Diselesaikan!</h4>
+                  <p style={{ fontSize: '13px', color: '#e2e8f0', marginBottom: '16px' }}>
+                    Sebanyak <strong>{importReport.successCount}</strong> node pohon Renstra berhasil divalidasi dan disimpan ke database.
+                  </p>
+                  <button type="button" className="btn btn-orange" style={{ margin: '0 auto' }} onClick={() => setShowImportExcelModal(false)}>Tutup</button>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                    Fitur ini digunakan untuk mengimpor seluruh pohon kinerja Renstra (5 tahunan) secara massal dari file Excel.
+                    Menu impor dinonaktifkan apabila database telah berisi data cascading.
+                  </p>
+
+                  <div style={{ background: 'rgba(255,107,0,0.06)', border: '1px dashed rgba(255,107,0,0.25)', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>Belum punya template format Excel?</span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Gunakan file template resmi agar data terstruktur dengan benar.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-secondary"
+                      style={{ width: 'auto', background: 'rgba(255,255,255,0.08)', gap: '6px', fontSize: '12px' }}
+                      onClick={() => window.open('/api/admin/cascading5years/import-template')}
+                    >
+                      <i className="fa-solid fa-download"></i> Unduh Template
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleImportSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '6px', display: 'block' }}>Pilih Berkas Excel (.xlsx / .xls)</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px dashed var(--glass-border)',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            fontSize: '13px',
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ width: 'auto' }}
+                        onClick={() => setShowImportExcelModal(false)}
+                        disabled={isImporting}
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-orange"
+                        style={{ width: 'auto' }}
+                        disabled={isImporting || !importFile}
+                      >
+                        {isImporting ? (
+                          <>
+                            <i className="fa-solid fa-spinner fa-spin mr-2"></i> Memvalidasi & Impor...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-cloud-arrow-up mr-2"></i> Unggah & Proses
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+
+                  {importReport && importReport.success === false && (
+                    <div style={{ marginTop: '16px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '16px' }}>
+                      <h4 style={{ color: '#F87171', fontWeight: 'bold', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <i className="fa-solid fa-circle-exclamation"></i> Gagal Memproses Impor ({importReport.failCount} Kesalahan Validasi)
+                      </h4>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                        Database tidak diubah. Silakan perbaiki kesalahan-kesalahan berikut pada file Excel Anda lalu coba unggah kembali.
+                      </p>
+                      
+                      <div style={{ overflowX: 'auto', maxHeight: '200px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
+                          <thead>
+                            <tr style={{ background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                              <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Baris</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Level</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Nomenklatur</th>
+                              <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Alasan Kegagalan</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {importReport.errors && importReport.errors.map((err, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ padding: '8px 12px', color: '#ef4444', fontWeight: 'bold' }}>{err.row}</td>
+                                <td style={{ padding: '8px 12px', textTransform: 'capitalize' }}>{err.level}</td>
+                                <td style={{ padding: '8px 12px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={err.nomenklatur}>{err.nomenklatur}</td>
+                                <td style={{ padding: '8px 12px', color: '#cbd5e1' }}>{err.reason}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {alertMessage && (
         <div style={{
           position: 'fixed',
