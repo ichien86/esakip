@@ -487,7 +487,9 @@ export default function AdminCascading5YearsPage() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        setSuccess('Item Indikator Renstra berhasil disimpan.');
+        const itemType = levelLabels[level] || level;
+        const itemName = level === 'sasaran_subkegiatan' ? nomenklatur : text;
+        setSuccess(`Berhasil menyimpan ${itemType}: "${itemName}".`);
         resetForm();
         loadTreeData(true);
         if (refreshMetadata) refreshMetadata();
@@ -1377,7 +1379,9 @@ export default function AdminCascading5YearsPage() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        setSuccess('Daftar indikator berhasil diperbarui.');
+        const indNames = tempIndicators.map(i => `"${i.indikator}"`).join(', ');
+        const nodeName = selectedNodeForIndicators.nomenklatur || selectedNodeForIndicators.text || selectedNodeForIndicators.sasaran || '';
+        setSuccess(`Daftar indikator [ ${indNames} ] untuk "${nodeName}" berhasil diperbarui.`);
         setShowIndicatorModal(false);
         loadTreeData(true);
       } else {
