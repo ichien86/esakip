@@ -63,6 +63,7 @@ export default function AdminCascading5YearsPage() {
   const masterDropdownRef = useRef(null);
 
   const [isEditing, setIsEditing] = useState(false);
+  const [activeOptionIndex, setActiveOptionIndex] = useState(-1);
 
   // Modal states
   const [showFormModal, setShowFormModal] = useState(false);
@@ -375,6 +376,37 @@ export default function AdminCascading5YearsPage() {
         setText(item.kinerja || item.nama);
         setSasaran(item.kinerja || item.nama);
       }
+    }
+  };
+
+  // Reset active option index when query or level changes
+  useEffect(() => {
+    setActiveOptionIndex(-1);
+  }, [masterSearchQuery, level]);
+
+  const handleMasterSearchKeyDown = (e) => {
+    if (!isMasterDropdownOpen) return;
+    const options = getMasterOptions().filter(opt =>
+      opt.nama.toLowerCase().includes(masterSearchQuery.toLowerCase())
+    );
+    if (options.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveOptionIndex(prev => (prev + 1) % options.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveOptionIndex(prev => (prev - 1 + options.length) % options.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeOptionIndex >= 0 && activeOptionIndex < options.length) {
+        const selectedOpt = options[activeOptionIndex];
+        handleMasterChange(selectedOpt.id);
+        setMasterSearchQuery(selectedOpt.nama);
+        setIsMasterDropdownOpen(false);
+      }
+    } else if (e.key === 'Escape') {
+      setIsMasterDropdownOpen(false);
     }
   };
 
@@ -2053,6 +2085,7 @@ export default function AdminCascading5YearsPage() {
                           }
                         }}
                         onFocus={() => setIsMasterDropdownOpen(true)}
+                        onKeyDown={handleMasterSearchKeyDown}
                       />
                       {masterSearchQuery ? (
                         <button
@@ -2116,7 +2149,7 @@ export default function AdminCascading5YearsPage() {
                             .filter(opt =>
                               opt.nama.toLowerCase().includes(masterSearchQuery.toLowerCase())
                             )
-                            .map((opt) => (
+                            .map((opt, idx) => (
                               <div
                                 key={opt.id}
                                 onClick={() => {
@@ -2129,7 +2162,7 @@ export default function AdminCascading5YearsPage() {
                                   fontSize: '12px',
                                   cursor: 'pointer',
                                   color: 'white',
-                                  background: selectedMasterId === opt.id ? 'var(--primary-orange-light)' : 'transparent',
+                                  background: (selectedMasterId === opt.id || activeOptionIndex === idx) ? 'var(--primary-orange-light)' : 'transparent',
                                   borderBottom: '1px solid rgba(255,255,255,0.03)',
                                   transition: 'background 0.2s',
                                   textAlign: 'left'
