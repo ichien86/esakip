@@ -11,6 +11,7 @@ export default function EmployeeRealisasiPage() {
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
   const [monthlySchedules, setMonthlySchedules] = useState([]);
+  const [sharedGlobalVariables, setSharedGlobalVariables] = useState({});
 
   // Selections
   const [selectedId, setSelectedId] = useState('');
@@ -18,12 +19,9 @@ export default function EmployeeRealisasiPage() {
 
   // Input states
   const [realisasiValue, setRealisasiValue] = useState('');
-  const [buktiDukungFiles, setBuktiDukungFiles] = useState([{ name: '', url: '', verifyStatus: null, checking: false }]);
-
-  // Operational variables inputs
-  const [variabelJumlahVal, setVariabelJumlahVal] = useState('');
-  const [variabelPembilangVal, setVariabelPembilangVal] = useState('');
-  const [variabelPenyebutVal, setVariabelPenyebutVal] = useState('');
+  
+  // Variabel dinamis: { name, value, isConstant, buktiDukungFiles: [] }
+  const [variablesRealizationVals, setVariablesRealizationVals] = useState([]);
 
   const [kendala, setKendala] = useState('');
   const [solusi, setSolusi] = useState('');
@@ -84,6 +82,22 @@ export default function EmployeeRealisasiPage() {
     }
   }, [currentUser, loadData]);
 
+  // Ambil global shared variables saat bulan berubah
+  useEffect(() => {
+    async function fetchSharedVars() {
+      if (!selectedBulan) return;
+      try {
+        const res = await fetchWithAuth(`/api/renaksi/shared-variables?tahun=${activeYear}&bulan=${selectedBulan}`);
+        if (res.ok) {
+          setSharedGlobalVariables(await res.json());
+        }
+      } catch(e) {
+        console.error('Failed to load shared variables', e);
+      }
+    }
+    fetchSharedVars();
+  }, [selectedBulan, activeYear, fetchWithAuth]);
+
   // Load existing realization values when indicator or month changes
   const activeRecord = renaksiRecords.find(
     r => r.indicatorId === selectedId && r.bulan === parseInt(selectedBulan)
@@ -115,134 +129,249 @@ export default function EmployeeRealisasiPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (activeRecord) {
+      let varsToSet = [];
+      const isRecordEmpty = !activeRecord || (!activeRecord.variablesRealization || activeRecord.variablesRealization.length === 0);
+
+      if (activeRecord && !isRecordEmpty) {
         setRealisasiValue(activeRecord.realisasiBulanan !== null ? formatNumberForDisplay(activeRecord.realisasiBulanan) : '');
-        setVariabelJumlahVal(activeRecord.variabelJumlahVal !== null ? formatNumberForDisplay(activeRecord.variabelJumlahVal) : '');
-        setVariabelPembilangVal(activeRecord.variabelPembilangVal !== null ? formatNumberForDisplay(activeRecord.variabelPembilangVal) : '');
-        setVariabelPenyebutVal(activeRecord.variabelPenyebutVal !== null ? formatNumberForDisplay(activeRecord.variabelPenyebutVal) : '');
-        const parsed = parseBuktiDukung(activeRecord.buktiDukung || '');
-        setBuktiDukungFiles(parsed.length > 0 ? parsed.map(f => ({ ...f, verifyStatus: null, checking: false })) : [{ name: '', url: '', verifyStatus: null, checking: false }]);
+        
+        varsToSet = activeRecord.variablesRealization.map(v => {
+          const parsed = parseBuktiDukung(v.buktiDukung || '');
+          const initialFiles = parsed.length > 0 
+            ? parsed.map(f => ({ ...f, verifyStatus: null, checking: false })) 
+            : [{ name: '', url: '', verifyStatus: null, checking: false }];
+            
+          return {
+            name: v.name,
+            value: v.value !== null ? formatNumberForDisplay(v.value) : '',
+            isConstant: v.isConstant === true,
+            buktiDukungFiles: initialFiles
+          };
+        });
+
         setKendala(activeRecord.kendala || '');
         setSolusi(activeRecord.solusi || '');
         setPendorong(activeRecord.faktorPendorong || '');
         setInovasi(activeRecord.inovasi || '');
       } else {
         setRealisasiValue('');
-        setVariabelJumlahVal('');
-        setVariabelPembilangVal('');
-        setVariabelPenyebutVal('');
-        setBuktiDukungFiles([{ name: '', url: '', verifyStatus: null, checking: false }]);
-        setKendala('');
-        setSolusi('');
-        setPendorong('');
-        setInovasi('');
+        setKendala(''); setSolusi(''); setPendorong(''); setInovasi('');
+
+        let templateVars = [];
+        if (activeRecord && activeRecord.snapshotVariables && activeRecord.snapshotVariables.length > 0) {
+          templateVars = activeRecord.snapshotVariables.map(v => ({ name: v.name }));
+        } else if (activeNode && Array.isArray(activeNode.variables) && activeNode.variables.length > 0) {
+          templateVars = activeNode.variables.map(v => ({ name: v.name }));
+        } else if (activeNode) {
+          // Migrasi fallback UI dari legacy ke array variables jika Node masih pakai skema lama tapi belum di-save admin
+          const nm = (activeNode.metodePenghitungan || 'Tunggal') === 'Jumlah' ? 'Tunggal' : (activeNode.metodePenghitungan || 'Tunggal');
+          if (nm === 'Tunggal' && activeNode.variabelJumlah) templateVars = [{ name: activeNode.variabelJumlah }];
+          else if (nm === 'Persentase' && (activeNode.variabelPembilang || activeNode.variabelPenyebut)) templateVars = [{ name: activeNode.variabelPembilang || '' }, { name: activeNode.variabelPenyebut || '' }];
+        }
+
+        // Assistant Pre-fill logic (Variabel Konstan & Shared Variables)
+        varsToSet = templateVars.map(vTemplate => {
+          let prefilledValue = '';
+          let prefilledBuktiDukung = [{ name: '', url: '', verifyStatus: null, checking: false }];
+          let prefilledIsConstant = false;
+
+          const currentBulan = parseInt(selectedBulan);
+          
+          const checkAndExtract = (record, requireConstant) => {
+            if (!record || !Array.isArray(record.variablesRealization)) return false;
+            const v = record.variablesRealization.find(pv => pv.name === vTemplate.name);
+            if (v) {
+              if (requireConstant && v.isConstant !== true) return false;
+              if (v.value === '' && (!v.buktiDukung || v.buktiDukung === '[]')) return false; // Abaikan jika kosong
+              
+              prefilledValue = v.value !== null ? formatNumberForDisplay(v.value) : '';
+              prefilledIsConstant = v.isConstant === true;
+              const parsed = parseBuktiDukung(v.buktiDukung || '');
+              if (parsed.length > 0) {
+                prefilledBuktiDukung = parsed.map(f => ({ ...f, verifyStatus: null, checking: false }));
+              }
+              return true;
+            }
+            return false;
+          };
+
+          let found = false;
+
+          // 1. Cari di bulan yang SAMA, tapi di indikator LAIN yang sudah diisi (Shared Variable di bulan berjalan milik sendiri)
+          for (const record of renaksiRecords) {
+            if (record.bulan === currentBulan && record.indicatorId !== selectedId) {
+              if (checkAndExtract(record, false)) { found = true; break; }
+            }
+          }
+
+          // 2. Jika tidak ketemu, cari di GLOBAL SHARED VARIABLES (Lintas Pegawai di bulan yang sama)
+          // TAPI HANYA dari indikator yang BERBEDA. (Jika indikatornya sama, itu artinya crosscutting dan datanya harus milik masing-masing)
+          if (!found && Array.isArray(sharedGlobalVariables[vTemplate.name])) {
+            const validGlobalVars = sharedGlobalVariables[vTemplate.name].filter(gv => gv.indicatorId !== selectedId);
+            if (validGlobalVars.length > 0) {
+              const globalVar = validGlobalVars[validGlobalVars.length - 1]; // ambil yang paling akhir (asumsi terbaru)
+              prefilledValue = formatNumberForDisplay(globalVar.value);
+              prefilledIsConstant = false;
+              const parsed = parseBuktiDukung(globalVar.buktiDukung || '');
+              if (parsed.length > 0) {
+                prefilledBuktiDukung = parsed.map(f => ({ ...f, verifyStatus: null, checking: false }));
+              }
+              found = true;
+            }
+          }
+
+          // 3. Jika tidak ketemu juga, cari di bulan SEBELUMNYA (milik sendiri) yang diset "Konstan"
+          if (!found) {
+            for (let m = currentBulan - 1; m >= 1; m--) {
+              const recordsInMonth = renaksiRecords.filter(r => r.bulan === m);
+              for (const record of recordsInMonth) {
+                if (checkAndExtract(record, true)) { found = true; break; }
+              }
+              if (found) break;
+            }
+          }
+
+          return {
+            name: vTemplate.name,
+            value: prefilledValue,
+            isConstant: prefilledIsConstant,
+            buktiDukungFiles: prefilledBuktiDukung
+          };
+        });
       }
+      setVariablesRealizationVals(varsToSet);
     }, 0);
     return () => clearTimeout(timer);
-  }, [selectedId, selectedBulan, renaksiRecords, activeRecord]);
+  }, [selectedId, selectedBulan, renaksiRecords, activeRecord, activeNode]);
 
-  // Dynamic automatic calculation of Realisasi on the fly
+  // Dynamic automatic calculation of Realisasi on the fly (supports all 5 methods)
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (activeNode) {
-        if (activeNode.metodePenghitungan === 'Persentase') {
-          const p = parseFloat(parseToStandardNumber(variabelPembilangVal));
-          const y = parseFloat(parseToStandardNumber(variabelPenyebutVal));
+      if (!activeNode || variablesRealizationVals.length === 0) return;
+      const metode = (activeRecord && activeRecord.snapshotMetode) || activeNode.metodePenghitungan || 'Tunggal';
+      const normalizedMetode = (metode === 'Jumlah') ? 'Tunggal' : metode;
+
+      if (normalizedMetode === 'Tunggal') {
+        const v = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
+        setRealisasiValue(!isNaN(v) ? formatNumberForDisplay(v) : '');
+
+      } else if (normalizedMetode === 'Persentase') {
+        if (variablesRealizationVals.length >= 2) {
+          const p = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
+          const y = parseFloat(parseToStandardNumber(variablesRealizationVals[1].value));
           if (!isNaN(p) && !isNaN(y) && y !== 0) {
-            const calc = ((p / y) * 100).toFixed(2);
-            setRealisasiValue(formatNumberForDisplay(parseFloat(calc)));
-          } else {
-            setRealisasiValue('');
-          }
-        } else if (activeNode.metodePenghitungan === 'Jumlah') {
-          const v = parseFloat(parseToStandardNumber(variabelJumlahVal));
-          if (!isNaN(v)) {
-            setRealisasiValue(formatNumberForDisplay(v));
-          } else {
-            setRealisasiValue('');
-          }
+            setRealisasiValue(formatNumberForDisplay(parseFloat(((p / y) * 100).toFixed(2))));
+          } else { setRealisasiValue(''); }
         }
+
+      } else if (normalizedMetode === 'Rata-rata') {
+        const vals = variablesRealizationVals.map(v => parseFloat(parseToStandardNumber(v.value))).filter(v => !isNaN(v));
+        if (vals.length === variablesRealizationVals.length && vals.length > 0) {
+          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+          setRealisasiValue(formatNumberForDisplay(parseFloat(avg.toFixed(4))));
+        } else { setRealisasiValue(''); }
+
+      } else if (normalizedMetode === 'Penjumlahan') {
+        const vals = variablesRealizationVals.map(v => parseFloat(parseToStandardNumber(v.value))).filter(v => !isNaN(v));
+        if (vals.length === variablesRealizationVals.length && vals.length > 0) {
+          setRealisasiValue(formatNumberForDisplay(parseFloat(vals.reduce((a, b) => a + b, 0).toFixed(4))));
+        } else { setRealisasiValue(''); }
+
+      } else if (normalizedMetode === 'Pembobotan') {
+        const snapVars = (activeRecord && activeRecord.snapshotVariables && activeRecord.snapshotVariables.length > 0)
+          ? activeRecord.snapshotVariables
+          : (activeNode.variables || []);
+        let weightedSum = 0;
+        let allValid = variablesRealizationVals.length > 0;
+        for (const vr of variablesRealizationVals) {
+          const val = parseFloat(parseToStandardNumber(vr.value));
+          if (isNaN(val)) { allValid = false; break; }
+          const snapVar = snapVars.find(sv => sv.name === vr.name);
+          const weight = snapVar ? (parseFloat(snapVar.weight) || 0) : 0;
+          weightedSum += val * weight;
+        }
+        if (allValid) { setRealisasiValue(formatNumberForDisplay(parseFloat((weightedSum / 100).toFixed(4)))); }
+        else { setRealisasiValue(''); }
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [variabelJumlahVal, variabelPembilangVal, variabelPenyebutVal, activeNode]);
+  }, [variablesRealizationVals, activeNode, activeRecord]);
 
   // Multi-file input handlers
-  const handleAddFileRow = () => {
-    setBuktiDukungFiles([...buktiDukungFiles, { name: '', url: '', verifyStatus: null, checking: false }]);
+  const handleAddFileRow = (varIdx) => {
+    setVariablesRealizationVals(prev => {
+      const newVars = [...prev];
+      newVars[varIdx].buktiDukungFiles = [...newVars[varIdx].buktiDukungFiles, { name: '', url: '', verifyStatus: null, checking: false }];
+      return newVars;
+    });
   };
 
-  const handleRemoveFileRow = (index) => {
-    const newFiles = [...buktiDukungFiles];
-    newFiles.splice(index, 1);
-    setBuktiDukungFiles(newFiles.length > 0 ? newFiles : [{ name: '', url: '', verifyStatus: null, checking: false }]);
+  const handleRemoveFileRow = (varIdx, fileIdx) => {
+    setVariablesRealizationVals(prev => {
+      const newVars = [...prev];
+      const newFiles = [...newVars[varIdx].buktiDukungFiles];
+      newFiles.splice(fileIdx, 1);
+      newVars[varIdx].buktiDukungFiles = newFiles.length > 0 ? newFiles : [{ name: '', url: '', verifyStatus: null, checking: false }];
+      return newVars;
+    });
   };
 
-  const handleNameChange = (index, name) => {
-    const newFiles = [...buktiDukungFiles];
-    newFiles[index].name = name;
-    setBuktiDukungFiles(newFiles);
+  const handleNameChange = (varIdx, fileIdx, name) => {
+    setVariablesRealizationVals(prev => {
+      const newVars = [...prev];
+      newVars[varIdx].buktiDukungFiles[fileIdx].name = name;
+      return newVars;
+    });
   };
 
-  const handleUrlChange = async (index, url) => {
-    const newFiles = [...buktiDukungFiles];
-    newFiles[index].url = url;
-    
-    if (url) {
-      newFiles[index].name = getFilenameFromUrl(url);
-    } else {
-      newFiles[index].name = '';
-    }
-    
-    setBuktiDukungFiles([...newFiles]);
+  const handleUrlChange = async (varIdx, fileIdx, url) => {
+    // Optimistic UI update
+    setVariablesRealizationVals(prev => {
+      const newVars = [...prev];
+      newVars[varIdx].buktiDukungFiles[fileIdx].url = url;
+      if (url) newVars[varIdx].buktiDukungFiles[fileIdx].name = getFilenameFromUrl(url);
+      else newVars[varIdx].buktiDukungFiles[fileIdx].name = '';
+      
+      if (!url) {
+        newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = null;
+        newVars[varIdx].buktiDukungFiles[fileIdx].checking = false;
+      } else {
+        newVars[varIdx].buktiDukungFiles[fileIdx].checking = true;
+        newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = { checking: true, message: 'Memverifikasi link...' };
+      }
+      return newVars;
+    });
 
-    if (!url) {
-      newFiles[index].verifyStatus = null;
-      setBuktiDukungFiles([...newFiles]);
-      return;
-    }
-
-    newFiles[index].checking = true;
-    newFiles[index].verifyStatus = { checking: true, message: 'Memverifikasi link...' };
-    setBuktiDukungFiles([...newFiles]);
+    if (!url) return;
 
     try {
       const res = await fetchWithAuth('/api/verify-link', {
         method: 'POST',
         body: JSON.stringify({ url })
       });
-      // Retrieve fresh state reference to avoid stale closures in fast typing
-      setBuktiDukungFiles(currentFiles => {
-        const updated = [...currentFiles];
-        if (updated[index]) {
+      
+      const parsedRes = await res.json();
+      
+      setVariablesRealizationVals(prev => {
+        const newVars = [...prev];
+        if (newVars[varIdx] && newVars[varIdx].buktiDukungFiles[fileIdx]) {
           if (res.ok) {
-            updated[index].verifyStatus = res.json ? null : res; // Will parse below
+            newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = parsedRes;
           } else {
-            updated[index].verifyStatus = { isDrive: false, isPublic: false, message: 'Gagal menghubungi server verifikasi.' };
+            newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = { isDrive: false, isPublic: false, message: 'Gagal menghubungi server verifikasi.' };
           }
-          updated[index].checking = false;
+          newVars[varIdx].buktiDukungFiles[fileIdx].checking = false;
         }
-        return updated;
+        return newVars;
       });
-
-      if (res.ok) {
-        const result = await res.json();
-        setBuktiDukungFiles(currentFiles => {
-          const updated = [...currentFiles];
-          if (updated[index]) {
-            updated[index].verifyStatus = result;
-          }
-          return updated;
-        });
-      }
     } catch (e) {
-      setBuktiDukungFiles(currentFiles => {
-        const updated = [...currentFiles];
-        if (updated[index]) {
-          updated[index].verifyStatus = { isDrive: false, isPublic: false, message: 'Kesalahan jaringan.' };
-          updated[index].checking = false;
+      setVariablesRealizationVals(prev => {
+        const newVars = [...prev];
+        if (newVars[varIdx] && newVars[varIdx].buktiDukungFiles[fileIdx]) {
+          newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = { isDrive: false, isPublic: false, message: 'Terjadi kesalahan.' };
+          newVars[varIdx].buktiDukungFiles[fileIdx].checking = false;
         }
-        return updated;
+        return newVars;
       });
     }
   };
@@ -290,69 +419,73 @@ export default function EmployeeRealisasiPage() {
     }
 
     const target = activeRecord.targetBulanan;
+    // Determine effective method (use snapshot if exists)
+    const effectiveMetode = (activeRecord && activeRecord.snapshotMetode) || activeNode?.metodePenghitungan || 'Tunggal';
+    const normalizedMetode = (effectiveMetode === 'Jumlah') ? 'Tunggal' : effectiveMetode;
     let realisasi = parseFloat(parseToStandardNumber(realisasiValue));
 
     // Validate variables on client-side too
     if (activeNode) {
-      if (activeNode.metodePenghitungan === 'Persentase') {
-        const p = parseFloat(parseToStandardNumber(variabelPembilangVal));
-        const y = parseFloat(parseToStandardNumber(variabelPenyebutVal));
-        if (isNaN(p) || isNaN(y)) {
-          setError('Variabel pembilang dan penyebut wajib diisi angka.');
-          return;
+      if (variablesRealizationVals.length === 0) {
+        setError('Variabel indikator belum dikonfigurasi. Hubungi Admin.'); return;
+      }
+      
+      for (let i = 0; i < variablesRealizationVals.length; i++) {
+        const v = variablesRealizationVals[i];
+        const val = parseFloat(parseToStandardNumber(v.value));
+        if (isNaN(val)) {
+          setError(`Nilai variabel "${v.name}" wajib diisi angka valid.`); return;
         }
-        if (y === 0) {
-          setError('Variabel penyebut tidak boleh bernilai 0.');
-          return;
+        if (normalizedMetode === 'Persentase' && i === 1 && val === 0) {
+          setError('Variabel penyebut tidak boleh bernilai 0.'); return;
         }
-        realisasi = parseFloat(((p / y) * 100).toFixed(2));
-      } else if (activeNode.metodePenghitungan === 'Jumlah') {
-        const v = parseFloat(parseToStandardNumber(variabelJumlahVal));
-        if (isNaN(v)) {
-          setError('Variabel jumlah wajib diisi angka.');
-          return;
-        }
-        realisasi = v;
-      } else {
-        if (isNaN(realisasi)) {
-          setError('Realisasi wajib berupa angka.');
-          return;
+        
+        // Validasi bukti dukung per variabel
+        const validFiles = v.buktiDukungFiles.filter(f => f.url.trim() !== '');
+        if (validFiles.length === 0) {
+          setError(`Minimal satu link Bukti Dukung wajib diisi untuk variabel "${v.name}".`); return;
         }
       }
+
+      if (normalizedMetode === 'Persentase') {
+        const p = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
+        const y = parseFloat(parseToStandardNumber(variablesRealizationVals[1].value));
+        realisasi = parseFloat(((p / y) * 100).toFixed(2));
+      } else if (normalizedMetode === 'Tunggal') {
+        realisasi = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
+      }
+      // Rata-rata, Penjumlahan, Pembobotan calculated on the fly and handled automatically
     }
-
-    // Filter out rows without a URL
-    const validFiles = buktiDukungFiles.filter(f => f.url.trim() !== '');
-    if (validFiles.length === 0) {
-      setError('Minimal satu link Bukti Dukung wajib diisi.');
-      return;
-    }
-
-    // Ensure all valid files have a name (fallback to domain/filename)
-    const finalFiles = validFiles.map(f => ({
-      name: f.name.trim() || getFilenameFromUrl(f.url),
-      url: f.url.trim()
-    }));
-
-    const buktiDukungJson = JSON.stringify(finalFiles);
 
     const isDecreasing = activeNode && activeNode.tipeTarget === 'Kondisi Akhir Menurun';
     const isUnderperforming = isDecreasing ? realisasi > target : realisasi < target;
+
+    const finalVariablesRealization = variablesRealizationVals.map(v => {
+      const validFiles = v.buktiDukungFiles.filter(f => f.url.trim() !== '');
+      const finalFiles = validFiles.map(f => ({
+        name: f.name.trim() || getFilenameFromUrl(f.url),
+        url: f.url.trim()
+      }));
+      return {
+        name: v.name,
+        value: parseToStandardNumber(v.value),
+        isConstant: v.isConstant,
+        buktiDukung: JSON.stringify(finalFiles)
+      };
+    });
 
     const payload = {
       employeeId: currentUser.id,
       indicatorId: selectedId,
       bulan: parseInt(selectedBulan),
       realisasiBulanan: realisasi,
-      buktiDukung: buktiDukungJson,
+      buktiDukung: '', // legacy field dikosongkan
       kendala: isUnderperforming ? kendala : '',
       solusi: isUnderperforming ? solusi : '',
       faktorPendorong: isUnderperforming ? '' : pendorong,
       inovasi: isUnderperforming ? '' : inovasi,
       status: 'Diajukan',
-      variabelJumlahVal: activeNode?.metodePenghitungan === 'Jumlah' ? parseToStandardNumber(variabelJumlahVal) : '',
-      variabelPembilangVal: activeNode?.metodePenghitungan === 'Persentase' ? parseToStandardNumber(variabelPembilangVal) : '',
-      variabelPenyebutVal: activeNode?.metodePenghitungan === 'Persentase' ? parseToStandardNumber(variabelPenyebutVal) : ''
+      variablesRealization: finalVariablesRealization
     };
 
     try {
@@ -491,168 +624,109 @@ export default function EmployeeRealisasiPage() {
 
             {activeRecord && (
               <>
-                {/* Operational variable inputs based on calculation method */}
-                {activeNode?.metodePenghitungan === 'Persentase' ? (
-                  <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', padding: '16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--primary-orange)', fontWeight: 600 }}>
-                      <i className="fa-solid fa-calculator"></i> Penghitungan Persentase Indikator
+                <div style={{ background:'rgba(255,255,255,0.01)',border:'1px solid var(--glass-border)',padding:'16px',borderRadius:'8px',marginBottom:'16px' }}>
+                  <div style={{ fontSize:'12px',color:'var(--primary-orange)',fontWeight:600,marginBottom:'16px',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                    <div style={{ display:'flex',alignItems:'center',gap:'8px' }}>
+                      <i className="fa-solid fa-layer-group"></i> Variabel Indikator & Bukti Dukung
                     </div>
-                    <div className="form-group">
-                      <label style={{ fontSize: '12px' }}>
-                        {activeNode.variabelPembilang || "Variabel Pembilang (Numerator)"}
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        disabled={!isRealisasiEditable}
-                        value={variabelPembilangVal}
-                        onChange={(e) => setVariabelPembilangVal(formatIndonesianInput(e.target.value))}
-                        required
-                        placeholder="Masukkan nilai pembilang"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label style={{ fontSize: '12px' }}>
-                        {activeNode.variabelPenyebut || "Variabel Penyebut (Denominator)"}
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        disabled={!isRealisasiEditable}
-                        value={variabelPenyebutVal}
-                        onChange={(e) => setVariabelPenyebutVal(formatIndonesianInput(e.target.value))}
-                        required
-                        placeholder="Masukkan nilai penyebut"
-                      />
-                    </div>
-                    
-                    {realisasiValue !== '' && (
-                      <div style={{ marginTop: '8px', fontSize: '13px', background: 'rgba(59, 130, 246, 0.15)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                        Persentase Capaian Terhitung: <strong>{realisasiValue}%</strong>
-                      </div>
-                    )}
                   </div>
-                ) : activeNode?.metodePenghitungan === 'Jumlah' ? (
-                  <div className="form-group mb-3">
-                    <label>{activeNode.variabelJumlah || "Jumlah Capaian"}</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      disabled={!isRealisasiEditable}
-                      value={variabelJumlahVal}
-                      onChange={(e) => setVariabelJumlahVal(formatIndonesianInput(e.target.value))}
-                      required
-                      placeholder="Masukkan angka capaian"
-                    />
-                  </div>
-                ) : (
-                  <div className="form-group mb-3">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>Angka Realisasi Capaian</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      disabled={!isRealisasiEditable}
-                      value={realisasiValue}
-                      onChange={(e) => setRealisasiValue(formatIndonesianInput(e.target.value))}
-                      required
-                      placeholder="Masukkan angka pencapaian"
-                    />
-                  </div>
-                )}
-
-                <div className="form-group mb-4" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <label style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fa-solid fa-folder-open text-orange"></i> File / Link Bukti Dukung Realisasi
-                  </label>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {buktiDukungFiles.map((file, index) => (
-                      <div 
-                        key={index} 
-                        style={{ 
-                          background: 'rgba(255, 255, 255, 0.02)', 
-                          border: '1px solid var(--glass-border)', 
-                          padding: '12px 16px', 
-                          borderRadius: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px',
-                          position: 'relative'
-                        }}
-                      >
-                        {buktiDukungFiles.length > 1 && (
-                          <button
-                            type="button"
-                            disabled={!isRealisasiEditable}
-                            onClick={() => handleRemoveFileRow(index)}
-                            style={{
-                              position: 'absolute',
-                              top: '8px',
-                              right: '8px',
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--danger)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              fontSize: '14px',
-                              opacity: isRealisasiEditable ? 0.7 : 0.3
-                            }}
-                            title="Hapus File Bukti Dukung"
-                          >
-                            <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingRight: buktiDukungFiles.length > 1 ? '24px' : '0' }}>
-                          <div className="form-group">
-                            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Link / URL Bukti Dukung:</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              disabled={!isRealisasiEditable}
-                              value={file.url}
-                              onChange={(e) => handleUrlChange(index, e.target.value)}
-                              placeholder="Contoh: https://drive.google.com/file/d/.../view"
-                              required={index === 0}
-                            />
-                            {getVerifyBadgeForFile(file)}
+                  {variablesRealizationVals.length === 0 ? (
+                    <div style={{ fontSize:'12px',color:'var(--danger)' }}>Variabel belum dikonfigurasi. Hubungi Admin.</div>
+                  ) : (
+                    <div style={{ display:'flex',flexDirection:'column',gap:'20px' }}>
+                      {variablesRealizationVals.map((vr, varIdx) => {
+                        const effectiveMetode = (activeRecord && activeRecord.snapshotMetode) || activeNode?.metodePenghitungan || 'Tunggal';
+                        const nm = (effectiveMetode === 'Jumlah') ? 'Tunggal' : effectiveMetode;
+                        const snapVar = activeNode?.variables?.find(sv => sv.name === vr.name) || activeRecord?.snapshotVariables?.find(sv => sv.name === vr.name);
+                        
+                        return (
+                          <div key={varIdx} style={{ background:'rgba(0,0,0,0.15)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:'8px',padding:'16px' }}>
+                            {/* Header Variabel */}
+                            <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingBottom:'10px',borderBottom:'1px dashed rgba(255,255,255,0.1)' }}>
+                              <div style={{ fontWeight:600,fontSize:'13px',color:'white' }}>
+                                {vr.name || `Variabel ${varIdx + 1}`}
+                              </div>
+                              <div style={{ display:'flex',alignItems:'center',gap:'16px' }}>
+                                {nm === 'Pembobotan' && snapVar && (
+                                  <span style={{ fontSize:'11px',color:'var(--text-muted)',background:'rgba(255,255,255,0.05)',padding:'4px 8px',borderRadius:'4px' }}>
+                                    Bobot: {snapVar.weight}
+                                  </span>
+                                )}
+                                <label style={{ display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'var(--text-muted)',cursor:'pointer' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    disabled={!isRealisasiEditable}
+                                    checked={vr.isConstant}
+                                    onChange={(e) => {
+                                      const newVals = [...variablesRealizationVals];
+                                      newVals[varIdx] = { ...newVals[varIdx], isConstant: e.target.checked };
+                                      setVariablesRealizationVals(newVals);
+                                    }}
+                                  />
+                                  Data sama sepanjang tahun
+                                </label>
+                              </div>
+                            </div>
+                            
+                            {/* Input Nilai */}
+                            <div className="form-group mb-3">
+                              <label style={{ fontSize:'11px',color:'var(--text-muted)' }}>Capaian Variabel</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                disabled={!isRealisasiEditable}
+                                value={vr.value}
+                                onChange={(e) => {
+                                  const newVals = [...variablesRealizationVals];
+                                  newVals[varIdx] = { ...newVals[varIdx], value: formatIndonesianInput(e.target.value) };
+                                  setVariablesRealizationVals(newVals);
+                                }}
+                                required
+                                placeholder={`Masukkan angka capaian untuk ${vr.name || `variabel ${varIdx + 1}`}`}
+                              />
+                            </div>
+                            {/* Bukti Dukung per Variabel */}
+                            <div style={{ display:'flex',flexDirection:'column',gap:'8px' }}>
+                              <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                                <label style={{ fontSize:'11px',color:'var(--text-muted)',display:'flex',alignItems:'center',gap:'6px' }}>
+                                  <i className="fa-solid fa-link"></i> Link Bukti Dukung (Minimal 1)
+                                </label>
+                                <button type="button" onClick={() => handleAddFileRow(varIdx)} disabled={!isRealisasiEditable} style={{ background:'transparent',border:'1px solid rgba(255,255,255,0.1)',color:'var(--primary-orange)',borderRadius:'4px',padding:'2px 8px',fontSize:'10px',cursor:'pointer' }}>
+                                  <i className="fa-solid fa-plus"></i> Tambah Link
+                                </button>
+                              </div>
+                              
+                              <div style={{ display:'flex',flexDirection:'column',gap:'8px' }}>
+                                {Array.isArray(vr.buktiDukungFiles) && vr.buktiDukungFiles.map((file, fileIdx) => (
+                                  <div key={fileIdx} style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',background:'rgba(255,255,255,0.02)',padding:'8px',borderRadius:'6px',position:'relative' }}>
+                                    {vr.buktiDukungFiles.length > 1 && (
+                                      <button type="button" onClick={() => handleRemoveFileRow(varIdx, fileIdx)} disabled={!isRealisasiEditable} style={{ position:'absolute',top:'-4px',right:'-4px',background:'var(--danger)',border:'none',color:'white',borderRadius:'50%',width:'16px',height:'16px',fontSize:'8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2 }}>
+                                        <i className="fa-solid fa-xmark"></i>
+                                      </button>
+                                    )}
+                                    <div className="form-group" style={{ margin:0 }}>
+                                      <input type="text" className="form-control" style={{ fontSize:'11px',padding:'6px 8px' }} disabled={!isRealisasiEditable} value={file.url} onChange={(e) => handleUrlChange(varIdx, fileIdx, e.target.value)} placeholder="URL Bukti Dukung" required />
+                                      {getVerifyBadgeForFile(file)}
+                                    </div>
+                                    <div className="form-group" style={{ margin:0 }}>
+                                      <input type="text" className="form-control" style={{ fontSize:'11px',padding:'6px 8px' }} disabled={!isRealisasiEditable} value={file.name} onChange={(e) => handleNameChange(varIdx, fileIdx, e.target.value)} placeholder="Nama Dokumen" required={file.url.trim() !== ''} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                          
-                          <div className="form-group">
-                            <label style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Nama Dokumen / Keterangan:</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              disabled={!isRealisasiEditable}
-                              value={file.name}
-                              onChange={(e) => handleNameChange(index, e.target.value)}
-                              placeholder="Masukkan nama dokumen pendukung..."
-                              required={file.url.trim() !== ''}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  {isRealisasiEditable && (
-                    <button
-                      type="button"
-                      onClick={handleAddFileRow}
-                      className="btn btn-sm btn-secondary"
-                      style={{ 
-                        alignSelf: 'flex-start', 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        padding: '6px 12px', 
-                        fontSize: '12px',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid var(--glass-border)'
-                      }}
-                    >
-                      <i className="fa-solid fa-plus-circle text-orange"></i> Tambah File Bukti Dukung
-                    </button>
+                  {realisasiValue !== '' && variablesRealizationVals.length > 0 && (
+                    <div style={{ marginTop:'20px',fontSize:'13px',background:'rgba(59,130,246,0.15)',padding:'12px 16px',borderRadius:'6px',border:'1px solid rgba(59,130,246,0.3)',display:'flex',justifyContent:'space-between',alignItems:'center' }}>
+                      <span>Realisasi Capaian Keseluruhan Terhitung:</span>
+                      <strong style={{ fontSize:'16px' }}>{realisasiValue} {activeNode?.satuan}</strong>
+                    </div>
                   )}
                 </div>
 

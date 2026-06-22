@@ -108,10 +108,18 @@ export async function GET(request) {
             localSatuan = nodePlain.indicators[0].satuan || localSatuan;
           }
 
-          hasNameMismatch = nodePlain.nomenklatur !== master.nama;
-          hasKinerjaMismatch = nodePlain.text !== masterKinerja;
-          hasIndicatorMismatch = localIndikator !== master.indikator || localSatuan !== master.satuan;
+          if (nodePlain.level === 'subkegiatan') {
+            // Untuk node subkegiatan biasa, text adalah nama subkegiatannya (nomenklatur).
+            // Nomenklatur juga menampung nama subkegiatan.
+            hasNameMismatch = nodePlain.text !== master.nama && nodePlain.nomenklatur !== master.nama;
+            hasKinerjaMismatch = false; // Tidak ada sasaran kinerja di node subkegiatan murni
+          } else {
+            // Untuk sasaran_subkegiatan, nomenklatur = nama, text = sasaran (kinerja)
+            hasNameMismatch = nodePlain.nomenklatur !== master.nama;
+            hasKinerjaMismatch = nodePlain.text !== masterKinerja;
+          }
 
+          hasIndicatorMismatch = localIndikator !== master.indikator || localSatuan !== master.satuan;
           isMismatch = hasNameMismatch || hasKinerjaMismatch || hasIndicatorMismatch;
         }
       }
@@ -221,11 +229,17 @@ export async function POST(request) {
       node.nomenklatur = masterNama;
     } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
       node.nomenklatur = masterNama;
-      node.text = masterKinerja;
-      node.sasaran = masterKinerja;
-      if (node.sasaranSubkegiatan !== undefined) {
-        node.sasaranSubkegiatan = masterKinerja;
+      
+      if (node.level === 'subkegiatan') {
+        node.text = masterNama; // Node subkegiatan murni menggunakan nama di text
+      } else {
+        node.text = masterKinerja; // Node sasaran menggunakan kinerja di text
+        node.sasaran = masterKinerja;
+        if (node.sasaranSubkegiatan !== undefined) {
+          node.sasaranSubkegiatan = masterKinerja;
+        }
       }
+      
       if (masterIndikator) node.indikator = masterIndikator;
       if (masterSatuan) node.satuan = masterSatuan;
 

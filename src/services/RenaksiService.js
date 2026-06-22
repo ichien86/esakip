@@ -40,8 +40,8 @@ class RenaksiService {
       const node = await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
       if (node && node.tipeTarget === 'Akumulatif') {
         let annualTarget = parseFloat(node.target);
-        if ((node.crossCuttingType === 'digabung' || node.crossCuttingType === 'split') && node.splitTargets && userBidang) {
-          const portion = parseFloat(node.splitTargets[userBidang]);
+        if (node.crossCuttingType === 'split' && node.splitTargets && employeeId) {
+          const portion = parseFloat(node.splitTargets[employeeId]);
           if (!isNaN(portion)) {
             annualTarget = portion;
           }
@@ -97,7 +97,48 @@ class RenaksiService {
 
     const yearNum = parseInt(requestYear || '2026');
 
-    // Update all Draft records for employee in the selected year to Target_Diajukan
+    // 1. Get Employee's selected indicators
+    const SelectionRepository = (await import('@/repositories/SelectionRepository')).default;
+    const selection = await SelectionRepository.findOne({ employeeId, tahun: yearNum });
+    const assignedIds = selection ? selection.selectedIndicators : [];
+
+    if (!assignedIds || assignedIds.length === 0) {
+      const err = new Error('Anda belum memilih/ditugaskan pada indikator kinerja apapun untuk tahun ini.');
+      err.status = 400;
+      throw err;
+    }
+
+    // 2. Fetch Indicator/Node details
+    const CascadingAnnualRepository = (await import('@/repositories/CascadingAnnualRepository')).default;
+    const IndicatorAnnualRepository = (await import('@/repositories/IndicatorAnnualRepository')).default;
+    
+    let nodes = await CascadingAnnualRepository.find({ id: { $in: assignedIds }, tahun: yearNum });
+    const indNodes = await IndicatorAnnualRepository.find({ id: { $in: assignedIds }, tahun: yearNum });
+    nodes = [...nodes, ...indNodes];
+
+    // 3. Fetch all draft targets for this employee
+    const draftRecords = await RenaksiRepository.find({ employeeId, tahun: yearNum, status: 'Draft' });
+
+    // 4. Validate Completeness
+    for (const node of nodes) {
+      const nodeDrafts = draftRecords.filter(r => r.indicatorId === node.id);
+
+      if (nodeDrafts.length === 0) {
+        const err = new Error(`Validasi Gagal: Anda belum mengisi target sama sekali untuk indikator "${node.indikator}".`);
+        err.status = 400;
+        throw err;
+      }
+
+      if (node.tipeTarget !== 'Akumulatif') {
+        if (nodeDrafts.length < 12) {
+          const err = new Error(`Validasi Gagal: Indikator "${node.indikator}" bertipe non-akumulatif (${node.tipeTarget}). Setiap bulan wajib diisi sebagai proses target, tidak boleh ada bulan yang kosong.`);
+          err.status = 400;
+          throw err;
+        }
+      }
+    }
+
+    // 5. Update status
     const result = await RenaksiRepository.updateMany(
       { employeeId, tahun: yearNum, status: 'Draft' },
       { $set: { status: 'Target_Diajukan' } }
@@ -107,13 +148,68 @@ class RenaksiService {
   }
 
   /**
-   * Menyimpan realisasi bulanan.
+   * Menghitung nilai realisasi berdasarkan metode dan input variabel.
+   * Fungsi helper ini digunakan oleh saveRealisasi.
+   */
+  computeRealisasi(metode, variablesRealization, snapshotVariables) {
+    // Normalisasi metode lama 'Jumlah' -> 'Tunggal'
+    const normalizedMetode = (metode === 'Jumlah') ? 'Tunggal' : metode;
+
+    if (!variablesRealization || variablesRealization.length === 0) {
+      throw Object.assign(new Error(`Variabel untuk metode ${normalizedMetode} wajib diisi.`), { status: 400 });
+    }
+
+    if (normalizedMetode === 'Tunggal') {
+      const val = parseFloat(variablesRealization[0].value);
+      if (isNaN(val)) throw Object.assign(new Error('Nilai variabel tunggal wajib diisi angka valid.'), { status: 400 });
+      return val;
+
+    } else if (normalizedMetode === 'Persentase') {
+      if (variablesRealization.length < 2) throw Object.assign(new Error('Variabel Pembilang dan Penyebut wajib diisi.'), { status: 400 });
+      const pembilang = parseFloat(variablesRealization[0].value);
+      const penyebut = parseFloat(variablesRealization[1].value);
+      if (isNaN(pembilang) || isNaN(penyebut)) throw Object.assign(new Error('Nilai pembilang dan penyebut wajib diisi angka valid.'), { status: 400 });
+      if (penyebut === 0) throw Object.assign(new Error('Nilai penyebut tidak boleh nol.'), { status: 400 });
+      return parseFloat(((pembilang / penyebut) * 100).toFixed(2));
+
+    } else if (normalizedMetode === 'Rata-rata') {
+      const values = variablesRealization.map(v => parseFloat(v.value));
+      if (values.some(v => isNaN(v))) throw Object.assign(new Error('Semua nilai variabel Rata-rata wajib diisi angka valid.'), { status: 400 });
+      const sum = values.reduce((acc, v) => acc + v, 0);
+      return parseFloat((sum / values.length).toFixed(4));
+
+    } else if (normalizedMetode === 'Penjumlahan') {
+      const values = variablesRealization.map(v => parseFloat(v.value));
+      if (values.some(v => isNaN(v))) throw Object.assign(new Error('Semua nilai variabel Penjumlahan wajib diisi angka valid.'), { status: 400 });
+      return parseFloat(values.reduce((acc, v) => acc + v, 0).toFixed(4));
+
+    } else if (normalizedMetode === 'Pembobotan') {
+      if (!snapshotVariables || snapshotVariables.length === 0) throw Object.assign(new Error('Konfigurasi bobot variabel tidak ditemukan di snapshot.'), { status: 500 });
+      let weightedSum = 0;
+      for (const vr of variablesRealization) {
+        const val = parseFloat(vr.value);
+        if (isNaN(val)) throw Object.assign(new Error(`Nilai variabel "${vr.name}" wajib diisi angka valid.`), { status: 400 });
+        const snapVar = snapshotVariables.find(sv => sv.name === vr.name);
+        const weight = snapVar ? (parseFloat(snapVar.weight) || 0) : 0;
+        weightedSum += val * weight;
+      }
+      return parseFloat((weightedSum / 100).toFixed(4));
+
+    } else {
+      // Fallback: ambil dari realisasiBulanan langsung
+      return null;
+    }
+  }
+
+  /**
+   * Menyimpan realisasi bulanan dengan pola snapshot.
    */
   async saveRealisasi(body) {
     const {
       employeeId, indicatorId, bulan, realisasiBulanan, buktiDukung,
       kendala, solusi, faktorPendorong, inovasi, status,
-      variabelJumlahVal, variabelPembilangVal, variabelPenyebutVal
+      // Baru: input nilai variabel dinamis dari pegawai
+      variablesRealization
     } = body;
 
     if (!employeeId || !indicatorId || !bulan) {
@@ -160,37 +256,45 @@ class RenaksiService {
 
     const target = record.targetBulanan;
     const node = await CascadingAnnualRepository.findOne({ id: indicatorId });
-    
-    let realisasi = 0;
-    if (node && node.metodePenghitungan === 'Persentase') {
-      const pembilang = parseFloat(variabelPembilangVal);
-      const penyebut = parseFloat(variabelPenyebutVal);
-      if (isNaN(pembilang) || isNaN(penyebut)) {
-        const err = new Error('Nilai pembilang dan penyebut wajib diisi angka valid.');
-        err.status = 400;
-        throw err;
+
+    // ===== POLA SNAPSHOT =====
+    // Jika snapshot belum ada (pengisian pertama kali), salin konfigurasi dari indikator
+    let activeMetode = record.snapshotMetode;
+    let activeVariables = (record.snapshotVariables && record.snapshotVariables.length > 0)
+      ? record.snapshotVariables
+      : null;
+
+    if (!activeMetode) {
+      // Ambil metode dari indikator (template utama)
+      const rawMetode = node ? (node.metodePenghitungan || 'Tunggal') : 'Tunggal';
+      activeMetode = (rawMetode === 'Jumlah') ? 'Tunggal' : rawMetode;
+      record.snapshotMetode = activeMetode;
+
+      // Salin konfigurasi variabel ke snapshot
+      if (node && Array.isArray(node.variables) && node.variables.length > 0) {
+        record.snapshotVariables = node.variables.map(v => ({ name: v.name, weight: v.weight }));
+        activeVariables = record.snapshotVariables;
+      } else {
+        record.snapshotVariables = [];
+        activeVariables = [];
       }
-      if (penyebut === 0) {
-        const err = new Error('Nilai penyebut tidak boleh nol.');
-        err.status = 400;
-        throw err;
-      }
-      // Round to 2 decimal places
-      realisasi = parseFloat(((pembilang / penyebut) * 100).toFixed(2));
-    } else if (node && node.metodePenghitungan === 'Jumlah') {
-      const val = parseFloat(variabelJumlahVal);
-      if (isNaN(val)) {
-        const err = new Error('Nilai variabel jumlah wajib diisi angka valid.');
-        err.status = 400;
-        throw err;
-      }
-      realisasi = val;
-    } else {
+    }
+    // ===== AKHIR POLA SNAPSHOT =====
+
+    // Hitung realisasi menggunakan snapshot metode yang sudah terkunci
+    let realisasi;
+    try {
+      realisasi = this.computeRealisasi(activeMetode, variablesRealization, activeVariables);
+    } catch (calcErr) {
+      throw calcErr;
+    }
+
+    // Jika metode tidak dikenal / fallback, gunakan nilai manual
+    if (realisasi === null) {
       realisasi = parseFloat(realisasiBulanan || 0);
     }
 
     const isDecreasing = node && node.tipeTarget === 'Kondisi Akhir Menurun';
-
     let isUnderperforming = false;
     if (isDecreasing) {
       isUnderperforming = realisasi > target;
@@ -213,9 +317,17 @@ class RenaksiService {
     }
 
     record.realisasiBulanan = realisasi;
-    record.variabelJumlahVal = variabelJumlahVal !== undefined && variabelJumlahVal !== '' ? parseFloat(variabelJumlahVal) : null;
-    record.variabelPembilangVal = variabelPembilangVal !== undefined && variabelPembilangVal !== '' ? parseFloat(variabelPembilangVal) : null;
-    record.variabelPenyebutVal = variabelPenyebutVal !== undefined && variabelPenyebutVal !== '' ? parseFloat(variabelPenyebutVal) : null;
+
+    // Simpan variabel dinamis
+    if (Array.isArray(variablesRealization) && variablesRealization.length > 0) {
+      record.variablesRealization = variablesRealization.map(v => ({
+        name: v.name,
+        value: v.value !== undefined && v.value !== '' ? parseFloat(v.value) : null,
+        isConstant: v.isConstant === true || v.isConstant === 'true',
+        buktiDukung: v.buktiDukung || ''
+      }));
+    }
+
     record.buktiDukung = buktiDukung || '';
     record.status = status || 'Diajukan';
 

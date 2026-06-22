@@ -18,10 +18,30 @@ const RenaksiSchema = new mongoose.Schema({
   status: { type: String, default: 'Draft' }, // Draft, Diajukan, Disetujui
   isCrossCuttingSelected: { type: Boolean, default: true },
   
-  // Realization calculation variables
+  // Realization calculation variables (Legacy: Tunggal & Persentase)
   variabelJumlahVal: { type: Number, default: null },
   variabelPembilangVal: { type: Number, default: null },
-  variabelPenyebutVal: { type: Number, default: null }
+  variabelPenyebutVal: { type: Number, default: null },
+
+  // ===== POLA SNAPSHOT (disalin dari Indikator saat pertama kali diisi) =====
+  // Metode yang aktif saat bulan ini diisi (beku setelah simpan pertama)
+  snapshotMetode: { type: String, default: null }, // Tunggal, Persentase, Rata-rata, Penjumlahan, Pembobotan
+  // Konfigurasi variabel (beku setelah simpan pertama)
+  snapshotVariables: [
+    {
+      name: { type: String },
+      weight: { type: Number, default: 1 }
+    }
+  ],
+  // Nilai input riil dari pegawai untuk variabel dinamis
+  variablesRealization: [
+    {
+      name: { type: String },
+      value: { type: Number, default: null },
+      isConstant: { type: Boolean, default: false },
+      buktiDukung: { type: String, default: '' }
+    }
+  ]
 }, { timestamps: true });
 
 export default mongoose.models.Renaksi || mongoose.model('Renaksi', RenaksiSchema);

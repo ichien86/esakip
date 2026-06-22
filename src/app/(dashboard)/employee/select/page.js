@@ -82,7 +82,11 @@ export default function EmployeeSelectIndicatorsPage() {
         // Populate assignments map for Admin Unit Kerja
         const initialAssignments = {};
         filtered.forEach(n => {
-          initialAssignments[n.id] = n.penanggungJawab || '';
+          initialAssignments[n.id] = {
+            penanggungJawab: (n.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean),
+            crossCuttingType: n.crossCuttingType || 'shared',
+            splitTargets: n.splitTargets || {}
+          };
         });
         setAssignments(initialAssignments);
       }
@@ -110,11 +114,50 @@ export default function EmployeeSelectIndicatorsPage() {
     }
   }, [currentUser, loadData]);
 
-  const handleAssignmentChange = (nodeId, val) => {
+  const handleAssignmentChange = (nodeId, val, action = 'toggle') => {
     if (systemSettings?.planning_locked) return;
+    
+    setAssignments(prev => {
+      const current = prev[nodeId] || { penanggungJawab: [], crossCuttingType: 'shared', splitTargets: {} };
+      let newPics = [...current.penanggungJawab];
+      
+      if (action === 'toggle') {
+        if (newPics.includes(val)) {
+          newPics = newPics.filter(p => p !== val);
+        } else {
+          newPics.push(val);
+        }
+      } else if (action === 'set') {
+        newPics = [val]; // Fallback if we just want single select
+      }
+
+      return {
+        ...prev,
+        [nodeId]: {
+          ...current,
+          penanggungJawab: newPics
+        }
+      };
+    });
+  };
+
+  const handleCrossCuttingChange = (nodeId, type) => {
     setAssignments(prev => ({
       ...prev,
-      [nodeId]: val
+      [nodeId]: { ...prev[nodeId], crossCuttingType: type }
+    }));
+  };
+
+  const handleSplitTargetChange = (nodeId, picId, val) => {
+    setAssignments(prev => ({
+      ...prev,
+      [nodeId]: {
+        ...prev[nodeId],
+        splitTargets: {
+          ...prev[nodeId].splitTargets,
+          [picId]: val
+        }
+      }
     }));
   };
 
@@ -122,6 +165,28 @@ export default function EmployeeSelectIndicatorsPage() {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (isAdminUnitKerja) {
+      // Validate split targets
+      for (const nodeId in assignments) {
+        const assign = assignments[nodeId];
+        if (assign.penanggungJawab && assign.penanggungJawab.length > 1 && assign.crossCuttingType === 'split') {
+          const node = annualNodes.find(n => n.id === nodeId);
+          if (node) {
+            let sum = 0;
+            assign.penanggungJawab.forEach(pic => {
+              sum += parseFloat(assign.splitTargets[pic] || 0);
+            });
+            const targetNum = parseFloat(node.target) || 0;
+            
+            if (Math.abs(sum - targetNum) > 0.05) {
+              setError(`Validasi Gagal: Total pembagian target untuk indikator "${node.indikator}" adalah ${sum}, sedangkan target keseluruhannya adalah ${targetNum}. Silakan sesuaikan porsi.`);
+              return;
+            }
+          }
+        }
+      }
+    }
 
     try {
       const payload = isAdminUnitKerja 
@@ -268,36 +333,61 @@ export default function EmployeeSelectIndicatorsPage() {
                                     <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
                                   </div>
                                 ) : (
-                                  <select
-                                    className="select-sim"
-                                    value={assignments[node.id] || ''}
-                                    disabled={systemSettings?.planning_locked}
-                                    onChange={(e) => handleAssignmentChange(node.id, e.target.value)}
-                                    style={{ minWidth: '220px', fontSize: '12px', background: 'var(--glass-bg)', borderColor: 'var(--glass-border)', color: 'white' }}
-                                  >
-                                    <option value="">-- Pilih Penanggung Jawab --</option>
-                                    {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').length > 0 && (
-                                      <optgroup label="Nama Pegawai (Staf/Pimpinan)">
-                                        {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'staff').map(opt => (
-                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                      </optgroup>
+                                  <div style={{ minWidth: '280px', fontSize: '12px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
+                                    <div style={{ marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-muted)' }}>-- Pilih Penanggung Jawab --</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '8px' }}>
+                                      {getPenanggungJawabOptionsForNode(node).map(opt => (
+                                        <label key={opt.value} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: 0, cursor: systemSettings?.planning_locked ? 'not-allowed' : 'pointer' }}>
+                                          <input 
+                                            type="checkbox" 
+                                            style={{ marginTop: '2px' }}
+                                            checked={(assignments[node.id]?.penanggungJawab || []).includes(opt.value)}
+                                            onChange={() => handleAssignmentChange(node.id, opt.value, 'toggle')}
+                                            disabled={systemSettings?.planning_locked}
+                                          />
+                                          <span style={{ color: 'white', lineHeight: '1.4' }}>{opt.label}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                    
+                                    {(assignments[node.id]?.penanggungJawab || []).length > 1 && (
+                                      <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
+                                        <div style={{ marginBottom: '10px', fontWeight: 'bold', color: 'var(--primary-orange)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <i className="fa-solid fa-people-group"></i> Kolaborasi (Crosscutting)
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, cursor: 'pointer' }}>
+                                            <input type="radio" checked={assignments[node.id]?.crossCuttingType === 'shared'} onChange={() => handleCrossCuttingChange(node.id, 'shared')} /> Shared (Sama)
+                                          </label>
+                                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, cursor: 'pointer' }}>
+                                            <input type="radio" checked={assignments[node.id]?.crossCuttingType === 'split'} onChange={() => handleCrossCuttingChange(node.id, 'split')} /> Split (Bagi Porsi)
+                                          </label>
+                                        </div>
+                                        {assignments[node.id]?.crossCuttingType === 'split' && (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(255,107,0,0.05)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,107,0,0.2)' }}>
+                                            <div style={{ fontSize: '11px', color: 'var(--info)', fontWeight: 600, borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '4px' }}>
+                                              Target Keseluruhan: {node.target} {node.satuan}
+                                            </div>
+                                            {(assignments[node.id]?.penanggungJawab || []).map(pic => (
+                                              <div key={pic} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                                                <span style={{ fontSize: '11px', color: 'white', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolvePenanggungJawabLabel(pic)}</span>
+                                                <input 
+                                                  type="number" 
+                                                  style={{ width: '80px', padding: '4px 6px', fontSize: '11px', background: 'var(--glass-bg)', color: 'white', border: '1px solid var(--glass-border)', borderRadius: '4px', textAlign: 'center' }}
+                                                  placeholder="Porsi"
+                                                  value={assignments[node.id]?.splitTargets[pic] || ''}
+                                                  onChange={(e) => handleSplitTargetChange(node.id, pic, e.target.value)}
+                                                />
+                                              </div>
+                                            ))}
+                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
+                                              * Pastikan jumlah dari semua porsi sama dengan {node.target}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
                                     )}
-                                    {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').length > 0 && (
-                                      <optgroup label="Jabatan Pemimpin (Melekat)">
-                                        {getPenanggungJawabOptionsForNode(node).filter(o => o.type === 'jabatan').map(opt => (
-                                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                      </optgroup>
-                                    )}
-                                    {assignments[node.id] && !getPenanggungJawabOptionsForNode(node).some(opt => opt.value === assignments[node.id]) && (
-                                      <optgroup label="Aktif Saat Ini">
-                                        <option value={assignments[node.id]}>
-                                          {resolvePenanggungJawabLabel(assignments[node.id])}
-                                        </option>
-                                      </optgroup>
-                                    )}
-                                  </select>
+                                  </div>
                                 )}
                               </div>
                             ) : (

@@ -18,10 +18,17 @@ const Indicator5YearsSchema = new mongoose.Schema({
 
   // Definisi operasional
   definisiOperasional: { type: String, default: '' },
-  metodePenghitungan: { type: String, default: 'Jumlah' }, // Jumlah, Persentase, Lainnya
-  variabelJumlah: { type: String, default: '' },
-  variabelPembilang: { type: String, default: '' },
-  variabelPenyebut: { type: String, default: '' },
+  metodePenghitungan: { type: String, default: 'Tunggal' }, // Tunggal, Persentase, Rata-rata, Penjumlahan, Pembobotan (legacy: Jumlah)
+  variabelJumlah: { type: String, default: '' },       // Legacy: Metode Tunggal
+  variabelPembilang: { type: String, default: '' },    // Legacy: Metode Persentase
+  variabelPenyebut: { type: String, default: '' },     // Legacy: Metode Persentase
+  // Variabel dinamis untuk metode Rata-rata, Penjumlahan, Pembobotan
+  variables: [
+    {
+      name: { type: String, required: true },
+      weight: { type: Number, default: 1 } // Digunakan untuk metode Pembobotan (0 - 100)
+    }
+  ],
   order: { type: Number, default: 0 }
 }, { timestamps: true });
 

@@ -69,7 +69,7 @@ class CascadingAnnualService {
         level: lvl,
         indicators: sortedIndicators,
         sasaran: plainNode.sasaran || plainNode.sasaranSubkegiatan || '',
-        nomenklatur: plainNode.nomenklatur || (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(lvl) ? plainNode.text : '')
+        nomenklatur: plainNode.nomenklatur || ''
       };
     }).filter(Boolean);
 
@@ -125,7 +125,7 @@ class CascadingAnnualService {
       id, level, text, indikator, target, satuan, tipeTarget, parentId, bidangPengampu,
       crossCuttingType, selectedBidang, splitTargets, tahun,
       requesterRole, requesterBidang,
-      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut,
+      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
       masterId, anggaran, anggaranDpa, sasaran, nomenklatur, indicators
     } = body;
 
@@ -232,10 +232,11 @@ class CascadingAnnualService {
           tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
           penanggungJawab: ind.penanggungJawab || null,
           definisiOperasional: ind.definisiOperasional || '',
-          metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+          metodePenghitungan: ind.metodePenghitungan || 'Tunggal',
           variabelJumlah: ind.variabelJumlah || '',
           variabelPembilang: ind.variabelPembilang || '',
           variabelPenyebut: ind.variabelPenyebut || '',
+          variables: Array.isArray(ind.variables) ? ind.variables : [],
           order: ind.order !== undefined ? ind.order : orderIndex
         });
         orderIndex++;

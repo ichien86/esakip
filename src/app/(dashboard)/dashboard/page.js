@@ -347,7 +347,7 @@ export default function DashboardPage() {
                           <div style={{ marginTop: '8px', fontSize: '12px' }}>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Nama Nomenklatur Berubah:</span>
                             <div style={{ color: '#EF4444', textDecoration: 'line-through', margin: '2px 0' }}>
-                              Lama: {warning.nomenklatur || '-'}
+                              Lama: {warning.nomenklatur || (['program', 'kegiatan', 'subkegiatan'].includes(warning.level) ? warning.text : '-')}
                             </div>
                             <div style={{ color: '#10B981', fontWeight: 'bold' }}>
                               Baru: {warning.masterNama}

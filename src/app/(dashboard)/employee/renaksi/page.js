@@ -93,8 +93,8 @@ export default function EmployeeRenaksiPage() {
 
   const getEffectiveAnnualTarget = (node) => {
     let targetVal = parseFloat(node.target);
-    if (node.crossCuttingType === 'split' && node.splitTargets && activeBidang) {
-      const portion = parseFloat(node.splitTargets[activeBidang]);
+    if (node.crossCuttingType === 'split' && node.splitTargets && currentUser) {
+      const portion = parseFloat(node.splitTargets[currentUser.id]);
       if (!isNaN(portion)) {
         targetVal = portion;
       }

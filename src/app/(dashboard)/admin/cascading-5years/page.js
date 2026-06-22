@@ -4,6 +4,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 export default function AdminCascading5YearsPage() {
   const { fetchWithAuth, activeRole, activeBidang, refreshMetadata } = useSimulation();
@@ -1532,7 +1536,8 @@ export default function AdminCascading5YearsPage() {
 
                   {node.level === 'sasaran_subkegiatan' && node.definisiOperasional && (
                     <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', padding: '8px 12px', borderRadius: '6px', marginTop: '8px', fontSize: '11.5px' }}>
-                      <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>Definisi Operasional:</span> {node.definisiOperasional}
+                      <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>Definisi Operasional:</span>
+                      <div dangerouslySetInnerHTML={{ __html: node.definisiOperasional }} style={{ marginTop: '4px' }} />
                     </div>
                   )}
 
@@ -2658,12 +2663,12 @@ export default function AdminCascading5YearsPage() {
 
               <div className="form-group">
                 <label>Definisi Operasional</label>
-                <textarea 
-                  className="form-control" 
-                  rows="3" 
+                <ReactQuill 
+                  theme="snow"
                   value={opDefVal} 
-                  onChange={(e) => setOpDefVal(e.target.value)} 
-                  placeholder="Masukkan definisi operasional..."
+                  onChange={setOpDefVal} 
+                  placeholder="Masukkan definisi operasional... (Bisa copy-paste tabel/gambar/rumus dari Word)"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: 'white', borderRadius: '4px' }}
                 />
               </div>
 

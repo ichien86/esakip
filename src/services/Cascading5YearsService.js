@@ -103,7 +103,7 @@ class Cascading5YearsService {
         level: lvl,
         indicators: sortedIndicators,
         sasaran: plainNode.sasaran || plainNode.sasaranSubkegiatan || '',
-        nomenklatur: plainNode.nomenklatur || (['sasaran_program', 'sasaran_kegiatan', 'sasaran_subkegiatan'].includes(lvl) ? plainNode.text : '')
+        nomenklatur: plainNode.nomenklatur || ''
       };
     });
 
@@ -161,7 +161,7 @@ class Cascading5YearsService {
       target2025, target2026, target2027, target2028, target2029, target2030, targetAkhir,
       anggaran2025, anggaran2026, anggaran2027, anggaran2028, anggaran2029, anggaran2030, anggaranAkhir,
       requesterRole, requesterBidang,
-      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut,
+      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
       sasaran, nomenklatur, indicators, masterId
     } = body;
 
@@ -284,10 +284,11 @@ class Cascading5YearsService {
           target2030: ind.target2030 || '0',
           targetAkhir: ind.targetAkhir || '0',
           definisiOperasional: ind.definisiOperasional || '',
-          metodePenghitungan: ind.metodePenghitungan || 'Jumlah',
+          metodePenghitungan: ind.metodePenghitungan || 'Tunggal',
           variabelJumlah: ind.variabelJumlah || '',
           variabelPembilang: ind.variabelPembilang || '',
           variabelPenyebut: ind.variabelPenyebut || '',
+          variables: Array.isArray(ind.variables) ? ind.variables : [],
           order: ind.order !== undefined ? ind.order : orderIndex
         });
         orderIndex++;

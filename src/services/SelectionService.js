@@ -21,8 +21,12 @@ class SelectionService {
     const allEmployees = await Employee.find({ isActive: true });
 
     // Validation phase
-    for (const [idKey, penanggungJawab] of Object.entries(assignments)) {
-      if (!penanggungJawab) continue;
+    for (const [idKey, assignData] of Object.entries(assignments)) {
+      // Compatibility with old string format vs new object format
+      const isObject = typeof assignData === 'object' && assignData !== null;
+      const penanggungJawabStr = isObject ? (assignData.penanggungJawab || []).join(',') : (assignData || '');
+      
+      if (!penanggungJawabStr) continue;
 
       let node = await CascadingAnnualRepository.findOne({ id: idKey, tahun: yearNum });
       let indicatorName = '';
@@ -103,7 +107,12 @@ class SelectionService {
     const matchBidangs = (b1, b2) => cleanStr(b1) === cleanStr(b2);
     const isJabatanInBidang = (jab, bid) => cleanStr(jab).includes(cleanStr(bid));
 
-    for (const [idKey, penanggungJawab] of Object.entries(assignments)) {
+    for (const [idKey, assignData] of Object.entries(assignments)) {
+      const isObject = typeof assignData === 'object' && assignData !== null;
+      const penanggungJawabStr = isObject ? (assignData.penanggungJawab || []).join(',') : (assignData || '');
+      const crossCuttingType = isObject ? (assignData.crossCuttingType || 'shared') : 'shared';
+      const splitTargets = isObject ? (assignData.splitTargets || {}) : {};
+
       let targetIndicators = [];
       let parentNode = null;
 
@@ -121,7 +130,7 @@ class SelectionService {
 
       if (parentNode && ['kegiatan', 'sasaran_kegiatan', 'subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(parentNode.level)) {
         for (const indicator of targetIndicators) {
-          let nextPenanggungJawab = penanggungJawab || null;
+          let nextPenanggungJawab = penanggungJawabStr || null;
 
           if (parentNode.bidangPengampu && parentNode.bidangPengampu.length > 1 && requesterBidang) {
             const currentVal = indicator.penanggungJawab || '';
@@ -145,14 +154,21 @@ class SelectionService {
               }
             }
 
-            if (penanggungJawab) {
-              otherBidangsCaretakers.push(penanggungJawab);
+            if (penanggungJawabStr) {
+              // Add the newly assigned PICs
+              const newPics = penanggungJawabStr.split(',').map(s => s.trim()).filter(Boolean);
+              otherBidangsCaretakers.push(...newPics);
             }
 
             nextPenanggungJawab = [...new Set(otherBidangsCaretakers)].filter(Boolean).join(',') || null;
           }
 
           indicator.penanggungJawab = nextPenanggungJawab;
+          
+          // Save Cross-cutting Type and Split Targets at the indicator level
+          indicator.crossCuttingType = crossCuttingType;
+          indicator.splitTargets = splitTargets;
+
           await IndicatorAnnualRepository.saveDocument(indicator);
         }
       }
