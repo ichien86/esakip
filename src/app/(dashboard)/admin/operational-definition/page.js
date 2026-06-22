@@ -37,6 +37,7 @@ export default function OperationalDefinitionPage() {
   const [activeSuggestionField, setActiveSuggestionField] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterLevel, setFilterLevel] = useState('Semua');
+  const [filterStatus, setFilterStatus] = useState('Semua');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const searchInputRef = useRef(null);
@@ -45,8 +46,9 @@ export default function OperationalDefinitionPage() {
     setLoading(true);
     try {
       const res = await fetchWithAuth('/api/cascading5years');
-      if (res.ok) setNodes(await res.json());
-    } catch (e) { console.error('Failed to load cascading nodes', e); }
+      if (res.ok) { const data = await res.json(); setNodes(data); }
+      else { setError('Gagal mengambil data indikator strategis'); }
+    } catch (e) { setError('Kesalahan jaringan'); }
     finally { setLoading(false); }
   };
 
@@ -158,13 +160,12 @@ export default function OperationalDefinitionPage() {
     if (['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan)) {
       if (variables.length === 0 || variables.some(v => !v.name.trim())) { setError('Semua variabel harus memiliki nama.'); return; }
       if (metodePenghitungan === 'Pembobotan') {
-        const rounded = Math.round(totalWeight * 1000) / 1000;
-        if (Math.abs(rounded - 100) > 0.001) { setError(`Total bobot harus bernilai 100 (saat ini: ${rounded}).`); return; }
+        if (Math.abs(totalWeight - 100) > 0.001) { setError(`Total bobot harus 100. Saat ini: ${totalWeight.toFixed(1)}`); return; }
       }
     }
 
     const originalNode = nodes.find(n => n.id === selectedIndicator.nodeId);
-    if (!originalNode) { setError('Node tidak ditemukan.'); return; }
+    if (!originalNode) return;
 
     const updatedIndicators = [...(originalNode.indicators || [])];
     updatedIndicators[selectedIndicator.indicatorIndex] = {
@@ -201,16 +202,39 @@ export default function OperationalDefinitionPage() {
   };
 
   const allIndicators = [];
-  nodes.forEach(node => {
+  const traversedNodeIds = new Set();
+  
+  const rootNodes = nodes.filter(n => !n.parentId);
+  const getChildren = (parentId) => nodes.filter(n => n.parentId === parentId);
+  
+  const traverse = (node) => {
+    traversedNodeIds.add(node.id);
     if (node.indicators && Array.isArray(node.indicators)) {
-      node.indicators.forEach((ind, index) => allIndicators.push({ nodeId: node.id, nodeText: node.text, nodeLevel: node.level, indicatorIndex: index, ...ind }));
+      node.indicators.forEach((ind, index) => {
+        allIndicators.push({ nodeId: node.id, nodeText: node.text, nodeLevel: node.level, indicatorIndex: index, ...ind });
+      });
+    }
+    const children = getChildren(node.id);
+    children.forEach(child => traverse(child));
+  };
+  
+  rootNodes.forEach(root => traverse(root));
+  
+  // Tangkap yatim piatu (orphan nodes) jika ada
+  nodes.forEach(node => {
+    if (!traversedNodeIds.has(node.id) && node.indicators && Array.isArray(node.indicators)) {
+      node.indicators.forEach((ind, index) => {
+        allIndicators.push({ nodeId: node.id, nodeText: node.text, nodeLevel: node.level, indicatorIndex: index, ...ind });
+      });
     }
   });
 
   const filteredIndicators = allIndicators.filter(ind => {
     const matchesSearch = (ind.indikator || '').toLowerCase().includes(searchQuery.toLowerCase()) || (ind.nodeText || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLevel = filterLevel === 'Semua' || ind.nodeLevel === filterLevel;
-    return matchesSearch && matchesLevel;
+    const isFilled = !!ind.definisiOperasional;
+    const matchesStatus = filterStatus === 'Semua' || (filterStatus === 'Sudah Diisi' && isFilled) || (filterStatus === 'Belum Diisi' && !isFilled);
+    return matchesSearch && matchesLevel && matchesStatus;
   });
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
@@ -265,6 +289,11 @@ export default function OperationalDefinitionPage() {
               <option value="sasaran_kegiatan">Sasaran Kegiatan</option>
               <option value="sasaran_subkegiatan">Sasaran Subkegiatan</option>
               <option value="sasaran_aktivitas">Sasaran Aktivitas</option>
+            </select>
+            <select className="form-control" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width:'180px' }}>
+              <option value="Semua">Semua Status</option>
+              <option value="Belum Diisi">Belum Diisi</option>
+              <option value="Sudah Diisi">Sudah Diisi</option>
             </select>
           </div>
 
