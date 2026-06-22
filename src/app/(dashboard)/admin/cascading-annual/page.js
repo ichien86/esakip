@@ -1078,12 +1078,21 @@ export default function AdminCascadingAnnualPage() {
                       fontWeight: 'bold',
                       textTransform: 'uppercase'
                     }}>{levelLabels[node.level] || node.level}</span>
-                    {node.nomenklatur && (
-                      <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold', marginRight: '6px' }}>
-                        [{node.nomenklatur}]
-                      </span>
-                    )}
-                    {node.text}
+                    {(() => {
+                      const actualNomenklatur = node.nomenklatur || ((node.level === 'sasaran_subkegiatan' || node.level === 'subkegiatan') && node.sasaranSubkegiatan ? node.text : '');
+                      const actualSasaran = node.sasaran || node.sasaranSubkegiatan || node.text;
+                      
+                      return (
+                        <>
+                          {actualNomenklatur && (
+                            <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold', marginRight: '6px' }}>
+                              [{actualNomenklatur}]
+                            </span>
+                          )}
+                          {actualSasaran}
+                        </>
+                      );
+                    })()}
                   </h4>
 
                   {node.indicators && node.indicators.length > 0 ? (
@@ -1223,16 +1232,24 @@ export default function AdminCascadingAnnualPage() {
                 </div>
 
                 {/* Title / Description */}
-                <div style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.3', wordBreak: 'break-word' }}>
-                  {node.level === 'tujuan' || node.level === 'sasaran' ? node.text : (node.sasaran || node.text)}
-                </div>
-
-                {/* Nomenklatur for program/kegiatan/subkegiatan */}
-                {node.nomenklatur && (
-                  <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
-                    {node.nomenklatur}
-                  </div>
-                )}
+                {(() => {
+                  const actualNomenklatur = node.nomenklatur || ((node.level === 'sasaran_subkegiatan' || node.level === 'subkegiatan') && node.sasaranSubkegiatan ? node.text : '');
+                  const actualSasaran = node.level === 'tujuan' || node.level === 'sasaran' ? node.text : (node.sasaran || node.sasaranSubkegiatan || node.text);
+                  
+                  return (
+                    <>
+                      <div style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                        {actualSasaran}
+                      </div>
+                      
+                      {actualNomenklatur && (
+                        <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+                          {actualNomenklatur}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {/* Indicators */}
                 {node.indicators && node.indicators.length > 0 && (

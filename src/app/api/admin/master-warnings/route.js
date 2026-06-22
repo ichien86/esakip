@@ -108,15 +108,25 @@ export async function GET(request) {
             localSatuan = nodePlain.indicators[0].satuan || localSatuan;
           }
 
+          let actualNomenklatur = nodePlain.nomenklatur;
+          let actualKinerja = nodePlain.sasaran || nodePlain.sasaranSubkegiatan;
+
           if (nodePlain.level === 'subkegiatan') {
-            // Untuk node subkegiatan biasa, text adalah nama subkegiatannya (nomenklatur).
-            // Nomenklatur juga menampung nama subkegiatan.
-            hasNameMismatch = nodePlain.text !== master.nama && nodePlain.nomenklatur !== master.nama;
-            hasKinerjaMismatch = false; // Tidak ada sasaran kinerja di node subkegiatan murni
+            actualNomenklatur = actualNomenklatur || nodePlain.text;
+            hasNameMismatch = actualNomenklatur !== master.nama;
+            hasKinerjaMismatch = false; 
           } else {
-            // Untuk sasaran_subkegiatan, nomenklatur = nama, text = sasaran (kinerja)
-            hasNameMismatch = nodePlain.nomenklatur !== master.nama;
-            hasKinerjaMismatch = nodePlain.text !== masterKinerja;
+            actualNomenklatur = actualNomenklatur || (nodePlain.sasaranSubkegiatan || nodePlain.sasaran ? nodePlain.text : '');
+            actualKinerja = actualKinerja || nodePlain.text;
+            hasNameMismatch = actualNomenklatur !== master.nama && actualNomenklatur !== ''; 
+            // We ignore empty name mismatch if only text is present, to avoid false positives, but wait, 
+            // if actualNomenklatur is empty and we know it's a mismatch, we should flag it. Let's just compare.
+            hasNameMismatch = actualNomenklatur !== master.nama;
+            hasKinerjaMismatch = actualKinerja !== masterKinerja;
+            
+            // Override the warning properties to pass the correct values to the UI
+            nodePlain.displayNomenklatur = actualNomenklatur;
+            nodePlain.displayText = actualKinerja;
           }
 
           hasIndicatorMismatch = localIndikator !== master.indikator || localSatuan !== master.satuan;
@@ -139,8 +149,8 @@ export async function GET(request) {
           nodeId: nodePlain.id,
           type,
           level: nodePlain.level,
-          text: nodePlain.text,
-          nomenklatur: nodePlain.nomenklatur,
+          text: nodePlain.displayText !== undefined ? nodePlain.displayText : nodePlain.text,
+          nomenklatur: nodePlain.displayNomenklatur !== undefined ? nodePlain.displayNomenklatur : nodePlain.nomenklatur,
           indikator: warningIndikator,
           satuan: warningSatuan,
           masterId,

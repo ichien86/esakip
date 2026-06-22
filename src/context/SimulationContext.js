@@ -20,7 +20,7 @@ export function SimulationProvider({ children }) {
   const [activeRole, setActiveRole] = useState('');
   const [activeBidang, setActiveBidang] = useState('');
   const [allEmployees, setAllEmployees] = useState([]);
-  const [activeYear, setActiveYear] = useState(2026);
+  const [activeYear, setActiveYear] = useState(new Date().getFullYear());
   const [systemSettings, setSystemSettings] = useState({ planning_locked: false });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -107,6 +107,10 @@ export function SimulationProvider({ children }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('activeRole', defaultRole);
       localStorage.setItem('activeBidang', data.user.bidangs[0] || '');
+      
+      const currentYear = new Date().getFullYear();
+      setActiveYear(currentYear);
+      localStorage.setItem('activeYear', currentYear.toString());
       
       router.push('/dashboard');
       return { success: true };
