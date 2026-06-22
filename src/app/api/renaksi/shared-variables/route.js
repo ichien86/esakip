@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import RenaksiRepository from '@/lib/repositories/RenaksiRepository';
+import RenaksiRepository from '@/repositories/RenaksiRepository';
 
 export async function GET(request) {
   try {
