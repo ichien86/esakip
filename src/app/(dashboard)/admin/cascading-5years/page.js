@@ -102,6 +102,12 @@ export default function AdminCascading5YearsPage() {
   const [showOpDefDetailModal, setShowOpDefDetailModal] = useState(false);
   const [selectedOpDefIndicator, setSelectedOpDefIndicator] = useState(null);
 
+  // Change Parent Modal states
+  const [showChangeParentModal, setShowChangeParentModal] = useState(false);
+  const [nodeToMove, setNodeToMove] = useState(null);
+  const [selectedNewParentId, setSelectedNewParentId] = useState('');
+  const [isMovingNode, setIsMovingNode] = useState(false);
+
   // Alert Modal states
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState('info'); // info, success, error
@@ -226,6 +232,67 @@ export default function AdminCascading5YearsPage() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const openChangeParentModal = (node) => {
+    setNodeToMove(node);
+    setSelectedNewParentId('');
+    setShowChangeParentModal(true);
+  };
+
+  const handleMoveParent = async () => {
+    if (!selectedNewParentId) {
+      showAlert('Silakan pilih parent baru', 'error');
+      return;
+    }
+
+    setIsMovingNode(true);
+    try {
+      const res = await fetchWithAuth(`/api/cascading5years/${nodeToMove.id}/parent`, {
+        method: 'PATCH',
+        body: JSON.stringify({ parentId: selectedNewParentId })
+      });
+      if (res.ok) {
+        showAlert('Berhasil memindahkan node', 'success');
+        setShowChangeParentModal(false);
+        loadTreeData(true);
+      } else {
+        const errorData = await res.json();
+        showAlert(errorData.error || 'Gagal memindahkan node', 'error');
+      }
+    } catch (e) {
+      showAlert('Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setIsMovingNode(false);
+    }
+  };
+
+  const getValidParentOptions = (node) => {
+    if (!node) return [];
+    
+    let targetParentLevel;
+    if (node.level === 'sasaran') targetParentLevel = 'tujuan';
+    else if (node.level === 'sasaran_program') targetParentLevel = 'sasaran';
+    else if (node.level === 'sasaran_kegiatan') targetParentLevel = 'sasaran_program';
+    else if (node.level === 'sasaran_subkegiatan') targetParentLevel = 'sasaran_kegiatan';
+    else if (node.level === 'sasaran_aktivitas') targetParentLevel = 'sasaran_subkegiatan';
+    else return [];
+
+    let validNodes = nodes.filter(n => n.level === targetParentLevel && n.id !== node.id && n.id !== node.parentId);
+
+    if (node.level === 'sasaran_kegiatan') {
+      const kegiatanMaster = masterKegiatans.find(m => m.id === node.masterId || m.nama === node.nomenklatur);
+      if (kegiatanMaster) {
+        validNodes = validNodes.filter(p => p.masterId === kegiatanMaster.programId || masterPrograms.find(mp => mp.id === kegiatanMaster.programId)?.nama === p.nomenklatur);
+      }
+    } else if (node.level === 'sasaran_subkegiatan') {
+      const subkegMaster = masterSubkegiatans.find(m => m.id === node.masterId || m.nama === node.nomenklatur);
+      if (subkegMaster) {
+        validNodes = validNodes.filter(p => p.masterId === subkegMaster.kegiatanId || masterKegiatans.find(mk => mk.id === subkegMaster.kegiatanId)?.nama === p.nomenklatur);
+      }
+    }
+
+    return validNodes;
   };
 
   // Auto calculate Budget Akhir (always the sum of 2025-2030 budgets)
@@ -1624,6 +1691,15 @@ export default function AdminCascading5YearsPage() {
                   >
                     Edit
                   </button>
+                  {node.level !== 'tujuan' && (
+                    <button 
+                      className="btn btn-sm btn-secondary" 
+                      style={{ padding: '3px 8px', fontSize: '10px', width: 'auto', background: 'rgba(59,130,246,0.15)', borderColor: 'rgba(59,130,246,0.3)', color: '#93c5fd' }}
+                      onClick={() => openChangeParentModal(node)}
+                    >
+                      <i className="fa-solid fa-arrows-turn-right"></i> Pindah
+                    </button>
+                  )}
                   <button 
                     className="btn btn-sm btn-danger" 
                     style={{ padding: '3px 8px', fontSize: '10px', width: 'auto' }}
@@ -2648,6 +2724,77 @@ export default function AdminCascading5YearsPage() {
                 Hapus Permanen
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)} style={{ width: 'auto' }}>Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Parent Modal */}
+      {showChangeParentModal && nodeToMove && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '550px', width: '100%', display: 'flex', flexDirection: 'column', margin: 0,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)', border: '1px solid rgba(59,130,246,0.3)'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>
+                <i className="fa-solid fa-arrows-turn-right text-info"></i> Pindah Parent
+              </h3>
+              <button onClick={() => setShowChangeParentModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+            </div>
+
+            <div className="panel-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <p style={{ fontSize: '13px', lineHeight: '1.4', margin: 0 }}>
+                Pilih parent baru untuk memindahkan node ini beserta seluruh turunannya.
+              </p>
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '6px', border: '1px solid var(--glass-border)', fontSize: '12.5px' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Node yang dipindah:</span><br/>
+                <strong style={{ color: 'var(--primary-orange)' }}>({levelLabels[nodeToMove.level] || nodeToMove.level})</strong> {nodeToMove.text}
+              </div>
+              
+              <div className="form-group" style={{ marginTop: '4px' }}>
+                <label>Parent Baru (Tujuan)</label>
+                <select 
+                  className="form-control select-sim" 
+                  value={selectedNewParentId} 
+                  onChange={(e) => setSelectedNewParentId(e.target.value)}
+                >
+                  <option value="">-- Pilih Parent Baru --</option>
+                  {getValidParentOptions(nodeToMove).map(p => {
+                    const actualNomenklatur = p.nomenklatur || ((p.level === 'sasaran_subkegiatan' || p.level === 'subkegiatan') && p.sasaranSubkegiatan ? p.text : '');
+                    const actualSasaran = p.sasaran || p.sasaranSubkegiatan || p.text;
+                    const label = actualNomenklatur ? `[${actualNomenklatur}] ${actualSasaran}` : actualSasaran;
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+                {getValidParentOptions(nodeToMove).length === 0 && (
+                  <p style={{ fontSize: '11px', color: 'var(--danger)', marginTop: '6px' }}>
+                    * Tidak ada parent valid yang tersedia untuk level dan hierarki master ini.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowChangeParentModal(false)} style={{ width: 'auto' }} disabled={isMovingNode}>Batal</button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleMoveParent} 
+                style={{ width: 'auto' }}
+                disabled={isMovingNode || !selectedNewParentId}
+              >
+                {isMovingNode ? 'Memproses...' : 'Pindahkan'}
+              </button>
             </div>
           </div>
         </div>
