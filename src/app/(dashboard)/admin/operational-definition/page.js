@@ -237,6 +237,28 @@ export default function OperationalDefinitionPage() {
     return matchesSearch && matchesLevel && matchesStatus;
   });
 
+  useEffect(() => {
+    if (nodes.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const editIndicatorId = params.get('indicatorId');
+      if (editIndicatorId && !selectedIndicator) {
+        let found = false;
+        for (const node of nodes) {
+          if (node.indicators && Array.isArray(node.indicators)) {
+            const foundInd = node.indicators.find(ind => ind.id === editIndicatorId);
+            if (foundInd) {
+              handleSelectIndicator(foundInd);
+              window.history.replaceState({}, '', window.location.pathname);
+              found = true;
+              break;
+            }
+          }
+        }
+        if (found) return;
+      }
+    }
+  }, [nodes]); // Intentionally omitting handleSelectIndicator
+
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
   const isDynamic = ['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan);
 

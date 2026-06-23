@@ -1346,11 +1346,11 @@ export default function AdminCascading5YearsPage() {
   };
 
   const openIndicatorOpDefDetail = (ind) => {
-    if (ind.definisiOperasional) {
+    if (ind.definisiOperasional || ind.metodePenghitungan || (ind.variables && ind.variables.length > 0)) {
       setSelectedOpDefIndicator(ind);
       setShowOpDefDetailModal(true);
     } else {
-      router.push('/admin/operational-definition');
+      router.push(`/admin/operational-definition?indicatorId=${ind.id}`);
     }
   };
 
@@ -3321,16 +3321,39 @@ export default function AdminCascading5YearsPage() {
       `}} />
       {/* READ ONLY DEFOP DETAIL MODAL */}
       {showOpDefDetailModal && selectedOpDefIndicator && (
-        <div className="modal-backdrop" style={{ display: 'flex' }}>
-          <div className="modal-dialog" style={{ width: '600px', maxWidth: '95%' }}>
-            <div className="modal-content glass-panel">
-              <div className="modal-header">
-                <h3 className="modal-title"><i className="fa-solid fa-book-open text-info"></i> Detail Definisi Operasional</h3>
-                <button type="button" className="btn-close" onClick={() => setShowOpDefDetailModal(false)}>
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-              </div>
-              <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(15, 23, 42, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{
+            maxWidth: '600px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            margin: 0,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(59,130,246,0.3)'
+          }}>
+            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>
+                <i className="fa-solid fa-book-open text-info"></i> Detail Definisi Operasional
+              </h3>
+              <button type="button" onClick={() => setShowOpDefDetailModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>
+                &times;
+              </button>
+            </div>
+            <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1 }}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Indikator:</label>
                   <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', marginTop: '4px' }}>
@@ -3347,18 +3370,57 @@ export default function AdminCascading5YearsPage() {
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Penjelasan Definisi Operasional:</label>
                   <div 
                     style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5' }}
-                    dangerouslySetInnerHTML={{ __html: selectedOpDefIndicator.definisiOperasional }}
+                    dangerouslySetInnerHTML={{ __html: selectedOpDefIndicator.definisiOperasional || '-' }}
                   />
                 </div>
+                {selectedOpDefIndicator.variables && selectedOpDefIndicator.variables.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Variabel Indikator:</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedOpDefIndicator.variables.map((v, i) => (
+                        <div key={i} style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: 'white' }}>{v.name}</span>
+                          <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>{v.weight}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(!selectedOpDefIndicator.variables || selectedOpDefIndicator.variables.length === 0) && (selectedOpDefIndicator.variabelJumlah || selectedOpDefIndicator.variabelPembilang || selectedOpDefIndicator.variabelPenyebut) && (
+                  <div style={{ marginTop: '16px' }}>
+                    <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Variabel Indikator:</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedOpDefIndicator.variabelJumlah && (
+                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Jumlah:</span>
+                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelJumlah}</span>
+                        </div>
+                      )}
+                      {selectedOpDefIndicator.variabelPembilang && (
+                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Pembilang:</span>
+                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelPembilang}</span>
+                        </div>
+                      )}
+                      {selectedOpDefIndicator.variabelPenyebut && (
+                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Penyebut:</span>
+                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelPenyebut}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowOpDefDetailModal(false)}>Tutup</button>
+              <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowOpDefDetailModal(false)} style={{ width: 'auto' }}>Tutup</button>
                 <button 
                   type="button" 
                   className="btn btn-primary" 
+                  style={{ width: 'auto' }}
                   onClick={() => {
                     setShowOpDefDetailModal(false);
-                    router.push('/admin/operational-definition');
+                    router.push(`/admin/operational-definition?indicatorId=${selectedOpDefIndicator.id}`);
                   }}
                 >
                   <i className="fa-solid fa-pencil mr-1"></i> Edit DefOp
@@ -3366,7 +3428,6 @@ export default function AdminCascading5YearsPage() {
               </div>
             </div>
           </div>
-        </div>
       )}
 
     </section>
