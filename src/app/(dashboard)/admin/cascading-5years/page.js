@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
 import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -11,6 +12,7 @@ const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 export default function AdminCascading5YearsPage() {
   const { fetchWithAuth, activeRole, activeBidang, refreshMetadata } = useSimulation();
+  const router = useRouter();
 
   const [nodes, setNodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +97,10 @@ export default function AdminCascading5YearsPage() {
   const [varJumlahVal, setVarJumlahVal] = useState('');
   const [varPembilangVal, setVarPembilangVal] = useState('');
   const [varPenyebutVal, setVarPenyebutVal] = useState('');
+
+  // Read-only DefOp Detail Modal
+  const [showOpDefDetailModal, setShowOpDefDetailModal] = useState(false);
+  const [selectedOpDefIndicator, setSelectedOpDefIndicator] = useState(null);
 
   // Alert Modal states
   const [alertMessage, setAlertMessage] = useState('');
@@ -1339,6 +1345,15 @@ export default function AdminCascading5YearsPage() {
     setDraggedIndex(null);
   };
 
+  const openIndicatorOpDefDetail = (ind) => {
+    if (ind.definisiOperasional) {
+      setSelectedOpDefIndicator(ind);
+      setShowOpDefDetailModal(true);
+    } else {
+      router.push('/admin/operational-definition');
+    }
+  };
+
   const openOpDefModal = (index) => {
     setActiveIndicatorIndex(index);
     const ind = tempIndicators[index];
@@ -1558,16 +1573,14 @@ export default function AdminCascading5YearsPage() {
                             <div>
                               <strong>{ind.indikator}</strong> (Target Akhir: {ind.targetAkhir} {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
                             </div>
-                            {ind.definisiOperasional && (
-                              <button 
-                                type="button" 
-                                className="btn btn-sm btn-info" 
-                                style={{ width: 'auto', padding: '1px 6px', fontSize: '9px', height: '18px', display: 'flex', alignItems: 'center' }}
-                                onClick={() => openIndicatorOpDefDetail(ind)}
-                              >
-                                Detail DefOp
-                              </button>
-                            )}
+                            <button 
+                              type="button" 
+                              className={`btn btn-sm ${ind.definisiOperasional ? 'btn-success' : 'btn-danger'}`} 
+                              style={{ width: 'auto', padding: '1px 6px', fontSize: '9px', height: '18px', display: 'flex', alignItems: 'center' }}
+                              onClick={() => openIndicatorOpDefDetail(ind)}
+                            >
+                              {ind.definisiOperasional ? 'Detail DefOp' : 'Isi DefOp'}
+                            </button>
                           </div>
                           
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px', marginTop: '6px', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '4px' }}>
@@ -3306,6 +3319,56 @@ export default function AdminCascading5YearsPage() {
           }
         }
       `}} />
+      {/* READ ONLY DEFOP DETAIL MODAL */}
+      {showOpDefDetailModal && selectedOpDefIndicator && (
+        <div className="modal-backdrop" style={{ display: 'flex' }}>
+          <div className="modal-dialog" style={{ width: '600px', maxWidth: '95%' }}>
+            <div className="modal-content glass-panel">
+              <div className="modal-header">
+                <h3 className="modal-title"><i className="fa-solid fa-book-open text-info"></i> Detail Definisi Operasional</h3>
+                <button type="button" className="btn-close" onClick={() => setShowOpDefDetailModal(false)}>
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Indikator:</label>
+                  <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', marginTop: '4px' }}>
+                    {selectedOpDefIndicator.indikator}
+                  </h4>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Metode Penghitungan:</label>
+                  <div style={{ fontSize: '13px', color: 'white', marginTop: '4px' }}>
+                    {selectedOpDefIndicator.metodePenghitungan || 'Tunggal'}
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Penjelasan Definisi Operasional:</label>
+                  <div 
+                    style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', fontSize: '13px', lineHeight: '1.5' }}
+                    dangerouslySetInnerHTML={{ __html: selectedOpDefIndicator.definisiOperasional }}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowOpDefDetailModal(false)}>Tutup</button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setShowOpDefDetailModal(false);
+                    router.push('/admin/operational-definition');
+                  }}
+                >
+                  <i className="fa-solid fa-pencil mr-1"></i> Edit DefOp
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }
