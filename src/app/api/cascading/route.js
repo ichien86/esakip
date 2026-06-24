@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const lockResponse = await checkPlanningLock(request);
+    const lockResponse = await checkPlanningLock(request, 'renja');
     if (lockResponse) return lockResponse;
 
     const body = await request.json();

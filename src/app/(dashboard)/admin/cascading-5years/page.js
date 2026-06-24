@@ -15,6 +15,7 @@ export default function AdminCascading5YearsPage() {
   const router = useRouter();
 
   const [nodes, setNodes] = useState([]);
+  const [nodeBudgets, setNodeBudgets] = useState({});
   const [loading, setLoading] = useState(true);
   const [masterPrograms, setMasterPrograms] = useState([]);
   const [masterKegiatans, setMasterKegiatans] = useState([]);
@@ -157,6 +158,51 @@ export default function AdminCascading5YearsPage() {
       if (!isSilent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Pre-calculate bottom-up budgets for all nodes
+    const budgets = {};
+    
+    const calc = (nodeId) => {
+      if (budgets[nodeId]) return budgets[nodeId];
+      
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return { a25: 0, a26: 0, a27: 0, a28: 0, a29: 0, a30: 0, aAkhir: 0 };
+      
+      const children = nodes.filter(n => n.parentId === nodeId);
+      if (children.length === 0) {
+        const leafBudget = {
+          a25: parseFloat(node.anggaran2025) || 0,
+          a26: parseFloat(node.anggaran2026) || 0,
+          a27: parseFloat(node.anggaran2027) || 0,
+          a28: parseFloat(node.anggaran2028) || 0,
+          a29: parseFloat(node.anggaran2029) || 0,
+          a30: parseFloat(node.anggaran2030) || 0,
+          aAkhir: parseFloat(node.anggaranAkhir) || 0,
+        };
+        budgets[nodeId] = leafBudget;
+        return leafBudget;
+      }
+      
+      const totals = { a25: 0, a26: 0, a27: 0, a28: 0, a29: 0, a30: 0, aAkhir: 0 };
+      children.forEach(child => {
+        const childBudget = calc(child.id);
+        totals.a25 += childBudget.a25;
+        totals.a26 += childBudget.a26;
+        totals.a27 += childBudget.a27;
+        totals.a28 += childBudget.a28;
+        totals.a29 += childBudget.a29;
+        totals.a30 += childBudget.a30;
+        totals.aAkhir += childBudget.aAkhir;
+      });
+      
+      budgets[nodeId] = totals;
+      return totals;
+    };
+
+    nodes.filter(n => !n.parentId).forEach(n => calc(n.id));
+    setNodeBudgets(budgets);
+  }, [nodes]);
 
   useEffect(() => {
     const initLoad = async () => {
@@ -1624,6 +1670,31 @@ export default function AdminCascading5YearsPage() {
                       ))}
                     </div>
                   )}
+
+                  {(() => {
+                    const b = nodeBudgets[node.id];
+                    if (b && (b.a25 > 0 || b.aAkhir > 0)) {
+                      return (
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                          {['25', '26', '27', '28', '29', '30'].map(yr => {
+                            const val = b[`a${yr}`];
+                            if (val > 0) {
+                              return (
+                                <span key={yr} className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '9px' }}>
+                                  20{yr}: Rp {formatNumberForDisplay(val)}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })}
+                          <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '9px', fontWeight: 'bold' }}>
+                            Total: Rp {formatNumberForDisplay(b.aAkhir)}
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {node.level === 'sasaran_subkegiatan' && node.definisiOperasional && (
                     <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', padding: '8px 12px', borderRadius: '6px', marginTop: '8px', fontSize: '11.5px' }}>

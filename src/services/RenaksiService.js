@@ -23,7 +23,7 @@ class RenaksiService {
       throw err;
     }
 
-    const lockSetting = await Setting.findOne({ key: 'planning_locked' });
+    const lockSetting = await Setting.findOne({ key: 'renja_locked' });
     if (lockSetting && lockSetting.value === true) {
       const err = new Error('Masa penyusunan target renaksi (matriks bulanan) telah dikunci oleh Administrator.');
       err.status = 403;

@@ -7,8 +7,11 @@ class SettingService {
     settings.forEach(s => {
       settingsObj[s.key] = s.value;
     });
-    if (settingsObj.planning_locked === undefined) {
-      settingsObj.planning_locked = false;
+    if (settingsObj.renstra_locked === undefined) {
+      settingsObj.renstra_locked = false;
+    }
+    if (settingsObj.renja_locked === undefined) {
+      settingsObj.renja_locked = false;
     }
     return settingsObj;
   }

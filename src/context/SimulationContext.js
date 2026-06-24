@@ -21,7 +21,7 @@ export function SimulationProvider({ children }) {
   const [activeBidang, setActiveBidang] = useState('');
   const [allEmployees, setAllEmployees] = useState([]);
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
-  const [systemSettings, setSystemSettings] = useState({ planning_locked: false });
+  const [systemSettings, setSystemSettings] = useState({ renstra_locked: false, renja_locked: false });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -120,7 +120,8 @@ export function SimulationProvider({ children }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
     setSimulatedUser(null);
     setActiveRole('');

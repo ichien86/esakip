@@ -115,7 +115,7 @@ export default function EmployeeSelectIndicatorsPage() {
   }, [currentUser, loadData]);
 
   const handleAssignmentChange = (nodeId, val, action = 'toggle') => {
-    if (systemSettings?.planning_locked) return;
+    if (systemSettings?.renja_locked) return;
     
     setAssignments(prev => {
       const current = prev[nodeId] || { penanggungJawab: [], crossCuttingType: 'shared', splitTargets: {} };
@@ -254,7 +254,7 @@ export default function EmployeeSelectIndicatorsPage() {
           }
         </p>
         
-        {systemSettings?.planning_locked && (
+        {systemSettings?.renja_locked && (
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
@@ -337,13 +337,13 @@ export default function EmployeeSelectIndicatorsPage() {
                                     <div style={{ marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-muted)' }}>-- Pilih Penanggung Jawab --</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '8px' }}>
                                       {getPenanggungJawabOptionsForNode(node).map(opt => (
-                                        <label key={opt.value} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: 0, cursor: systemSettings?.planning_locked ? 'not-allowed' : 'pointer' }}>
+                                        <label key={opt.value} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: 0, cursor: systemSettings?.renja_locked ? 'not-allowed' : 'pointer' }}>
                                           <input 
                                             type="checkbox" 
                                             style={{ marginTop: '2px' }}
                                             checked={(assignments[node.id]?.penanggungJawab || []).includes(opt.value)}
                                             onChange={() => handleAssignmentChange(node.id, opt.value, 'toggle')}
-                                            disabled={systemSettings?.planning_locked}
+                                            disabled={systemSettings?.renja_locked}
                                           />
                                           <span style={{ color: 'white', lineHeight: '1.4' }}>{opt.label}</span>
                                         </label>
@@ -405,7 +405,7 @@ export default function EmployeeSelectIndicatorsPage() {
               })}
             </div>
 
-            {isAdminUnitKerja && !systemSettings?.planning_locked && (
+            {isAdminUnitKerja && !systemSettings?.renja_locked && (
               <button type="submit" className="btn btn-orange mt-4" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}>
                 <i className="fa-solid fa-floppy-disk"></i> Simpan Penanggung Jawab
               </button>

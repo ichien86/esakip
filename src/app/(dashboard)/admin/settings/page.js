@@ -5,8 +5,8 @@ import { useSimulation } from '@/context/SimulationContext';
 
 export default function AdminSettingsPage() {
   const { fetchWithAuth, activeRole, systemSettings, refreshMetadata } = useSimulation();
-
-  const [planningLocked, setPlanningLocked] = useState(false);
+  const [renstraLocked, setRenstraLocked] = useState(false);
+  const [renjaLocked, setRenjaLocked] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,32 +16,37 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (systemSettings) {
       const timer = setTimeout(() => {
-        setPlanningLocked(!!systemSettings.planning_locked);
+        setRenstraLocked(!!systemSettings.renstra_locked);
+        setRenjaLocked(!!systemSettings.renja_locked);
       }, 0);
       return () => clearTimeout(timer);
     }
   }, [systemSettings]);
 
-  const handleTogglePlanningLock = async () => {
+  const handleToggleLock = async (type) => {
     setError('');
     setSuccess('');
     setIsSaving(true);
 
-    const newValue = !planningLocked;
+    const isRenstra = type === 'renstra';
+    const key = isRenstra ? 'renstra_locked' : 'renja_locked';
+    const currentValue = isRenstra ? renstraLocked : renjaLocked;
+    const newValue = !currentValue;
 
     try {
       const res = await fetchWithAuth('/api/admin/settings', {
         method: 'POST',
         body: JSON.stringify({
-          key: 'planning_locked',
+          key,
           value: newValue,
           requesterRole: activeRole
         })
       });
 
       if (res.ok) {
-        setPlanningLocked(newValue);
-        setSuccess(`Kunci perencanaan berhasil ${newValue ? 'diaktifkan' : 'dinonaktifkan'}.`);
+        if (isRenstra) setRenstraLocked(newValue);
+        else setRenjaLocked(newValue);
+        setSuccess(`Kunci ${isRenstra ? 'Renstra' : 'Renja & PK'} berhasil ${newValue ? 'diaktifkan' : 'dinonaktifkan'}.`);
         await refreshMetadata();
       } else {
         const err = await res.json();
@@ -79,7 +84,7 @@ export default function AdminSettingsPage() {
           {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Planning Lock Option */}
+            {/* Renstra Lock Option */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -91,20 +96,19 @@ export default function AdminSettingsPage() {
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className={`fa-solid ${planningLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
-                  Kunci Perencanaan (IKU & Target)
+                  <i className={`fa-solid ${renstraLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                  Kunci Renstra (5 Tahunan & Definisi Operasional)
                 </h4>
                 <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Jika diaktifkan, pegawai tidak dapat memilih indikator IKU atau memodifikasi matriks target renaksi mereka. 
-                  Selain itu, <strong>Admin Perencana</strong> juga diblokir dari memodifikasi data master dan cascading (Renja & Renstra).
+                  Jika diaktifkan, Admin Perencana diblokir dari memodifikasi struktur pohon Cascading 5 Tahunan, Indikator Renstra, dan Definisi Operasionalnya.
                 </p>
               </div>
               <div>
                 <button
                   type="button"
-                  onClick={handleTogglePlanningLock}
+                  onClick={() => handleToggleLock('renstra')}
                   disabled={isSaving}
-                  className={`btn ${planningLocked ? 'btn-danger' : 'btn-orange'}`}
+                  className={`btn ${renstraLocked ? 'btn-danger' : 'btn-orange'}`}
                   style={{
                     width: '140px',
                     fontWeight: 600
@@ -112,10 +116,52 @@ export default function AdminSettingsPage() {
                 >
                   {isSaving ? (
                     <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
-                  ) : planningLocked ? (
+                  ) : renstraLocked ? (
                     <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
                   ) : (
-                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Data</>
+                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Renstra</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Renja Lock Option */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--glass-border)',
+              padding: '20px',
+              borderRadius: '12px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <i className={`fa-solid ${renjaLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                  Kunci Renja, PK & Renaksi
+                </h4>
+                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                  Jika diaktifkan, Admin Perencana diblokir dari modifikasi Cascading Tahunan (Renja). 
+                  Selain itu, Pegawai <strong>tidak dapat memilih indikator IKU</strong> maupun <strong>menyusun matriks target Renaksi</strong>.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleLock('renja')}
+                  disabled={isSaving}
+                  className={`btn ${renjaLocked ? 'btn-danger' : 'btn-orange'}`}
+                  style={{
+                    width: '140px',
+                    fontWeight: 600
+                  }}
+                >
+                  {isSaving ? (
+                    <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
+                  ) : renjaLocked ? (
+                    <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
+                  ) : (
+                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Renja</>
                   )}
                 </button>
               </div>

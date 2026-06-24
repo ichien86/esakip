@@ -1,6 +1,7 @@
 import EmployeeRepository from '@/repositories/EmployeeRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import MasterRepository from '@/repositories/MasterRepository';
+import bcrypt from 'bcryptjs';
 
 class AuthService {
   async login({ nip, password }) {
@@ -35,7 +36,8 @@ class AuthService {
       throw err;
     }
 
-    if (employee.password !== password) {
+    const isPasswordValid = await bcrypt.compare(password, employee.password);
+    if (!isPasswordValid && employee.password !== password) {
       const err = new Error('Password salah');
       err.status = 401;
       throw err;

@@ -6,7 +6,7 @@ import { checkPlanningLock } from '@/lib/lock-check';
 export async function DELETE(request, { params }) {
   try {
     await dbConnect();
-    const lockResponse = await checkPlanningLock(request);
+    const lockResponse = await checkPlanningLock(request, 'renja');
     if (lockResponse) return lockResponse;
 
     const { id } = await params;

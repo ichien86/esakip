@@ -74,7 +74,7 @@ export default function EmployeeRenaksiPage() {
   }, [currentUser, loadData]);
 
   const handleInputChange = (indicatorId, month, value) => {
-    if (systemSettings?.planning_locked) return;
+    if (systemSettings?.renja_locked) return;
     setTargetsMap({
       ...targetsMap,
       [`${indicatorId}_${month}`]: value
@@ -175,7 +175,7 @@ export default function EmployeeRenaksiPage() {
   };
 
   const targetStatus = getTargetStatusText();
-  const isTargetEditable = targetStatus === 'Draft' && !systemSettings?.planning_locked;
+  const isTargetEditable = targetStatus === 'Draft' && !systemSettings?.renja_locked;
 
   const months = [
     { num: 1, label: 'Jan' },
@@ -240,7 +240,7 @@ export default function EmployeeRenaksiPage() {
                   )}
                 </div>
                 
-                {targetStatus === 'Draft' && !systemSettings?.planning_locked && (
+                {targetStatus === 'Draft' && !systemSettings?.renja_locked && (
                   <button className="btn btn-orange" onClick={handleAjukanTarget} style={{ padding: '6px 14px', fontSize: '12px', width: 'auto' }}>
                     <i className="fa-solid fa-paper-plane"></i> Ajukan Target ke Atasan
                   </button>

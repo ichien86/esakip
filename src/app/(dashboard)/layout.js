@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSimulation } from '@/context/SimulationContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
@@ -285,7 +286,7 @@ export default function DashboardLayout({ children }) {
             <h1>E-AKIP BPBD Boyolali</h1>
             <p className="text-muted" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               Aplikasi Evaluasi Kinerja Internal Perangkat Daerah
-              {systemSettings?.planning_locked && (
+              {(systemSettings?.renstra_locked || systemSettings?.renja_locked) && (
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -298,7 +299,9 @@ export default function DashboardLayout({ children }) {
                   fontSize: '11px',
                   fontWeight: 600
                 }}>
-                  <i className="fa-solid fa-lock"></i> Perencanaan Terkunci
+                  <i className="fa-solid fa-lock" style={{ fontSize: '10px' }}></i>
+                  {systemSettings?.renstra_locked && systemSettings?.renja_locked ? 'Sistem Terkunci' : 
+                   systemSettings?.renstra_locked ? 'Renstra Terkunci' : 'Renja & PK Terkunci'}
                 </span>
               )}
             </p>
@@ -339,6 +342,8 @@ export default function DashboardLayout({ children }) {
                 </select>
               </div>
             )}
+
+            <ThemeToggle />
 
             <div className="header-profile">
               <div className="profile-info">

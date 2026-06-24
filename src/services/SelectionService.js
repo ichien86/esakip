@@ -11,7 +11,7 @@ class SelectionService {
    * Menyimpan penugasan (assignments) IKU ke pegawai/jabatan (Mode 1: Admin Bidang).
    */
   async saveAssignments(assignments, yearNum, requesterBidang) {
-    const lockSetting = await Setting.findOne({ key: 'planning_locked' });
+    const lockSetting = await Setting.findOne({ key: 'renja_locked' });
     if (lockSetting && lockSetting.value === true) {
       const err = new Error('Masa penyusunan perencanaan (pemilihan IKU) telah dikunci oleh Administrator.');
       err.status = 403;
@@ -187,7 +187,7 @@ class SelectionService {
       throw err;
     }
 
-    const lockSetting = await Setting.findOne({ key: 'planning_locked' });
+    const lockSetting = await Setting.findOne({ key: 'renja_locked' });
     if (lockSetting && lockSetting.value === true) {
       const err = new Error('Masa penyusunan perencanaan (pemilihan IKU) telah dikunci oleh Administrator.');
       err.status = 403;
