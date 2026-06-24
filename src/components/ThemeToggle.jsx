@@ -23,19 +23,12 @@ export function ThemeToggle() {
   }
 
   const toggleTheme = () => {
-    if (theme === 'system') {
-      setTheme('light');
-    } else if (theme === 'light') {
-      setTheme('dark');
-    } else {
-      setTheme('system');
-    }
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
   const getIcon = () => {
-    if (theme === 'system') return <Monitor size={16} />;
-    if (theme === 'light') return <Sun size={16} />;
-    return <Moon size={16} />;
+    if (resolvedTheme === 'dark') return <Moon size={16} />;
+    return <Sun size={16} />;
   };
 
   return (
