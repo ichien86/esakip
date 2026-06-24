@@ -26,8 +26,11 @@ export async function proxy(request) {
     verifiedToken = await verifyAuth(token);
   }
 
-  // Redirect to login if path is protected and token is invalid or missing
+  // Redirect or return 401 if path is protected and token is invalid or missing
   if (!isPublicPath && !verifiedToken) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const loginUrl = new URL('/login', request.url);
     // Optionally save the requested URL to redirect back after login
     // loginUrl.searchParams.set('from', pathname);

@@ -77,7 +77,7 @@ class AuthService {
       console.error('Failed to calculate warningsCount during login', e);
     }
 
-    return {
+    const result = {
       id: employee.id,
       nama: employee.nama,
       nip: employee.nip,
@@ -89,6 +89,7 @@ class AuthService {
       scopeLeader: employee.scopeLeader || null,
       warningsCount
     };
+    return JSON.parse(JSON.stringify(result));
   }
 }
 
