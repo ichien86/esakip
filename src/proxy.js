@@ -4,7 +4,7 @@ import { verifyAuth } from '@/lib/auth';
 // Paths that don't require authentication
 const publicPaths = ['/login', '/api/auth/login', '/favicon.ico'];
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // Skip static files and Next.js internals

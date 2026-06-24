@@ -55,7 +55,7 @@ export default function LoginPage() {
       position: 'relative'
     }}>
       <div className="background-glow"></div>
-      
+
       <div className="glass-panel" style={{
         width: '100%',
         maxWidth: '420px',
@@ -88,7 +88,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
-            <label htmlFor="nip"><i className="fa-solid fa-user-tie" style={{ marginRight: '8px', color: 'var(--primary-orange)' }}></i> NIP / Username Admin</label>
+            <label htmlFor="nip"><i className="fa-solid fa-user-tie" style={{ marginRight: '8px', color: 'var(--primary-orange)' }}></i> NIP</label>
             <input
               type="text"
               id="nip"
