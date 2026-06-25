@@ -130,7 +130,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'white' }}>
+      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-primary)' }}>
         <i className="fa-solid fa-circle-notch fa-spin text-orange" style={{ fontSize: '24px', marginBottom: '10px' }}></i>
         <p>Memuat profil...</p>
       </div>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
 
           {/* Signature Settings */}
           <div>
-            <h4 style={{ margin: '0 0 16px 0', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fa-solid fa-signature text-orange"></i> Pengaturan Tanda Tangan
             </h4>
             <p className="text-muted" style={{ fontSize: '13px', marginBottom: '20px' }}>
@@ -207,7 +207,7 @@ export default function ProfilePage() {
                   onChange={(e) => setHasDigitalSignature(e.target.checked)}
                   style={{ width: '18px', height: '18px', accentColor: 'var(--primary-orange)' }}
                 />
-                <span style={{ fontSize: '14px', color: 'white', fontWeight: 600 }}>Gunakan Tanda Tangan Elektronik (BSrE)</span>
+                <span style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600 }}>Gunakan Tanda Tangan Elektronik (BSrE)</span>
               </label>
               
               {hasDigitalSignature && (

@@ -16,7 +16,7 @@ export default function RootPage() {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '100vh',
-      color: 'white'
+      color: 'var(--text-primary)'
     }}>
       <span>Redirecting...</span>
     </div>

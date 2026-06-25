@@ -421,7 +421,7 @@ export default function AdminEmployeesPage() {
     <section>
       {/* Header bar with Add button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <i className="fa-solid fa-users text-orange"></i>
           Manajemen Pegawai
         </h2>
@@ -452,7 +452,7 @@ export default function AdminEmployeesPage() {
                 placeholder="Cari nama / NIP... (Tekan '/')"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ paddingLeft: '32px', fontSize: '13px', background: 'rgba(15, 23, 42, 0.4)', borderColor: 'var(--glass-border)', color: 'white', margin: 0 }}
+                style={{ paddingLeft: '32px', fontSize: '13px', background: 'rgba(15, 23, 42, 0.4)', borderColor: 'var(--glass-border)', color: 'var(--text-primary)', margin: 0 }}
               />
               {searchTerm && (
                 <button
@@ -644,7 +644,7 @@ export default function AdminEmployeesPage() {
                 <i className={`fa-solid ${isEditing ? 'fa-user-pen' : 'fa-user-plus'} text-orange`}></i>
                 {isEditing ? ' Edit Data Pegawai' : ' Tambah Pegawai'}
               </h3>
-              <button onClick={closeFormModal} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '24px', lineHeight: '1' }}>&times;</button>
+              <button onClick={closeFormModal} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '24px', lineHeight: '1' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1 }}>

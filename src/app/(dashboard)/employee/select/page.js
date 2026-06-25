@@ -315,7 +315,7 @@ export default function EmployeeSelectIndicatorsPage() {
                           flexWrap: 'wrap'
                         }}>
                           <div style={{ flex: 1, minWidth: '250px' }}>
-                            <strong style={{ fontSize: '13.5px', color: 'white' }}>{node.text}</strong>
+                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>{node.text}</strong>
                             <div className="text-muted" style={{ fontSize: '11px', marginTop: '4px' }}>
                               Indikator: <strong>{node.indikator}</strong> | Target: <strong>{node.target} {node.satuan}</strong>
                             </div>
@@ -330,7 +330,7 @@ export default function EmployeeSelectIndicatorsPage() {
                                 {['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(node.level) ? (
                                   <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--glass-border)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', minWidth: '220px' }}>
                                     <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
-                                    <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
                                   </div>
                                 ) : (
                                   <div style={{ minWidth: '280px', fontSize: '12px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
@@ -345,7 +345,7 @@ export default function EmployeeSelectIndicatorsPage() {
                                             onChange={() => handleAssignmentChange(node.id, opt.value, 'toggle')}
                                             disabled={systemSettings?.renja_locked}
                                           />
-                                          <span style={{ color: 'white', lineHeight: '1.4' }}>{opt.label}</span>
+                                          <span style={{ color: 'var(--text-primary)', lineHeight: '1.4' }}>{opt.label}</span>
                                         </label>
                                       ))}
                                     </div>
@@ -370,10 +370,10 @@ export default function EmployeeSelectIndicatorsPage() {
                                             </div>
                                             {(assignments[node.id]?.penanggungJawab || []).map(pic => (
                                               <div key={pic} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                                                <span style={{ fontSize: '11px', color: 'white', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolvePenanggungJawabLabel(pic)}</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-primary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolvePenanggungJawabLabel(pic)}</span>
                                                 <input 
                                                   type="number" 
-                                                  style={{ width: '80px', padding: '4px 6px', fontSize: '11px', background: 'var(--glass-bg)', color: 'white', border: '1px solid var(--glass-border)', borderRadius: '4px', textAlign: 'center' }}
+                                                  style={{ width: '80px', padding: '4px 6px', fontSize: '11px', background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '4px', textAlign: 'center' }}
                                                   placeholder="Porsi"
                                                   value={assignments[node.id]?.splitTargets[pic] || ''}
                                                   onChange={(e) => handleSplitTargetChange(node.id, pic, e.target.value)}
@@ -393,7 +393,7 @@ export default function EmployeeSelectIndicatorsPage() {
                             ) : (
                               <div style={{ background: 'rgba(255, 107, 0, 0.08)', border: '1px solid rgba(255, 107, 0, 0.2)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>
                                 <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
-                                Penanggung Jawab: <strong style={{ color: 'white' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
+                                Penanggung Jawab: <strong style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
                               </div>
                             )}
                           </div>

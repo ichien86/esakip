@@ -345,7 +345,7 @@ export default function OperationalDefinitionPage() {
                           <span className="badge badge-none" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-pen-nib" style={{ marginRight:'4px' }}></i>Belum Diisi</span>
                         )}
                       </div>
-                      <h4 style={{ fontSize:'14px',fontWeight:600,color:'white',lineHeight:'1.4' }}>{ind.indikator}</h4>
+                      <h4 style={{ fontSize:'14px',fontWeight:600,color: 'var(--text-primary)',lineHeight:'1.4' }}>{ind.indikator}</h4>
                       {ind.definisiOperasional && (
                         <div 
                           style={{ fontSize:'12px',color:'rgba(255,255,255,0.4)',marginTop:'8px',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical',overflow:'hidden' }}
@@ -393,7 +393,7 @@ export default function OperationalDefinitionPage() {
               <form onSubmit={handleSave}>
                 <div style={{ background:'rgba(15,23,42,0.4)',padding:'14px',borderRadius:'8px',border:'1px solid var(--glass-border)',marginBottom:'20px' }}>
                   <span style={{ fontSize:'9px',color:'var(--primary-orange)',fontWeight:700,textTransform:'uppercase' }}>{getLevelLabel(selectedIndicator.nodeLevel)}</span>
-                  <h4 style={{ fontSize:'14px',fontWeight:600,margin:'4px 0 8px 0',color:'white' }}>{selectedIndicator.indikator}</h4>
+                  <h4 style={{ fontSize:'14px',fontWeight:600,margin:'4px 0 8px 0',color: 'var(--text-primary)' }}>{selectedIndicator.indikator}</h4>
                   <div style={{ fontSize:'11.5px',color:'var(--text-muted)',borderTop:'1px solid rgba(255,255,255,0.05)',paddingTop:'8px' }}><strong>{getLevelLabel(selectedIndicator.nodeLevel)}:</strong> {selectedIndicator.nodeText}</div>
                   <div style={{ fontSize:'11.5px',color:'var(--text-muted)',marginTop:'4px' }}><strong>Satuan:</strong> {selectedIndicator.satuan} | <strong>Tipe Target:</strong> {selectedIndicator.tipeTarget}</div>
                 </div>
@@ -405,7 +405,7 @@ export default function OperationalDefinitionPage() {
                     value={definisiOperasional} 
                     onChange={setDefinisiOperasional} 
                     placeholder="Jelaskan secara rinci apa arti indikator ini dan bagaimana cakupan pengukurannya... (Bisa copy-paste tabel/gambar/rumus dari Word)"
-                    style={{ background: 'rgba(255,255,255,0.05)', color: 'white', borderRadius: '4px' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
                   />
                 </div>
 

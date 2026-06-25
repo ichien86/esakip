@@ -821,7 +821,7 @@ export default function AdminCascadingAnnualPage() {
             btnPng.disabled = true;
 
             html2canvas(element, {
-              backgroundColor: '#ffffff',
+              backgroundcolor: 'var(--text-primary)',
               scale: 2,
               logging: false,
               useCORS: true
@@ -851,7 +851,7 @@ export default function AdminCascadingAnnualPage() {
             btnPdf.disabled = true;
 
             html2canvas(element, {
-              backgroundColor: '#ffffff',
+              backgroundcolor: 'var(--text-primary)',
               scale: 2,
               logging: false,
               useCORS: true
@@ -1220,7 +1220,7 @@ export default function AdminCascadingAnnualPage() {
                 <div className="org-level-badge" style={{
                   fontSize: '8px',
                   fontWeight: 'bold',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                   background: levelColors[node.level] || '#666',
                   padding: '2px 6px',
                   borderRadius: '4px',
@@ -1524,7 +1524,7 @@ export default function AdminCascadingAnnualPage() {
                 <i className="fa-solid fa-diagram-project text-orange"></i>
                 Edit Sasaran & Target Kinerja Tahunan
               </h3>
-              <button onClick={() => setShowFormModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowFormModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1708,7 +1708,7 @@ export default function AdminCascadingAnnualPage() {
                         return (
                           <select
                             className="form-control"
-                            style={{ padding: '6px 10px', fontSize: '12.5px', background: 'var(--glass-bg)', color: 'white', borderColor: 'var(--glass-border)' }}
+                            style={{ padding: '6px 10px', fontSize: '12.5px', background: 'var(--glass-bg)', color: 'var(--text-primary)', borderColor: 'var(--glass-border)' }}
                             value={selectedBidang || ''}
                             disabled={!canEdit}
                             onChange={(e) => setSelectedBidang(e.target.value || null)}
@@ -1731,7 +1731,7 @@ export default function AdminCascadingAnnualPage() {
                       <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Bagi porsi target ke masing-masing bidang pengampu:</p>
                       {selectedBidangs.map(bidang => (
                         <div key={bidang} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                          <span style={{ fontSize: '12px', color: 'white' }}>{bidang}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{bidang}</span>
                           <input
                             type="text"
                             className="form-control"
@@ -1822,7 +1822,7 @@ export default function AdminCascadingAnnualPage() {
               <h3>
                 <i className="fa-solid fa-file-excel text-success"></i> Impor Anggaran DPA Tahunan
               </h3>
-              <button onClick={() => setShowDpaImportModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowDpaImportModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
 
             <form onSubmit={handleDpaImportSubmit}>

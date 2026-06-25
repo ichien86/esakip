@@ -390,7 +390,7 @@ export default function AdminMasterPage() {
 
         <div style={{ background: 'rgba(15, 23, 42, 0.3)', padding: '20px', borderRadius: '8px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '600px' }}>
           <div>
-            <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: 'white' }}>Unggah File Excel</h4>
+            <h4 style={{ fontSize: '14px', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>Unggah File Excel</h4>
             <p className="text-muted" style={{ fontSize: '12px', margin: '0 0 16px 0', lineHeight: '1.4' }}>
               Pilih file Excel yang berisi daftar Program, Kegiatan, dan Subkegiatan beserta Urusan, Indikator, Satuan, dan Bidang Pelaksana.
             </p>
@@ -444,7 +444,7 @@ export default function AdminMasterPage() {
           }}>
             <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
               <h3><i className="fa-solid fa-file-excel text-orange"></i> Preview Perubahan Kamus Data Excel</h3>
-              <button onClick={() => setShowImportModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowImportModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -456,7 +456,7 @@ export default function AdminMasterPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '12px', borderRadius: '8px' }}>
                   <span style={{ fontSize: '11px', color: '#10B981', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Data Baru (Akan Ditambahkan)</span>
-                  <div style={{ fontSize: '12px', color: 'white', marginTop: '6px', lineHeight: '1.4' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '6px', lineHeight: '1.4' }}>
                     • Program Baru: <strong>{importPreview.summary.newProgramsCount}</strong><br />
                     • Kegiatan Baru: <strong>{importPreview.summary.newKegiatansCount}</strong><br />
                     • Subkegiatan Baru: <strong>{importPreview.summary.newSubkegiatansCount}</strong>
@@ -465,7 +465,7 @@ export default function AdminMasterPage() {
                 
                 <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '12px', borderRadius: '8px' }}>
                   <span style={{ fontSize: '11px', color: '#F59E0B', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Data Update (Teks/Uraian Berubah)</span>
-                  <div style={{ fontSize: '12px', color: 'white', marginTop: '6px', lineHeight: '1.4' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-primary)', marginTop: '6px', lineHeight: '1.4' }}>
                     • Program Update: <strong>{importPreview.summary.updatedProgramsCount}</strong><br />
                     • Kegiatan Update: <strong>{importPreview.summary.updatedKegiatansCount}</strong><br />
                     • Subkegiatan Update: <strong>{importPreview.summary.updatedSubkegiatansCount}</strong>
@@ -484,7 +484,7 @@ export default function AdminMasterPage() {
               {/* Detailed Lists - Program */}
               {(importPreview.details.newPrograms.length > 0 || importPreview.details.updatedPrograms.length > 0) && (
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                  <h4 style={{ fontSize: '13px', color: 'white', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ fontSize: '13px', color: 'var(--text-primary)', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <i className="fa-solid fa-folder text-orange"></i> Program Perubahan
                   </h4>
                   <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
@@ -540,7 +540,7 @@ export default function AdminMasterPage() {
               {/* Detailed Lists - Kegiatan */}
               {(importPreview.details.newKegiatans.length > 0 || importPreview.details.updatedKegiatans.length > 0) && (
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                  <h4 style={{ fontSize: '13px', color: 'white', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ fontSize: '13px', color: 'var(--text-primary)', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <i className="fa-solid fa-folder-open text-orange"></i> Kegiatan Perubahan
                   </h4>
                   <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
@@ -598,7 +598,7 @@ export default function AdminMasterPage() {
               {/* Detailed Lists - Subkegiatan */}
               {(importPreview.details.newSubkegiatans.length > 0 || importPreview.details.updatedSubkegiatans.length > 0) && (
                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                  <h4 style={{ fontSize: '13px', color: 'white', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ fontSize: '13px', color: 'var(--text-primary)', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <i className="fa-solid fa-file-lines text-orange"></i> Subkegiatan Perubahan
                   </h4>
                   <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
@@ -893,13 +893,13 @@ export default function AdminMasterPage() {
               <h3 style={{ fontSize: '16px', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fa-solid fa-circle-info text-orange"></i> Detail Subkegiatan
               </h3>
-              <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowDetailModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Kode Subkegiatan</span>
-                <div style={{ fontSize: '13px', color: 'white', fontWeight: 'bold', marginTop: '3px', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', marginTop: '3px', fontFamily: 'monospace' }}>
                   {selectedSubkegDetails.id}
                 </div>
               </div>
@@ -922,13 +922,13 @@ export default function AdminMasterPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px' }}>
                   <div>
                     <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Indikator</span>
-                    <div style={{ fontSize: '13px', color: 'white', marginTop: '4px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginTop: '4px', fontWeight: 600 }}>
                       {selectedSubkegDetails.indikator || '-'}
                     </div>
                   </div>
                   <div>
                     <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Satuan</span>
-                    <div style={{ fontSize: '13px', color: 'white', marginTop: '4px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginTop: '4px', fontWeight: 600 }}>
                       {selectedSubkegDetails.satuan || '-'}
                     </div>
                   </div>

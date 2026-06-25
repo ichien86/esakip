@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSimulation } from '@/context/SimulationContext';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [nip, setNip] = useState('');
@@ -63,8 +64,8 @@ export default function LoginPage() {
         textAlign: 'center'
       }}>
         <div style={{ marginBottom: '30px' }}>
-          <div className="logo-wrapper" style={{ margin: '0 auto 16px auto', width: '60px', height: '60px', borderRadius: '14px' }}>
-            <i className="fa-solid fa-triangle-exclamation orange-glow" style={{ fontSize: '28px' }}></i>
+          <div className="logo-wrapper" style={{ margin: '0 auto 16px auto', width: '70px', height: '70px', background: 'transparent', border: 'none' }}>
+            <Image src="/logo.png" alt="Logo E-AKIP" width={70} height={70} style={{ borderRadius: '14px', objectFit: 'contain' }} priority />
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '0.5px' }}>E-AKIP</h2>
           <p className="text-muted" style={{ marginTop: '4px' }}>BPBD KABUPATEN BOYOLALI</p>

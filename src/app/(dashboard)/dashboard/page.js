@@ -174,7 +174,7 @@ export default function DashboardPage() {
   return (
     <section>
       {loading ? (
-        <div style={{ color: 'white', textAlign: 'center', marginTop: '40px' }}>
+        <div style={{ color: 'var(--text-primary)', textAlign: 'center', marginTop: '40px' }}>
           <i className="fa-solid fa-circle-notch fa-spin"></i> Memuat dashboard...
         </div>
       ) : (
@@ -220,7 +220,7 @@ export default function DashboardPage() {
                           }}>
                             {task.status === 'warning' ? 'PENTING' : 'INFORMASI'}
                           </span>
-                          <strong style={{ color: 'white', fontSize: '14px' }}>{task.title}</strong>
+                          <strong style={{ color: 'var(--text-primary)', fontSize: '14px' }}>{task.title}</strong>
                         </div>
                         <p style={{ color: 'var(--text-muted)', fontSize: '12.5px', margin: '6px 0 0 0', lineHeight: '1.4' }}>
                           {task.description}
@@ -284,7 +284,7 @@ export default function DashboardPage() {
                       gap: '12px'
                     }}>
                       <div style={{ flex: '1 1 300px' }}>
-                        <p style={{ color: 'white', fontSize: '13px', margin: '0 0 4px 0', lineHeight: '1.4' }}>{notif.message}</p>
+                        <p style={{ color: 'var(--text-primary)', fontSize: '13px', margin: '0 0 4px 0', lineHeight: '1.4' }}>{notif.message}</p>
                         <span className="text-muted" style={{ fontSize: '11px' }}>
                           Dibuat pada: {new Date(notif.createdAt).toLocaleString('id-ID')}
                         </span>
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                         <button 
                           className="btn btn-sm btn-secondary" 
                           onClick={() => handleMarkAsRead(notif.id)}
-                          style={{ padding: '6px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.08)', color: 'white', border: '1px solid rgba(255,255,255,0.15)' }}
+                          style={{ padding: '6px 12px', fontSize: '12px', background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)', border: '1px solid rgba(255,255,255,0.15)' }}
                         >
                           Tandai Dibaca
                         </button>
@@ -385,9 +385,9 @@ export default function DashboardPage() {
                         {!warning.hasNameMismatch && !warning.hasKinerjaMismatch && !warning.hasIndicatorMismatch && (
                           <div style={{ marginTop: '8px' }}>
                             <span style={{ fontSize: '11px', color: '#EF4444' }}>Data Saat Ini:</span>
-                            <h4 style={{ fontSize: '13px', margin: '2px 0 6px 0', color: 'white' }}>{warning.text}</h4>
+                            <h4 style={{ fontSize: '13px', margin: '2px 0 6px 0', color: 'var(--text-primary)' }}>{warning.text}</h4>
                             <span style={{ fontSize: '11px', color: '#10B981' }}>Kamus Terbaru:</span>
-                            <h4 style={{ fontSize: '13px', margin: '2px 0 0 0', color: 'white', fontWeight: 'bold' }}>{warning.masterNama}</h4>
+                            <h4 style={{ fontSize: '13px', margin: '2px 0 0 0', color: 'var(--text-primary)', fontWeight: 'bold' }}>{warning.masterNama}</h4>
                           </div>
                         )}
                       </div>
@@ -445,14 +445,14 @@ export default function DashboardPage() {
                         <span className="badge badge-draft" style={{ fontSize: '9px', textTransform: 'uppercase', background: 'rgba(255, 107, 0, 0.2)', color: 'var(--primary-orange)', border: '1px solid rgba(255, 107, 0, 0.3)' }}>
                           {warning.indicatorLevel}
                         </span>
-                        <h4 style={{ fontSize: '13px', margin: '4px 0 2px 0', color: 'white' }}>{warning.indicatorText}</h4>
+                        <h4 style={{ fontSize: '13px', margin: '4px 0 2px 0', color: 'var(--text-primary)' }}>{warning.indicatorText}</h4>
                         <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{warning.indicatorDetail}</p>
                       </div>
                       <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
                         <div style={{ fontSize: '12px', color: '#EF4444', fontWeight: 'bold' }}>
                           Pengampu Nonaktif:
                         </div>
-                        <div style={{ fontSize: '13px', color: 'white' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                           {warning.employeeNama}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -521,13 +521,13 @@ export default function DashboardPage() {
                           padding: '14px'
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                            <strong style={{ color: 'white', fontSize: '13.5px', lineHeight: '1.4' }}>{target.indikator}</strong>
+                            <strong style={{ color: 'var(--text-primary)', fontSize: '13.5px', lineHeight: '1.4' }}>{target.indikator}</strong>
                             {getRealisasiStatusBadge(target.status)}
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed var(--glass-border)' }}>
                             <div>
                               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Target Bulanan</div>
-                              <strong style={{ color: 'white', fontSize: '13px' }}>{target.target} {target.satuan}</strong>
+                              <strong style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{target.target} {target.satuan}</strong>
                             </div>
                             <div>
                               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Realisasi</div>
@@ -580,7 +580,7 @@ export default function DashboardPage() {
                           return (
                             <tr key={idx}>
                               <td>
-                                <strong style={{ color: 'white' }}>{target.indikator}</strong>
+                                <strong style={{ color: 'var(--text-primary)' }}>{target.indikator}</strong>
                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                                   Satuan: {target.satuan}
                                 </div>

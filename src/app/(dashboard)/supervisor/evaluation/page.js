@@ -444,7 +444,7 @@ export default function SupervisorEvaluationPage() {
                           alignItems: 'flex-start'
                         }}>
                           <div>
-                            <h4 style={{ fontSize: '14px', color: 'white', margin: 0 }}>{item.employeeNama}</h4>
+                            <h4 style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{item.employeeNama}</h4>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.employeeJabatan} ({item.bidang})</span>
                           </div>
                           <span className="badge" style={{ fontSize: '9px', background: 'rgba(255, 107, 0, 0.15)', color: 'var(--primary-orange)', border: '1px solid rgba(255, 107, 0, 0.3)', width: 'auto' }}>
@@ -454,18 +454,18 @@ export default function SupervisorEvaluationPage() {
                         <div className="panel-body" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div>
                             <label style={{ fontSize: '11px', color: 'var(--primary-orange)', fontWeight: 600 }}>Indikator:</label>
-                            <p style={{ fontSize: '12px', color: 'white', margin: '2px 0 0 0', fontWeight: 'bold' }}>{item.indicatorName}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--text-primary)', margin: '2px 0 0 0', fontWeight: 'bold' }}>{item.indicatorName}</p>
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{item.indicatorText}</p>
                           </div>
                           
                           <div style={{ display: 'flex', gap: '20px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target Tahunan</span>
-                              <strong style={{ fontSize: '13px', color: 'white' }}>{item.yearlyTarget} {item.indicatorSatuan}</strong>
+                              <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.yearlyTarget} {item.indicatorSatuan}</strong>
                             </div>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target Terbagi</span>
-                              <strong style={{ fontSize: '13px', color: 'white' }}>
+                              <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>
                                 {item.records.reduce((sum, r) => sum + r.targetBulanan, 0)} {item.indicatorSatuan}
                               </strong>
                             </div>
@@ -526,7 +526,7 @@ export default function SupervisorEvaluationPage() {
                               border: '1px solid var(--glass-border)'
                             }}>
                               {item.records.sort((a,b) => a.bulan - b.bulan).map(r => (
-                                <div key={r.bulan} style={{ fontSize: '11px', textAlign: 'center', color: 'white', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '4px' }}>
+                                <div key={r.bulan} style={{ fontSize: '11px', textAlign: 'center', color: 'var(--text-primary)', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '4px' }}>
                                   <span style={{ color: 'var(--text-muted)', fontSize: '9px', display: 'block' }}>B{r.bulan}</span>
                                   <strong>{r.targetBulanan}</strong>
                                 </div>
@@ -592,7 +592,7 @@ export default function SupervisorEvaluationPage() {
                           alignItems: 'center'
                         }}>
                           <div>
-                            <h4 style={{ fontSize: '14px', color: 'white', margin: 0 }}>{item.employeeNama}</h4>
+                            <h4 style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{item.employeeNama}</h4>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.employeeJabatan}</span>
                           </div>
                           <span className="badge" style={{
@@ -608,14 +608,14 @@ export default function SupervisorEvaluationPage() {
                         <div className="panel-body" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                           <div>
                             <label style={{ fontSize: '11px', color: 'var(--primary-orange)', fontWeight: 600 }}>Indikator:</label>
-                            <p style={{ fontSize: '12px', color: 'white', margin: '2px 0 0 0', fontWeight: 'bold' }}>{item.indicatorName}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--text-primary)', margin: '2px 0 0 0', fontWeight: 'bold' }}>{item.indicatorName}</p>
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{item.indicatorText}</p>
                           </div>
 
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target Bulan Ini</span>
-                              <strong style={{ fontSize: '13px', color: 'white' }}>{item.targetBulanan} {item.indicatorSatuan}</strong>
+                              <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.targetBulanan} {item.indicatorSatuan}</strong>
                             </div>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Realisasi Capaian</span>
@@ -701,18 +701,18 @@ export default function SupervisorEvaluationPage() {
                             {isUnderperform ? (
                               <>
                                 <div style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Kendala:</div>
-                                <div style={{ color: 'white', marginBottom: '6px' }}>{item.kendala || '-'}</div>
+                                <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.kendala || '-'}</div>
                                 <div style={{ color: 'var(--info)', fontWeight: 'bold' }}>Solusi:</div>
-                                <div style={{ color: 'white' }}>{item.solusi || '-'}</div>
+                                <div style={{ color: 'var(--text-primary)' }}>{item.solusi || '-'}</div>
                               </>
                             ) : (
                               <>
                                 <div style={{ color: 'var(--success)', fontWeight: 'bold' }}>Faktor Pendorong:</div>
-                                <div style={{ color: 'white', marginBottom: '6px' }}>{item.faktorPendorong || '-'}</div>
+                                <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.faktorPendorong || '-'}</div>
                                 {item.inovasi && (
                                   <>
                                     <div style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>Inovasi:</div>
-                                    <div style={{ color: 'white' }}>{item.inovasi}</div>
+                                    <div style={{ color: 'var(--text-primary)' }}>{item.inovasi}</div>
                                   </>
                                 )}
                               </>

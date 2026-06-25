@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSimulation } from '@/context/SimulationContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -77,7 +78,7 @@ export default function DashboardLayout({ children }) {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        color: 'white',
+        color: 'var(--text-primary)',
         fontSize: '18px'
       }}>
         <span><i className="fa-solid fa-circle-notch fa-spin"></i> Loading...</span>
@@ -155,8 +156,8 @@ export default function DashboardLayout({ children }) {
         }}
       >
         <div className="sidebar-brand">
-          <div className="logo-wrapper">
-            <i className="fa-solid fa-triangle-exclamation orange-glow"></i>
+          <div className="logo-wrapper" style={{ background: 'transparent', border: 'none', padding: 0 }}>
+            <Image src="/logo.png" alt="Logo E-AKIP" width={45} height={45} style={{ borderRadius: '8px', objectFit: 'contain' }} priority />
           </div>
           <div className="brand-text">
             <h2>E-AKIP</h2>
@@ -268,7 +269,7 @@ export default function DashboardLayout({ children }) {
               background: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid var(--glass-border)',
               borderRadius: '6px',
-              color: 'white',
+              color: 'var(--text-primary)',
               width: '36px',
               height: '36px',
               display: 'flex',
@@ -360,7 +361,7 @@ export default function DashboardLayout({ children }) {
                   <i className="fa-solid fa-user-gear" style={{ color: 'var(--primary-orange)' }}></i>
                 </Link>
                 <div className="profile-avatar" onClick={logout} title="Keluar (Logout)" style={{ cursor: 'pointer' }}>
-                  <i className="fa-solid fa-right-from-bracket" style={{ color: 'white' }}></i>
+                  <i className="fa-solid fa-right-from-bracket" style={{ color: 'var(--text-primary)' }}></i>
                 </div>
               </div>
             </div>

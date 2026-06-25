@@ -139,7 +139,7 @@ export default function LeaderboardPage() {
         </p>
 
         {loading ? (
-          <div style={{ color: 'white', textAlign: 'center', padding: '40px 0' }}>
+          <div style={{ color: 'var(--text-primary)', textAlign: 'center', padding: '40px 0' }}>
             <i className="fa-solid fa-circle-notch fa-spin fa-2x" style={{ color: 'var(--primary-orange)', marginBottom: '12px' }}></i>
             <p>Memuat peringkat leaderboard...</p>
           </div>

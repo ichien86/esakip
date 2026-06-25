@@ -1213,7 +1213,7 @@ export default function AdminCascading5YearsPage() {
             btnPng.disabled = true;
 
             html2canvas(element, {
-              backgroundColor: '#ffffff',
+              backgroundcolor: 'var(--text-primary)',
               scale: 2,
               logging: false,
               useCORS: true
@@ -1243,7 +1243,7 @@ export default function AdminCascading5YearsPage() {
             btnPdf.disabled = true;
 
             html2canvas(element, {
-              backgroundColor: '#ffffff',
+              backgroundcolor: 'var(--text-primary)',
               scale: 2,
               logging: false,
               useCORS: true
@@ -1725,7 +1725,7 @@ export default function AdminCascading5YearsPage() {
                             {['2025', '2026', '2027', '2028', '2029', '2030'].map(yr => (
                               <div key={yr} style={{ textAlign: 'center', fontSize: '9.5px' }}>
                                 <div className="text-muted">{yr}</div>
-                                <div style={{ color: 'white', fontWeight: 'bold' }}>{ind[`target${yr}`] || '0'}</div>
+                                <div style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{ind[`target${yr}`] || '0'}</div>
                               </div>
                             ))}
                           </div>
@@ -1833,7 +1833,7 @@ export default function AdminCascading5YearsPage() {
                 <div className="org-level-badge" style={{
                   fontSize: '8px',
                   fontWeight: 'bold',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                   background: levelColors[node.level] || '#666',
                   padding: '2px 6px',
                   borderRadius: '4px',
@@ -2195,7 +2195,7 @@ export default function AdminCascading5YearsPage() {
                 <i className="fa-solid fa-diagram-project text-orange"></i>
                 {isEditing ? ` Edit ${levelLabels[level] || level}` : ` Tambah ${levelLabels[level] || level}`}
               </h3>
-              <button onClick={() => setShowFormModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowFormModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2343,7 +2343,7 @@ export default function AdminCascading5YearsPage() {
                                   padding: '8px 12px',
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  color: 'white',
+                                  color: 'var(--text-primary)',
                                   background: (selectedMasterId === opt.id || activeOptionIndex === idx) ? 'var(--primary-orange-light)' : 'transparent',
                                   borderBottom: '1px solid rgba(255,255,255,0.03)',
                                   transition: 'background 0.2s',
@@ -2622,7 +2622,7 @@ export default function AdminCascading5YearsPage() {
                 <i className="fa-solid fa-list-check text-info"></i>
                 Atur Indikator Kinerja - {selectedNodeForIndicators.text}
               </h3>
-              <button onClick={() => setShowIndicatorModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowIndicatorModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2759,7 +2759,7 @@ export default function AdminCascading5YearsPage() {
               <h3 style={{ color: 'var(--danger)' }}>
                 <i className="fa-solid fa-triangle-exclamation"></i> Konfirmasi Hapus Node
               </h3>
-              <button onClick={() => setShowDeleteConfirmModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowDeleteConfirmModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
 
             <div className="panel-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2816,7 +2816,7 @@ export default function AdminCascading5YearsPage() {
               <h3 style={{ margin: 0 }}>
                 <i className="fa-solid fa-arrows-turn-right text-info"></i> Pindah Parent
               </h3>
-              <button onClick={() => setShowChangeParentModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowChangeParentModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
 
             <div className="panel-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -2901,7 +2901,7 @@ export default function AdminCascading5YearsPage() {
               <h3>
                 <i className="fa-solid fa-book text-info"></i> Definisi Operasional Indikator
               </h3>
-              <button onClick={() => setShowOpDefModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowOpDefModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
             
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2916,7 +2916,7 @@ export default function AdminCascading5YearsPage() {
                   value={opDefVal} 
                   onChange={setOpDefVal} 
                   placeholder="Masukkan definisi operasional... (Bisa copy-paste tabel/gambar/rumus dari Word)"
-                  style={{ background: 'rgba(255,255,255,0.05)', color: 'white', borderRadius: '4px' }}
+                  style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
                 />
               </div>
 
@@ -3161,7 +3161,7 @@ export default function AdminCascading5YearsPage() {
               <h3>
                 <i className="fa-solid fa-file-excel text-orange"></i> Import Data Renstra dari Excel
               </h3>
-              <button onClick={() => setShowImportExcelModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
+              <button onClick={() => setShowImportExcelModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
             </div>
 
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -3183,7 +3183,7 @@ export default function AdminCascading5YearsPage() {
 
                   <div style={{ background: 'rgba(255,107,0,0.06)', border: '1px dashed rgba(255,107,0,0.25)', padding: '12px 16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>Belum punya template format Excel?</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Belum punya template format Excel?</span>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Gunakan file template resmi agar data terstruktur dengan benar.</span>
                     </div>
                     <button
@@ -3210,7 +3210,7 @@ export default function AdminCascading5YearsPage() {
                             background: 'rgba(255,255,255,0.03)',
                             border: '1px dashed var(--glass-border)',
                             borderRadius: '8px',
-                            color: '#fff',
+                            color: 'var(--text-primary)',
                             fontSize: '13px',
                             cursor: 'pointer'
                           }}
@@ -3567,20 +3567,20 @@ export default function AdminCascading5YearsPage() {
               <h3 style={{ margin: 0 }}>
                 <i className="fa-solid fa-book-open text-info"></i> Detail Definisi Operasional
               </h3>
-              <button type="button" onClick={() => setShowOpDefDetailModal(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '18px' }}>
+              <button type="button" onClick={() => setShowOpDefDetailModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>
                 &times;
               </button>
             </div>
             <div className="panel-body" style={{ padding: '20px', overflowY: 'auto', flexGrow: 1 }}>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Indikator:</label>
-                  <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', marginTop: '4px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: '4px' }}>
                     {selectedOpDefIndicator.indikator}
                   </h4>
                 </div>
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Metode Penghitungan:</label>
-                  <div style={{ fontSize: '13px', color: 'white', marginTop: '4px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text-primary)', marginTop: '4px' }}>
                     {selectedOpDefIndicator.metodePenghitungan || 'Tunggal'}
                   </div>
                 </div>
@@ -3597,7 +3597,7 @@ export default function AdminCascading5YearsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {selectedOpDefIndicator.variables.map((v, i) => (
                         <div key={i} style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ color: 'white' }}>{v.name}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{v.name}</span>
                           <span style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>{v.weight}%</span>
                         </div>
                       ))}
@@ -3611,19 +3611,19 @@ export default function AdminCascading5YearsPage() {
                       {selectedOpDefIndicator.variabelJumlah && (
                         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
                           <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Jumlah:</span>
-                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelJumlah}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{selectedOpDefIndicator.variabelJumlah}</span>
                         </div>
                       )}
                       {selectedOpDefIndicator.variabelPembilang && (
                         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
                           <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Pembilang:</span>
-                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelPembilang}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{selectedOpDefIndicator.variabelPembilang}</span>
                         </div>
                       )}
                       {selectedOpDefIndicator.variabelPenyebut && (
                         <div style={{ background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: '6px', fontSize: '12.5px' }}>
                           <span style={{ color: 'var(--text-muted)', marginRight: '8px' }}>Penyebut:</span>
-                          <span style={{ color: 'white' }}>{selectedOpDefIndicator.variabelPenyebut}</span>
+                          <span style={{ color: 'var(--text-primary)' }}>{selectedOpDefIndicator.variabelPenyebut}</span>
                         </div>
                       )}
                     </div>

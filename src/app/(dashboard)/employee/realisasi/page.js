@@ -644,7 +644,7 @@ export default function EmployeeRealisasiPage() {
                           <div key={varIdx} style={{ background:'rgba(0,0,0,0.15)',border:'1px solid rgba(255,255,255,0.05)',borderRadius:'8px',padding:'16px' }}>
                             {/* Header Variabel */}
                             <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px',paddingBottom:'10px',borderBottom:'1px dashed rgba(255,255,255,0.1)' }}>
-                              <div style={{ fontWeight:600,fontSize:'13px',color:'white' }}>
+                              <div style={{ fontWeight:600,fontSize:'13px',color: 'var(--text-primary)' }}>
                                 {vr.name || `Variabel ${varIdx + 1}`}
                               </div>
                               <div style={{ display:'flex',alignItems:'center',gap:'16px' }}>
