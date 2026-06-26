@@ -53,6 +53,6 @@ export async function proxy(request) {
 }
 
 export const config = {
-  // Apply middleware to all routes except static assets
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Apply middleware to all routes except static assets and Next.js internals (including HMR WebSockets)
+  matcher: ['/((?!_next|static|favicon.ico).*)'],
 };

@@ -170,7 +170,7 @@ export default function AdminCascading5YearsPage() {
       if (!node) return { a25: 0, a26: 0, a27: 0, a28: 0, a29: 0, a30: 0, aAkhir: 0 };
       
       const children = nodes.filter(n => n.parentId === nodeId);
-      if (children.length === 0) {
+      if (children.length === 0 || node.level === 'sasaran_subkegiatan' || node.level === 'subkegiatan' || node.level === 'aktivitas' || node.level === 'sasaran_aktivitas') {
         const leafBudget = {
           a25: parseFloat(node.anggaran2025) || 0,
           a26: parseFloat(node.anggaran2026) || 0,
@@ -1673,22 +1673,28 @@ export default function AdminCascading5YearsPage() {
 
                   {(() => {
                     const b = nodeBudgets[node.id];
-                    if (b && (b.a25 > 0 || b.aAkhir > 0)) {
+                    if (b && (b.a25 > 0 || b.a26 > 0 || b.a27 > 0 || b.a28 > 0 || b.a29 > 0 || b.a30 > 0 || b.aAkhir > 0)) {
+                      const computedTotal = b.a25 + b.a26 + b.a27 + b.a28 + b.a29 + b.a30;
+                      const displayTotal = b.aAkhir > 0 ? b.aAkhir : computedTotal;
                       return (
                         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
                           {['25', '26', '27', '28', '29', '30'].map(yr => {
-                            const val = b[`a${yr}`];
+                            const val = b[`a${yr}`] || 0;
                             if (val > 0) {
                               return (
                                 <span key={yr} className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '9px' }}>
-                                  20{yr}: Rp {formatNumberForDisplay(val)}
+                                  20{yr}: Rp{formatNumberForDisplay(val)}
                                 </span>
                               );
                             }
-                            return null;
+                            return (
+                              <span key={yr} className="badge" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', fontSize: '9px' }}>
+                                20{yr}: Rp0
+                              </span>
+                            );
                           })}
                           <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '9px', fontWeight: 'bold' }}>
-                            Total: Rp {formatNumberForDisplay(b.aAkhir)}
+                            Total: Rp{formatNumberForDisplay(displayTotal)}
                           </span>
                         </div>
                       );
@@ -3101,7 +3107,7 @@ export default function AdminCascading5YearsPage() {
                               </div>
                             ))}
                             <div style={{ fontSize: '10px', color: 'green', marginTop: '4px' }}>
-                              Total Anggaran: Rp {parseFloat(path.sasaran_subkegiatan.anggaranAkhir || 0).toLocaleString('id-ID')}
+                              Total Anggaran: Rp{parseFloat(path.sasaran_subkegiatan.anggaranAkhir || 0).toLocaleString('id-ID')}
                             </div>
                           </>
                         )}

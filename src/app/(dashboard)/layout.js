@@ -211,6 +211,12 @@ export default function DashboardLayout({ children }) {
               <Link href="/admin/monitoring-5years" className={`nav-item ${isLinkActive('/admin/monitoring-5years') ? 'active' : ''}`}>
                 <i className="fa-solid fa-chart-bar"></i> Monitoring Renstra
               </Link>
+
+              {/* Capaian Fisik Kinerja - Admin Perencana & Admin Sistem */}
+              <div className="nav-group-title" style={{ marginTop: '8px', fontSize: '9px', opacity: 0.6 }}>CAPAIAN FISIK</div>
+              <Link href="/admin/paket-pekerjaan" className={`nav-item ${isLinkActive('/admin/paket-pekerjaan') ? 'active' : ''}`}>
+                <i className="fa-solid fa-boxes-stacked"></i> Paket Pekerjaan
+              </Link>
             </>
           )}
 
@@ -239,6 +245,19 @@ export default function DashboardLayout({ children }) {
               <div className="nav-group-title">VERIFIKASI ATASAN</div>
               <Link href="/supervisor/evaluation" className={`nav-item ${isLinkActive('/supervisor/evaluation') ? 'active' : ''}`}>
                 <i className="fa-solid fa-user-check"></i> Penilaian Bawahan
+              </Link>
+            </>
+          )}
+
+          {/* Capaian Fisik Menu - Admin Unit Kerja only */}
+          {activeRole === 'admin_bidang' && (
+            <>
+              <div className="nav-group-title">CAPAIAN FISIK</div>
+              <Link href="/admin/target-fisik" className={`nav-item ${isLinkActive('/admin/target-fisik') ? 'active' : ''}`}>
+                <i className="fa-solid fa-bullseye"></i> Target Fisik
+              </Link>
+              <Link href="/admin/realisasi-fisik" className={`nav-item ${isLinkActive('/admin/realisasi-fisik') ? 'active' : ''}`}>
+                <i className="fa-solid fa-chart-line"></i> Realisasi Fisik
               </Link>
             </>
           )}

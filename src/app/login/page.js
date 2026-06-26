@@ -39,10 +39,13 @@ export default function LoginPage() {
       const result = await login(nip, password);
       if (!result.success) {
         setError(result.error);
+        setSubmitting(false);
       }
+      // If successful, we intentionally do NOT setSubmitting(false).
+      // The page will unmount shortly as router.push('/dashboard') takes effect.
+      // This keeps the spinner active during the Next.js client-side transition.
     } catch (err) {
       setError('Terjadi kesalahan sistem. Silakan coba lagi.');
-    } finally {
       setSubmitting(false);
     }
   };

@@ -7,6 +7,7 @@ export default function AdminSettingsPage() {
   const { fetchWithAuth, activeRole, systemSettings, refreshMetadata } = useSimulation();
   const [renstraLocked, setRenstraLocked] = useState(false);
   const [renjaLocked, setRenjaLocked] = useState(false);
+  const [fisikLocked, setFisikLocked] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -22,6 +23,44 @@ export default function AdminSettingsPage() {
       return () => clearTimeout(timer);
     }
   }, [systemSettings]);
+
+  // Load fisik lock status
+  useEffect(() => {
+    async function loadFisikLock() {
+      try {
+        const res = await fetchWithAuth('/api/admin/settings/lock-fisik');
+        if (res.ok) {
+          const data = await res.json();
+          setFisikLocked(data.locked || false);
+        }
+      } catch (e) { /* ignore */ }
+    }
+    loadFisikLock();
+  }, [fetchWithAuth]);
+
+  const handleToggleFisikLock = async () => {
+    setError('');
+    setSuccess('');
+    setIsSaving(true);
+    try {
+      const res = await fetchWithAuth('/api/admin/settings/lock-fisik', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked: !fisikLocked }),
+      });
+      if (res.ok) {
+        setFisikLocked(!fisikLocked);
+        setSuccess(`Kunci Target Fisik berhasil ${!fisikLocked ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Gagal memperbarui pengaturan.');
+      }
+    } catch (e) {
+      setError('Kesalahan jaringan.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleToggleLock = async (type) => {
     setError('');
@@ -204,6 +243,45 @@ export default function AdminSettingsPage() {
                 </a>
               </div>
             </div>
+            {/* Target Fisik Lock */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--glass-border)',
+              padding: '20px',
+              borderRadius: '12px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <i className={`fa-solid ${fisikLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                  Kunci Target Fisik (Capaian Fisik Paket Pekerjaan)
+                </h4>
+                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                  Jika diaktifkan, Admin Unit Kerja tidak dapat mengubah penyusunan target capaian fisik bulanan yang sudah disusun.
+                  Realisasi fisik bulanan tetap bisa diisi mengikuti jadwal pengisian kinerja.
+                </p>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={handleToggleFisikLock}
+                  disabled={isSaving}
+                  className={`btn ${fisikLocked ? 'btn-danger' : 'btn-orange'}`}
+                  style={{ width: '140px', fontWeight: 600 }}
+                >
+                  {isSaving ? (
+                    <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
+                  ) : fisikLocked ? (
+                    <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
+                  ) : (
+                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Target</>
+                  )}
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

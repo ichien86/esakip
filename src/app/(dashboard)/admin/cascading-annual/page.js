@@ -198,7 +198,7 @@ export default function AdminCascadingAnnualPage() {
   };
 
   const formatCurrency = (value) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0);
+    return `Rp${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value || 0)}`;
   };
 
   const calculateNodeBudget = (nodeId, type = 'Renja') => {
