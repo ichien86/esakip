@@ -1,12 +1,14 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 const BULAN_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 const BULAN_KEY   = ['jan','feb','mar','apr','mei','jun','jul','agu','sep','okt','nov','des'];
 
 export default function TargetFisikPage() {
-  const { fetchWithAuth, activeYear, activeBidang } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeYear, activeBidang } = useUI();
   const [pakets, setPakets] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);

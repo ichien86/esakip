@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import CascadingAnnual from '@/models/CascadingAnnual';
 import { checkPlanningLock } from '@/lib/lock-check';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function DELETE(request, { params }) {
   try {
@@ -11,7 +12,7 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
     
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
     const requesterBidang = request.headers.get('x-requester-bidang') || '';
 
     const node = await CascadingAnnual.findOne({ id });

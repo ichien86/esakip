@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 
 export default function EmployeeSelectIndicatorsPage() {
-  const { fetchWithAuth, currentUser, activeRole, activeBidang, activeYear, systemSettings, allEmployees } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeRole, activeBidang, activeYear } = useUI();
+  const { systemSettings, allEmployees } = useMetadata();
   const [annualNodes, setAnnualNodes] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [assignments, setAssignments] = useState({});

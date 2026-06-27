@@ -2,7 +2,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 import dynamic from 'next/dynamic';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -26,7 +27,8 @@ const METODE_OPTIONS = [
 ];
 
 export default function OperationalDefinitionPage() {
-  const { fetchWithAuth, activeRole } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole } = useUI();
   const [nodes, setNodes] = useState([]);
   const [selectedIndicator, setSelectedIndicator] = useState(null);
   const [loading, setLoading] = useState(true);

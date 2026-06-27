@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
 
 export default function SupervisorApprovalsPage() {
-  const { activeEmployeeId, activeRole } = useSimulation();
-  
+  const { currentUser } = useSimulationInternal();
+  const { activeRole } = useUI();
+  const activeEmployeeId = currentUser?.id;
   const [activeTab, setActiveTab] = useState('perjakin'); // perjakin, bulanan
   const [pendingDocs, setPendingDocs] = useState([]);
   const [loading, setLoading] = useState(true);

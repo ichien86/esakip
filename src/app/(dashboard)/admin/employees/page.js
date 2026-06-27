@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useMetadata } from '@/context/MetadataContext';
+import { useUI } from '@/context/UIContext';
 
 export default function AdminEmployeesPage() {
-  const { fetchWithAuth, allEmployees, refreshMetadata, activeRole } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { allEmployees, refreshMetadata } = useMetadata();
+  const { activeRole } = useUI();
   const [formId, setFormId] = useState('');
   const [nama, setNama] = useState('');
   const [nip, setNip] = useState('');

@@ -7,12 +7,13 @@ import MasterKegiatan from '@/models/MasterKegiatan';
 import MasterSubkegiatan from '@/models/MasterSubkegiatan';
 import IndicatorAnnual from '@/models/IndicatorAnnual';
 import Indicator5Years from '@/models/Indicator5Years';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function GET(request) {
   try {
     await dbConnect();
 
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
     const requesterBidang = request.headers.get('x-requester-bidang') || '';
 
     if (!['admin', 'admin_bidang', 'perencana'].includes(requesterRole)) {
@@ -184,7 +185,9 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     await dbConnect();
-    const { nodeId, type, requesterRole } = await request.json();
+    const body = await request.json();
+    const { nodeId, type } = body;
+    const { role: requesterRole } = getValidatedUser(request, body.requesterRole);
 
     if (!['admin', 'admin_bidang', 'perencana'].includes(requesterRole)) {
       return NextResponse.json({ error: 'Akses ditolak.' }, { status: 403 });

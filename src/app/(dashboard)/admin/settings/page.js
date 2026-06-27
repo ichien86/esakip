@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 
 export default function AdminSettingsPage() {
-  const { fetchWithAuth, activeRole, systemSettings, refreshMetadata } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole } = useUI();
+  const { systemSettings, refreshMetadata } = useMetadata();
   const [renstraLocked, setRenstraLocked] = useState(false);
   const [renjaLocked, setRenjaLocked] = useState(false);
   const [fisikLocked, setFisikLocked] = useState(false);

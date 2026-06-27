@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import EmployeeService from '@/services/EmployeeService';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const requesterRole = body.requesterRole;
+    const { role: requesterRole } = getValidatedUser(request, body.requesterRole);
     const newEmp = await EmployeeService.createEmployee({ body, requesterRole });
 
     return NextResponse.json({ message: 'Pegawai berhasil ditambahkan', employee: newEmp });

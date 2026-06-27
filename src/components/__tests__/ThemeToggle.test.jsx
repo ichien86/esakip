@@ -28,9 +28,10 @@ describe('ThemeToggle Component', () => {
     // System theme defaults to Monitor icon
   });
 
-  it('toggles to light when theme is system', () => {
+  it('toggles to light when resolvedTheme is dark', () => {
     useTheme.mockReturnValue({
-      theme: 'system',
+      theme: 'dark',
+      resolvedTheme: 'dark',
       setTheme: setThemeMock,
     });
 
@@ -41,9 +42,10 @@ describe('ThemeToggle Component', () => {
     expect(setThemeMock).toHaveBeenCalledWith('light');
   });
 
-  it('toggles to dark when theme is light', () => {
+  it('toggles to dark when resolvedTheme is light', () => {
     useTheme.mockReturnValue({
       theme: 'light',
+      resolvedTheme: 'light',
       setTheme: setThemeMock,
     });
 
@@ -52,18 +54,5 @@ describe('ThemeToggle Component', () => {
     fireEvent.click(button);
 
     expect(setThemeMock).toHaveBeenCalledWith('dark');
-  });
-
-  it('toggles to system when theme is dark', () => {
-    useTheme.mockReturnValue({
-      theme: 'dark',
-      setTheme: setThemeMock,
-    });
-
-    render(<ThemeToggle />);
-    const button = screen.getByRole('button', { name: /toggle theme/i });
-    fireEvent.click(button);
-
-    expect(setThemeMock).toHaveBeenCalledWith('system');
   });
 });

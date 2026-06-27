@@ -1,11 +1,14 @@
 'use client';
 
 import React from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useMetadata } from '@/context/MetadataContext';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OrganogramPage() {
-  const { allEmployees, simulate, currentUser, user } = useSimulation();
-
+  const { allEmployees } = useMetadata();
+  const { simulate, currentUser } = useSimulationInternal();
+  const { user } = useAuth();
   const buildTree = (parentId) => {
     const children = allEmployees.filter(emp => emp.parentId === parentId && emp.id !== 'admin' && emp.isActive !== false);
     if (children.length === 0) return null;

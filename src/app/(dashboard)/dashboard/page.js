@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
 
 const formatLevel = (lvl) => {
   if (lvl === 'sasaran_program' || lvl === 'program') return 'Sasaran Program';
@@ -11,7 +13,9 @@ const formatLevel = (lvl) => {
 };
 
 export default function DashboardPage() {
-  const { fetchWithAuth, currentUser, activeRole, activeBidang, activeYear } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeRole, activeBidang, activeYear } = useUI();
   const [summaryData, setSummaryData] = useState([]);
   const [deactivatedWarnings, setDeactivatedWarnings] = useState([]);
   const [masterWarnings, setMasterWarnings] = useState([]);
@@ -29,7 +33,7 @@ export default function DashboardPage() {
         setSummaryData(data);
       }
     } catch (e) {
-      console.error('Failed to load dashboard summary', e);
+      console.warn('Failed to load dashboard summary:', e.message);
     } finally {
       setLoading(false);
     }
@@ -44,7 +48,7 @@ export default function DashboardPage() {
         setActiveMonthTargets(data.activeMonthTargets || []);
       }
     } catch (e) {
-      console.error('Failed to fetch tasks and targets', e);
+      console.warn('Failed to fetch tasks and targets:', e.message);
     }
   }, [fetchWithAuth]);
 
@@ -60,7 +64,7 @@ export default function DashboardPage() {
         setDeactivatedWarnings(data);
       }
     } catch (e) {
-      console.error('Failed to fetch deactivated warnings', e);
+      console.warn('Failed to fetch deactivated warnings:', e.message);
     }
   }, [activeRole, fetchWithAuth]);
 
@@ -76,7 +80,7 @@ export default function DashboardPage() {
         setMasterWarnings(data);
       }
     } catch (e) {
-      console.error('Failed to fetch master warnings', e);
+      console.warn('Failed to fetch master warnings:', e.message);
     }
   }, [activeRole, fetchWithAuth]);
 
@@ -92,7 +96,7 @@ export default function DashboardPage() {
         setNotifications(data);
       }
     } catch (e) {
-      console.error('Failed to fetch notifications', e);
+      console.warn('Failed to fetch notifications:', e.message);
     }
   }, [activeRole, fetchWithAuth]);
 

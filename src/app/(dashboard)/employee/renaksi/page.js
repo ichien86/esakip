@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 
 export default function EmployeeRenaksiPage() {
-  const { fetchWithAuth, currentUser, activeBidang, activeYear, systemSettings } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeBidang, activeYear } = useUI();
+  const { systemSettings } = useMetadata();
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
   const [targetsMap, setTargetsMap] = useState({}); // { "indicatorId_bulan": value }

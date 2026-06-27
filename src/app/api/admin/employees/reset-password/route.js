@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import EmployeeService from '@/services/EmployeeService';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function POST(request) {
   try {
-    const { employeeId, requesterRole } = await request.json();
+    const body = await request.json();
+    const { employeeId } = body;
+    const { role: requesterRole } = getValidatedUser(request, body.requesterRole);
 
     await EmployeeService.resetPassword({ 
       id: employeeId, 

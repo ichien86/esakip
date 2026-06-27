@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
 
 export default function LeaderboardPage() {
-  const { fetchWithAuth, currentUser, activeYear } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeYear } = useUI();
   const getInitialMonth = () => {
     const currentMonth = new Date().getMonth() + 1; // 1-12
     let defaultMonth = currentMonth - 1; // n-1

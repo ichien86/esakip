@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 import PrintLayout from './PrintLayout';
 
 export default function AdminPerjakinPage() {
-  const { activeRole, activeYear, allEmployees } = useSimulation();
-  
+  const { activeRole, activeYear } = useUI();
+  const { allEmployees } = useMetadata();
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   

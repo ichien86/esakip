@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 export default function AdminMonitoring5YearsPage() {
-  const { fetchWithAuth, activeRole } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole } = useUI();
   const [monitoringData, setMonitoringData] = useState([]);
   const [loading, setLoading] = useState(true);
 

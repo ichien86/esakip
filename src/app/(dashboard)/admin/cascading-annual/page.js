@@ -2,12 +2,13 @@
 /* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 
 export default function AdminCascadingAnnualPage() {
-  const { fetchWithAuth, activeRole, activeBidang, activeYear } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole, activeBidang, activeYear } = useUI();
   const [nodes, setNodes] = useState([]);
   const [fiveYearNodes, setFiveYearNodes] = useState([]);
   const [masterPrograms, setMasterPrograms] = useState([]);

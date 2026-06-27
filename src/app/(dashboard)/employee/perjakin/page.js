@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
 
 export default function EmployeePerjakinPage() {
-  const { activeEmployeeId, activeRole } = useSimulation();
-  
+  const { currentUser } = useSimulationInternal();
+  const { activeRole } = useUI();
+  const activeEmployeeId = currentUser?.id;
   const [perjakinData, setPerjakinData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);

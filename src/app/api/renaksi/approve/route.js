@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Renaksi from '@/models/Renaksi';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function POST(request) {
   try {
     await dbConnect();
     const { id } = await request.json();
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
 
     const record = await Renaksi.findOne({ id });
     if (!record) {

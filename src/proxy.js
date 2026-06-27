@@ -1,24 +1,33 @@
 import { NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
 
-// Paths that don't require authentication
-const publicPaths = ['/login', '/api/auth/login', '/favicon.ico'];
+// API paths that are always public (no token needed)
+const publicApiPaths = ['/api/auth/login', '/api/auth/logout', '/api/debug-auth'];
 
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
-  // Skip static files and Next.js internals
+  // 1. Skip all Next.js internals and static assets
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg)$/)
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|css|js)$/)
   ) {
     return NextResponse.next();
   }
 
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+  // 2. Only enforce auth on API routes — page routes are protected client-side
+  if (!pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
 
-  // Get the token from cookies
+  // 3. Allow public API paths through without a token
+  const isPublicApi = publicApiPaths.some(p => pathname.startsWith(p));
+  if (isPublicApi) {
+    return NextResponse.next();
+  }
+
+  // 4. For all other API routes, verify the token
   const token = request.cookies.get('auth_token')?.value;
   let verifiedToken = null;
 
@@ -26,33 +35,22 @@ export async function proxy(request) {
     verifiedToken = await verifyAuth(token);
   }
 
-  // Redirect or return 401 if path is protected and token is invalid or missing
-  if (!isPublicPath && !verifiedToken) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const loginUrl = new URL('/login', request.url);
-    // Optionally save the requested URL to redirect back after login
-    // loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+  if (!verifiedToken) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Redirect to dashboard if trying to access login page while already authenticated
-  if (pathname.startsWith('/login') && verifiedToken) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
+  // 5. Attach user data to request headers for downstream API routes
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-user-data', JSON.stringify(verifiedToken));
 
-  // If token is valid, you can optionally pass user data in headers
-  const response = NextResponse.next();
-  if (verifiedToken) {
-    // Stringify the payload to pass it safely in headers
-    response.headers.set('x-user-data', JSON.stringify(verifiedToken));
-  }
-
-  return response;
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
-  // Apply middleware to all routes except static assets and Next.js internals (including HMR WebSockets)
+  // Only run middleware on API routes and pages (not _next internals)
   matcher: ['/((?!_next|static|favicon.ico).*)'],
 };

@@ -1,6 +1,4 @@
 import EmployeeRepository from '@/repositories/EmployeeRepository';
-import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
-import MasterRepository from '@/repositories/MasterRepository';
 import bcrypt from 'bcryptjs';
 
 class AuthService {
@@ -43,40 +41,6 @@ class AuthService {
       throw err;
     }
 
-    let bidangs = employee.bidangs;
-    let warningsCount = 0;
-
-    try {
-      // Query only nodes that belong to the user's bidangs
-      const bidangsForWarnings = (employee.roles.includes('admin') || employee.roles.includes('perencana'))
-        ? ['Sekretariat', 'Bidang Pencegahan dan Kesiapsiagaan', 'Bidang Kedaruratan dan Logistik', 'Bidang Rehabilitasi dan Rekonstruksi', 'Tata Usaha', 'Badan']
-        : employee.bidangs;
-
-      const annualNodes = await CascadingAnnualRepository.find({ bidangPengampu: { $in: bidangsForWarnings }, masterId: { $ne: null } });
-      const masterPrograms = await MasterRepository.findPrograms();
-      const masterKegiatans = await MasterRepository.findKegiatans();
-      const masterSubkegiatans = await MasterRepository.findSubkegiatans();
-
-      const progMap = new Map(masterPrograms.map(p => [p.id, p]));
-      const kegMap = new Map(masterKegiatans.map(k => [k.id, k]));
-      const subMap = new Map(masterSubkegiatans.map(s => [s.id, s]));
-
-      for (const node of annualNodes) {
-        if (node.level === 'program' || node.level === 'sasaran_program') {
-          const master = progMap.get(node.masterId);
-          if (master && node.text !== master.nama) warningsCount++;
-        } else if (node.level === 'kegiatan' || node.level === 'sasaran_kegiatan') {
-          const master = kegMap.get(node.masterId);
-          if (master && node.text !== master.nama) warningsCount++;
-        } else if (node.level === 'subkegiatan' || node.level === 'sasaran_subkegiatan') {
-          const master = subMap.get(node.masterId);
-          if (master && (node.text !== master.nama || node.indikator !== master.indikator || node.satuan !== master.satuan)) warningsCount++;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to calculate warningsCount during login', e);
-    }
-
     const result = {
       id: employee.id,
       nama: employee.nama,
@@ -85,9 +49,10 @@ class AuthService {
       pangkatGolongan: employee.pangkatGolongan || '',
       roles: employee.roles,
       parentId: employee.parentId,
-      bidangs: bidangs,
+      bidangs: employee.bidangs,
       scopeLeader: employee.scopeLeader || null,
-      warningsCount
+      // warningsCount diambil secara terpisah oleh dashboard agar login lebih cepat
+      warningsCount: 0,
     };
     return JSON.parse(JSON.stringify(result));
   }

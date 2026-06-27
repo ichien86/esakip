@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import RealisasiSchedule from '@/models/RealisasiSchedule';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function GET(request) {
   try {
@@ -32,7 +33,8 @@ export async function POST(request) {
   try {
     await dbConnect();
     const body = await request.json();
-    const { schedules, requesterRole } = body;
+    const { schedules } = body;
+    const { role: requesterRole } = getValidatedUser(request, body.requesterRole);
 
     if (requesterRole !== 'admin' && requesterRole !== 'perencana') {
       return NextResponse.json({ error: 'Akses ditolak. Hanya Administrator Sistem atau Admin Perencana yang dapat mengubah jadwal realisasi.' }, { status: 403 });

@@ -1,13 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 import DocumentPreviewModal from '@/components/DocumentPreviewModal';
 import { parseBuktiDukung } from '@/utils/linkPreview';
 
 export default function SupervisorEvaluationPage() {
-  const { fetchWithAuth, currentUser, activeRole, activeYear, allEmployees } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeRole, activeYear } = useUI();
+  const { allEmployees } = useMetadata();
   const [subordinates, setSubordinates] = useState([]);
   const [selectedSub, setSelectedSub] = useState(null);
   

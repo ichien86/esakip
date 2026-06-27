@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import EmployeeService from '@/services/EmployeeService';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function POST(request) {
   try {
@@ -10,7 +11,8 @@ export async function POST(request) {
 
     const formData = await request.formData();
     const file = formData.get('file');
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
+
 
     if (!file) {
       return NextResponse.json({ error: 'File Excel tidak ditemukan.' }, { status: 400 });

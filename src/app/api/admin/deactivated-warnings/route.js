@@ -3,12 +3,13 @@ import dbConnect from '@/lib/db';
 import Employee from '@/models/Employee';
 import Selection from '@/models/Selection';
 import CascadingAnnual from '@/models/CascadingAnnual';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function GET(request) {
   try {
     await dbConnect();
 
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
     const requesterBidang = request.headers.get('x-requester-bidang') || '';
 
     // Only admin, admin_bidang, and perencana can access these warnings
@@ -21,6 +22,8 @@ export async function GET(request) {
     if (deactivatedEmployees.length === 0) {
       return NextResponse.json([]);
     }
+
+    const deactivatedIds = deactivatedEmployees.map(e => e.id);
 
     const requestYear = request.headers.get('x-requester-year') || '2026';
     const yearNum = parseInt(requestYear);

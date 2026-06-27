@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 export default function AdminRealisasiSchedulePage() {
-  const { fetchWithAuth, activeRole, activeYear } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole, activeYear } = useUI();
   const [schedules, setSchedules] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

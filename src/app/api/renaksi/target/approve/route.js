@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Renaksi from '@/models/Renaksi';
 import CascadingAnnual from '@/models/CascadingAnnual';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function POST(request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request) {
       }
     }
 
-    const requesterRole = request.headers.get('x-requester-role') || '';
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
     let targetStatusFilter = 'Target_Diajukan';
     let nextStatus = 'Target_Disetujui';
 

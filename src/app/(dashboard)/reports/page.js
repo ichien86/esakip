@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 
 export default function LaporanAkipPage() {
-  const { fetchWithAuth, activeYear, allEmployees } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeYear } = useUI();
+  const { allEmployees } = useMetadata();
   const [selectedEmpId, setSelectedEmpId] = useState('');
   const [employee, setEmployee] = useState(null);
   const [supervisor, setSupervisor] = useState(null);

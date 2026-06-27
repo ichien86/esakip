@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
 import { parseBuktiDukung, getFilenameFromUrl } from '@/utils/linkPreview';
 import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 
 export default function EmployeeRealisasiPage() {
-  const { fetchWithAuth, currentUser, activeBidang, activeYear } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser } = useSimulationInternal();
+  const { activeBidang, activeYear } = useUI();
   const [selectedIndicators, setSelectedIndicators] = useState([]);
   const [renaksiRecords, setRenaksiRecords] = useState([]);
   const [monthlySchedules, setMonthlySchedules] = useState([]);

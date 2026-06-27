@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
 
 export default function ProfilePage() {
-  const { fetchWithAuth, currentUser, simulate } = useSimulation();
-
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { currentUser, simulate } = useSimulationInternal();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

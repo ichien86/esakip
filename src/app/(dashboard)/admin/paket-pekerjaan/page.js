@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 const BULAN_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const BULAN_KEY = ['jan','feb','mar','apr','mei','jun','jul','agu','sep','okt','nov','des'];
@@ -10,7 +11,8 @@ function formatRp(val) {
 }
 
 export default function PaketPekerjaanPage() {
-  const { fetchWithAuth, activeYear } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeYear } = useUI();
   const [pakets, setPakets] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 const BULAN_FULL  = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const BULAN_KEY   = ['jan','feb','mar','apr','mei','jun','jul','agu','sep','okt','nov','des'];
@@ -15,7 +16,8 @@ function pct(real, target) {
 }
 
 export default function RealisasiFisikPage() {
-  const { fetchWithAuth, activeYear, activeRole } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeYear, activeRole } = useUI();
   const [pakets, setPakets] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);

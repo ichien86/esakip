@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
 
 export default function AdminMasterPage() {
-  const { fetchWithAuth, activeRole } = useSimulation();
-  
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole } = useUI();
   const [programs, setPrograms] = useState([]);
   const [kegiatans, setKegiatans] = useState([]);
   const [subkegiatans, setSubkegiatans] = useState([]);

@@ -4,7 +4,11 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useSimulation } from '@/context/SimulationContext';
+import { useAuth } from '@/context/AuthContext';
+import { useSimulationInternal } from '@/context/SimulationInternalContext';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function DashboardLayout({ children }) {
@@ -45,26 +49,11 @@ export default function DashboardLayout({ children }) {
     }
     setIsHoverExpanded(false);
   }, [pathname, isMobile]);
-  const {
-    user,
-    simulatedUser,
-    currentUser,
-    activeRole,
-    activeBidang,
-    activeYear,
-    isSimulating,
-    allEmployees,
-    systemSettings,
-    loading,
-    logout,
-    simulate,
-    switchRole,
-    switchBidang,
-    updateCurrentUserBidang,
-    switchYear,
-    fetchWithAuth
-  } = useSimulation();
-
+  const { user, loading, logout } = useAuth();
+  const { simulatedUser, currentUser, isSimulating, simulate } = useSimulationInternal();
+  const { activeRole, activeBidang, activeYear, switchRole, switchBidang, updateCurrentUserBidang, switchYear } = useUI();
+  const { allEmployees, systemSettings } = useMetadata();
+  const { fetchWithAuth } = useFetchWithAuth();
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');

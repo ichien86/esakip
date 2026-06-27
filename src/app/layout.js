@@ -1,4 +1,4 @@
-import { SimulationProvider } from '@/context/SimulationContext';
+import { AppProviders } from '@/context/AppProviders';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
@@ -16,9 +16,9 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
-          <SimulationProvider>
+          <AppProviders>
             {children}
-          </SimulationProvider>
+          </AppProviders>
         </ThemeProvider>
       </body>
     </html>

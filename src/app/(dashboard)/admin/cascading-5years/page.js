@@ -2,7 +2,9 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '@/context/SimulationContext';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
+import { useUI } from '@/context/UIContext';
+import { useMetadata } from '@/context/MetadataContext';
 import { formatIndonesianInput, parseToStandardNumber, formatNumberForDisplay } from '@/utils/numberFormat';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -11,7 +13,9 @@ import 'react-quill-new/dist/quill.snow.css';
 const ReactQuill = dynamic(() => import('react-quill-new'), { ssr: false });
 
 export default function AdminCascading5YearsPage() {
-  const { fetchWithAuth, activeRole, activeBidang, refreshMetadata } = useSimulation();
+  const { fetchWithAuth } = useFetchWithAuth();
+  const { activeRole, activeBidang } = useUI();
+  const { refreshMetadata } = useMetadata();
   const router = useRouter();
 
   const [nodes, setNodes] = useState([]);

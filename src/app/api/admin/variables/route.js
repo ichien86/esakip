@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import IndicatorAnnual from '@/models/IndicatorAnnual';
 import Indicator5Years from '@/models/Indicator5Years';
+import { getValidatedUser } from '@/lib/api-auth';
 
 export async function GET(request) {
   try {
-    const requesterRole = request.headers.get('x-requester-role');
+    const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
     if (!requesterRole) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
