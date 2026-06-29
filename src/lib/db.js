@@ -31,13 +31,18 @@ async function dbConnect() {
     cached.conn = await cached.promise;
     
     // Auto-migration check (Opsi A) - Runs once per process boot
+    // Only runs if RUN_MIGRATION=true is set in environment variables.
+    // This is intentionally disabled in production (Vercel) to prevent
+    // 4 heavy DB queries on every cold start, which caused 15s login delays.
     if (!cached.migrated) {
       cached.migrated = true;
-      try {
-        const { runAutoMigration } = await import('./auto-migrate');
-        await runAutoMigration();
-      } catch (err) {
-        console.error('[db] Auto-migration initialization failed:', err);
+      if (process.env.RUN_MIGRATION === 'true') {
+        try {
+          const { runAutoMigration } = await import('./auto-migrate');
+          await runAutoMigration();
+        } catch (err) {
+          console.error('[db] Auto-migration initialization failed:', err);
+        }
       }
     }
   } catch (e) {

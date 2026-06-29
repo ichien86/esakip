@@ -25,80 +25,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
-  const fetchSummary = useCallback(async () => {
+  const fetchAllDashboardData = useCallback(async () => {
     try {
-      const res = await fetchWithAuth('/api/dashboard/summary');
+      const res = await fetchWithAuth('/api/dashboard/all-in-one');
       if (res.ok) {
         const data = await res.json();
-        setSummaryData(data);
+        setSummaryData(data.summary || []);
+        setPendingTasks(data.tasks?.tasks || []);
+        setActiveMonthTargets(data.tasks?.activeMonthTargets || []);
+        setDeactivatedWarnings(data.deactivatedWarnings || []);
+        setMasterWarnings(data.masterWarnings || []);
+        setNotifications(data.notifications || []);
       }
     } catch (e) {
-      console.warn('Failed to load dashboard summary:', e.message);
+      console.warn('Failed to load dashboard data:', e.message);
     } finally {
       setLoading(false);
     }
   }, [fetchWithAuth]);
-
-  const fetchTasksAndTargets = useCallback(async () => {
-    try {
-      const res = await fetchWithAuth('/api/dashboard/tasks');
-      if (res.ok) {
-        const data = await res.json();
-        setPendingTasks(data.tasks || []);
-        setActiveMonthTargets(data.activeMonthTargets || []);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch tasks and targets:', e.message);
-    }
-  }, [fetchWithAuth]);
-
-  const fetchWarnings = useCallback(async () => {
-    if (!['admin', 'admin_bidang', 'perencana'].includes(activeRole)) {
-      setDeactivatedWarnings([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth('/api/admin/deactivated-warnings');
-      if (res.ok) {
-        const data = await res.json();
-        setDeactivatedWarnings(data);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch deactivated warnings:', e.message);
-    }
-  }, [activeRole, fetchWithAuth]);
-
-  const fetchMasterWarnings = useCallback(async () => {
-    if (!['admin', 'admin_bidang', 'perencana'].includes(activeRole)) {
-      setMasterWarnings([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth('/api/admin/master-warnings');
-      if (res.ok) {
-        const data = await res.json();
-        setMasterWarnings(data);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch master warnings:', e.message);
-    }
-  }, [activeRole, fetchWithAuth]);
-
-  const fetchNotifications = useCallback(async () => {
-    if (!['admin', 'admin_bidang', 'perencana', 'pemimpin'].includes(activeRole)) {
-      setNotifications([]);
-      return;
-    }
-    try {
-      const res = await fetchWithAuth('/api/notifications');
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-      }
-    } catch (e) {
-      console.warn('Failed to fetch notifications:', e.message);
-    }
-  }, [activeRole, fetchWithAuth]);
 
   const handleMarkAsRead = async (id) => {
     try {
@@ -129,7 +73,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         alert('Data cascading berhasil disinkronkan dengan data master terbaru.');
-        fetchMasterWarnings();
+        fetchAllDashboardData();
       } else {
         const err = await res.json();
         alert(err.error || 'Gagal menyinkronkan data.');
@@ -146,19 +90,12 @@ export default function DashboardPage() {
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    const timer = setTimeout(() => {
-      fetchSummary();
-      fetchWarnings();
-      fetchMasterWarnings();
-      fetchNotifications();
-      fetchTasksAndTargets();
-    }, 0);
-    
+    fetchAllDashboardData();
+
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
     };
-  }, [fetchSummary, fetchWarnings, fetchMasterWarnings, fetchNotifications, fetchTasksAndTargets]);
+  }, [fetchAllDashboardData]);
 
   const participants = summaryData.filter(emp => emp.id !== 'admin');
   const totalEmployees = participants.length;

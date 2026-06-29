@@ -1,5 +1,5 @@
 import EmployeeRepository from '@/repositories/EmployeeRepository';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 class AuthService {
   async login({ nip, password }) {
