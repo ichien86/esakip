@@ -19,7 +19,12 @@ async function dbConnect() {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
+      // bufferCommands: true is the Mongoose default.
+      // Setting it to false caused "buffering timed out" errors when
+      // concurrent queries fired before the connection was fully ready.
+      bufferCommands: true,
+      serverSelectionTimeoutMS: 30000, // Tolerate Atlas cold-start up to 30s
+      socketTimeoutMS: 45000,          // Close sockets that are inactive > 45s
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {

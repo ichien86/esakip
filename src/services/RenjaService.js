@@ -1,3 +1,4 @@
+import dbConnect from '@/lib/db';
 import * as xlsx from 'xlsx';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
 import Cascading5Years from '@/models/Cascading5Years'; // TODO: use Cascading5YearsRepository when available
@@ -5,6 +6,7 @@ import { resolveTreePICs } from '@/lib/pic-resolver';
 
 class RenjaService {
   async getRenja(yearNum) {
+    await dbConnect();
     const annualNodes = await CascadingAnnualRepository.find({ tahun: yearNum });
     const IndicatorAnnual = (await import('@/models/IndicatorAnnual')).default;
     const annualIndicators = await IndicatorAnnual.find({ tahun: yearNum }).sort({ order: 1 });
@@ -34,6 +36,7 @@ class RenjaService {
   }
 
   async importDPA(fileBuffer, yearNum) {
+    await dbConnect();
     const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
     const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(worksheet);
@@ -112,6 +115,7 @@ class RenjaService {
   }
 
   async sync(yearNum) {
+    await dbConnect();
     const fiveYearNodes = await Cascading5Years.find({});
 
     // Delete existing nodes & indicators for this year

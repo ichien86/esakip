@@ -1,3 +1,4 @@
+import dbConnect from '@/lib/db';
 import EmployeeRepository from '@/repositories/EmployeeRepository';
 import PerformanceRepository from '@/repositories/PerformanceRepository';
 import Selection from '@/models/Selection';
@@ -11,6 +12,7 @@ import { resolveTreePICs } from '@/lib/pic-resolver';
 
 class DashboardService {
   async getSummary(yearNum) {
+    await dbConnect();
     const employees = await EmployeeRepository.findAll();
     // Filter active employees (or those where isActive is not strictly false)
     const activeEmployees = employees.filter(emp => emp.isActive !== false);
@@ -35,6 +37,7 @@ class DashboardService {
   }
 
   async getPendingTasksAndActiveTargets(employeeId, role, yearNum) {
+    await dbConnect();
     const emp = await Employee.findOne({ id: employeeId });
     const jabatan = emp ? emp.jabatan : '';
     const userBidang = emp && emp.bidangs ? emp.bidangs[0] : '';

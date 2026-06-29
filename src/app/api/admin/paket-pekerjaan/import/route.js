@@ -121,7 +121,20 @@ export async function POST(request) {
         }
       }
 
-      return NextResponse.json({ message: `${items.length} paket pekerjaan berhasil disimpan` });
+      // After upsert, recalculate anggaranDpa per subkegiatan by summing
+      // all paguAnggaran of paket pekerjaan under that subkegiatan.
+      // This replaces the separate "Impor Excel DPA" feature.
+      const subkegiatanIds = [...new Set(items.map(i => i.subkegiatanId))];
+      for (const subkegId of subkegiatanIds) {
+        const allPaketsForSubkeg = await PaketPekerjaan.find({ subkegiatanId: subkegId, tahun });
+        const totalDpa = allPaketsForSubkeg.reduce((sum, p) => sum + (p.paguAnggaran || 0), 0);
+        await CascadingAnnual.updateOne(
+          { id: subkegId, tahun },
+          { $set: { anggaranDpa: totalDpa } }
+        );
+      }
+
+      return NextResponse.json({ message: `${items.length} paket pekerjaan berhasil disimpan dan anggaranDpa diperbarui` });
 
     } else {
       // Realisasi anggaran: [ID Paket, Nama Paket, Nama Subkegiatan, Realisasi]

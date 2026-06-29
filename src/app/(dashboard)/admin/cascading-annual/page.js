@@ -44,12 +44,6 @@ export default function AdminCascadingAnnualPage() {
   // Indicator edit state in modal
   const [tempIndicators, setTempIndicators] = useState([]);
 
-  // DPA Excel Import modal state
-  const [showDpaImportModal, setShowDpaImportModal] = useState(false);
-  const [dpaFile, setDpaFile] = useState(null);
-  const [importDpaError, setImportDpaError] = useState('');
-  const [importDpaSuccess, setImportDpaSuccess] = useState('');
-  const [uploadingDpa, setUploadingDpa] = useState(false);
 
   // Confirm Modal states
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -156,7 +150,7 @@ export default function AdminCascadingAnnualPage() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (showFormModal || showDpaImportModal || confirmMessage || alertMessage) return;
+      if (showFormModal || confirmMessage || alertMessage) return;
 
       const activeEl = document.activeElement;
       if (activeEl && (
@@ -178,7 +172,7 @@ export default function AdminCascadingAnnualPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showFormModal, showDpaImportModal, confirmMessage, alertMessage]);
+  }, [showFormModal, confirmMessage, alertMessage]);
 
   const levelLabels = {
     tujuan: '1. Tujuan Strategis',
@@ -953,44 +947,6 @@ export default function AdminCascadingAnnualPage() {
     );
   };
 
-  const handleDpaImportSubmit = async (e) => {
-    e.preventDefault();
-    if (!dpaFile) {
-      setImportDpaError('Pilih file Excel terlebih dahulu.');
-      return;
-    }
-    setUploadingDpa(true);
-    setImportDpaError('');
-    setImportDpaSuccess('');
-    
-    const formData = new FormData();
-    formData.append('file', dpaFile);
-    formData.append('tahun', tahun.toString());
-
-    try {
-      const res = await fetchWithAuth('/api/renja/import-dpa', {
-        method: 'POST',
-        body: formData
-      });
-      if (res.ok) {
-        const result = await res.json();
-        setImportDpaSuccess(`Sukses! Berhasil memperbarui anggaran DPA pada ${result.updatedCount} subkegiatan.`);
-        loadTreeData(true);
-        setTimeout(() => {
-          setShowDpaImportModal(false);
-          setDpaFile(null);
-          setImportDpaSuccess('');
-        }, 2500);
-      } else {
-        const err = await res.json();
-        setImportDpaError(err.error || 'Gagal mengimpor anggaran DPA.');
-      }
-    } catch (err) {
-      setImportDpaError('Kesalahan jaringan.');
-    } finally {
-      setUploadingDpa(false);
-    }
-  };
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
 
@@ -1328,17 +1284,7 @@ export default function AdminCascadingAnnualPage() {
           >
             <i className="fa-solid fa-sync"></i> Sinkronisasi dari Renstra
           </button>
-          <button 
-            className="btn btn-orange" 
-            style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: '#059669', borderColor: '#059669' }}
-            onClick={() => {
-              setImportDpaError('');
-              setImportDpaSuccess('');
-              setShowDpaImportModal(true);
-            }}
-          >
-            <i className="fa-solid fa-file-excel"></i> Impor Excel DPA
-          </button>
+
           <button 
             className="btn btn-secondary" 
             style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)' }}
@@ -1794,79 +1740,7 @@ export default function AdminCascadingAnnualPage() {
         </div>
       )}
 
-      {/* DPA Excel Import Modal */}
-      {showDpaImportModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(15, 23, 42, 0.85)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px'
-        }}>
-          <div className="glass-panel" style={{
-            maxWidth: '500px',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            margin: 0,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-            border: '1px solid rgba(5,150,105,0.4)'
-          }}>
-            <div className="panel-header justify-between" style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)' }}>
-              <h3>
-                <i className="fa-solid fa-file-excel text-success"></i> Impor Anggaran DPA Tahunan
-              </h3>
-              <button onClick={() => setShowDpaImportModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', fontSize: '18px' }}>&times;</button>
-            </div>
 
-            <form onSubmit={handleDpaImportSubmit}>
-              <div className="panel-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {importDpaError && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>{importDpaError}</div>}
-                {importDpaSuccess && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', fontSize: '12px' }}>{importDpaSuccess}</div>}
-
-                <p style={{ fontSize: '13px', lineHeight: '1.4', color: 'var(--text-muted)' }}>
-                  Unggah berkas Excel DPA untuk memperbarui kolom <strong>Anggaran DPA</strong> pada subkegiatan secara massal. Sistem akan mencocokkan subkegiatan berdasarkan nama nomenklaturnya.
-                </p>
-
-                <div className="form-group">
-                  <label>Tahun Anggaran DPA</label>
-                  <input type="text" className="form-control" value={tahun} disabled style={{ background: 'rgba(255,255,255,0.05)', fontWeight: 'bold' }} />
-                </div>
-
-                <div className="form-group">
-                  <label>Pilih File Excel DPA (.xlsx / .xls)</label>
-                  <input 
-                    type="file" 
-                    className="form-control" 
-                    accept=".xlsx, .xls"
-                    onChange={(e) => setDpaFile(e.target.files[0])}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="panel-footer" style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'rgba(0,0,0,0.2)' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowDpaImportModal(false)} disabled={uploadingDpa} style={{ width: 'auto' }}>Batal</button>
-                <button 
-                  type="submit" 
-                  className="btn btn-orange" 
-                  disabled={uploadingDpa} 
-                  style={{ width: 'auto', background: '#059669', borderColor: '#059669' }}
-                >
-                  {uploadingDpa ? 'Mengunggah...' : 'Impor Sekarang'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Landscape styling for cascading print mode */}
       {printMode === 'cascading' && (
