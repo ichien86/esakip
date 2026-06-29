@@ -617,14 +617,14 @@ export default function SupervisorEvaluationPage() {
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{item.indicatorText}</p>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target Bulan Ini</span>
                               <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.targetBulanan} {item.indicatorSatuan}</strong>
                             </div>
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Realisasi Capaian</span>
-                              <strong style={{ fontSize: '13px', color: '#10B981' }}>
+                              <strong style={{ fontSize: '13px', color: isUnderperform ? '#EF4444' : '#10B981' }}>
                                 {item.realisasiBulanan}{item.indicatorSatuan === '%' || item.indicatorSatuan?.toLowerCase() === 'persen' ? '%' : ''}
                               </strong>
                               {isPercentage && (
@@ -637,6 +637,17 @@ export default function SupervisorEvaluationPage() {
                                   (Q: {item.variabelJumlahVal || 0})
                                 </span>
                               )}
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Capaian (%)</span>
+                              <strong style={{
+                                fontSize: '15px',
+                                color: item.capaianBulanan == null
+                                  ? 'var(--text-muted)'
+                                  : isUnderperform ? '#EF4444' : '#10B981'
+                              }}>
+                                {item.capaianBulanan != null ? `${item.capaianBulanan.toFixed(1)}%` : '-'}
+                              </strong>
                             </div>
                           </div>
 

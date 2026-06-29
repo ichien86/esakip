@@ -9,6 +9,7 @@ const RenaksiSchema = new mongoose.Schema({
   bulan: { type: Number, required: true },
   targetBulanan: { type: Number, default: 0 },
   realisasiBulanan: { type: Number, default: null },
+  capaianBulanan: { type: Number, default: null }, // Persentase capaian bulanan (realisasi / target * 100), tanpa batas atas
   tanggalRealisasi: { type: String, default: null }, // ISO String or null
   buktiDukung: { type: String, default: '' },
   kendala: { type: String, default: '' },

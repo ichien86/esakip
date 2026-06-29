@@ -597,12 +597,46 @@ export default function EmployeeRealisasiPage() {
 
             {activeRecord ? (
               <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--glass-border)', marginBottom: '20px' }}>
-                <p style={{ fontSize: '14px' }}>
-                  Target Bulan Ini: <strong style={{ color: 'var(--primary-orange)' }}>{targetVal}</strong> {activeNode?.satuan}
-                  {activeNode?.tipeTarget === 'Kondisi Akhir Menurun' && (
-                    <span className="badge badge-score" style={{ marginLeft: '10px' }}>Tipe: Target Menurun</span>
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
+                  <p style={{ fontSize: '14px', margin: 0 }}>
+                    Target Bulan Ini: <strong style={{ color: 'var(--primary-orange)' }}>{targetVal}</strong> {activeNode?.satuan}
+                    {activeNode?.tipeTarget === 'Kondisi Akhir Menurun' && (
+                      <span className="badge badge-score" style={{ marginLeft: '10px' }}>Tipe: Target Menurun</span>
+                    )}
+                  </p>
+                  {/* Tampilkan capaian yang sudah tersimpan jika sudah pernah diisi */}
+                  {activeRecord.capaianBulanan != null && (
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      color: activeRecord.capaianBulanan >= 100 ? '#10B981' : '#EF4444',
+                      background: activeRecord.capaianBulanan >= 100 ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                      border: `1px solid ${activeRecord.capaianBulanan >= 100 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                      borderRadius: '6px',
+                      padding: '3px 10px'
+                    }}>
+                      Capaian: {activeRecord.capaianBulanan.toFixed(1)}%
+                    </span>
                   )}
-                </p>
+                  {/* Live preview saat user mengetik nilai baru */}
+                  {!isNaN(currentReal) && activeRecord.capaianBulanan == null && currentReal > 0 && targetVal > 0 && (
+                    (() => {
+                      const liveCapaian = isDecreasing
+                        ? (currentReal === 0 ? 100 : (targetVal / currentReal) * 100)
+                        : (currentReal / targetVal) * 100;
+                      return (
+                        <span style={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: liveCapaian >= 100 ? '#10B981' : '#F59E0B',
+                          opacity: 0.8
+                        }}>
+                          Preview: {liveCapaian.toFixed(1)}%
+                        </span>
+                      );
+                    })()
+                  )}
+                </div>
                 {activeRecord.status === 'Diajukan' && (
                   <p style={{ marginTop: '6px', color: '#F59E0B', fontSize: '12px' }}>
                     <i className="fa-solid fa-clock"></i> Laporan ini telah diajukan dan menunggu persetujuan (ACC) dari Admin Unit Kerja.
@@ -619,6 +653,7 @@ export default function EmployeeRealisasiPage() {
                   </p>
                 )}
               </div>
+
             ) : (
               <div style={{ color: 'var(--danger)', marginBottom: '20px', fontSize: '13px' }}>
                 Target bulanan belum diset. Silakan isi matriks target terlebih dahulu.

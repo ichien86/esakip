@@ -294,7 +294,20 @@ class RenaksiService {
       realisasi = parseFloat(realisasiBulanan || 0);
     }
 
-    const isDecreasing = node && node.tipeTarget === 'Kondisi Akhir Menurun';
+    // Hitung persentase capaian bulanan (tanpa batas atas, sesuai kebijakan)
+    let capaianBulanan = null;
+    const isDecreasingTarget = node && node.tipeTarget === 'Kondisi Akhir Menurun';
+    if (target === 0) {
+      // Target nol: sempurna jika realisasi juga 0, sebaliknya 0%
+      capaianBulanan = realisasi === 0 ? 100 : 0;
+    } else if (isDecreasingTarget) {
+      // Target menurun: makin kecil makin baik — rumus dibalik
+      capaianBulanan = realisasi === 0 ? 100 : parseFloat(((target / realisasi) * 100).toFixed(2));
+    } else {
+      capaianBulanan = parseFloat(((realisasi / target) * 100).toFixed(2));
+    }
+
+    const isDecreasing = isDecreasingTarget;
     let isUnderperforming = false;
     if (isDecreasing) {
       isUnderperforming = realisasi > target;
@@ -317,6 +330,7 @@ class RenaksiService {
     }
 
     record.realisasiBulanan = realisasi;
+    record.capaianBulanan = capaianBulanan;
 
     // Simpan variabel dinamis
     if (Array.isArray(variablesRealization) && variablesRealization.length > 0) {

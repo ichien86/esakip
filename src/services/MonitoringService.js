@@ -11,10 +11,8 @@ class MonitoringService {
    */
   async getMonitoring5YearsData() {
     const items = await Cascading5YearsRepository.findAll();
-    const annualNodes = await CascadingAnnualRepository.findAll();
     const renaksis = await RenaksiRepository.findAll();
     const all5YIndicators = await Indicator5YearsRepository.findAll();
-    const allAnnualIndicators = await IndicatorAnnualRepository.findAll();
 
     const indicators5YByNodeId = {};
     all5YIndicators.forEach(ind => {
@@ -25,26 +23,29 @@ class MonitoringService {
       indicators5YByNodeId[plainInd.nodeId].push(plainInd);
     });
 
-    const indicatorsAnnualByNodeId = {};
-    allAnnualIndicators.forEach(ind => {
-      const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
-      if (!indicatorsAnnualByNodeId[plainInd.nodeId]) {
-        indicatorsAnnualByNodeId[plainInd.nodeId] = [];
+    // 1. Sort nodes hierarchically (Tree Building)
+    const buildTree = (parentId = null) => {
+      const levelNodes = items.filter(n => {
+        const pId = typeof n.toObject === 'function' ? n.toObject().parentId : n.parentId;
+        return pId === parentId;
+      });
+      let result = [];
+      for (const node of levelNodes) {
+        result.push(node);
+        const childNodes = buildTree(typeof node.toObject === 'function' ? node.toObject().id : node.id);
+        result = result.concat(childNodes);
       }
-      indicatorsAnnualByNodeId[plainInd.nodeId].push(plainInd);
-    });
+      return result;
+    };
 
-    const enrichedAnnualNodes = annualNodes.map(node => {
-      const plainNode = typeof node.toObject === 'function' ? node.toObject() : node;
-      return {
-        ...plainNode,
-        indicators: indicatorsAnnualByNodeId[plainNode.id] || []
-      };
-    });
+    const orderedItems = buildTree(null);
+    const orderedIds = new Set(orderedItems.map(n => typeof n.toObject === 'function' ? n.toObject().id : n.id));
+    const orphans = items.filter(n => !orderedIds.has(typeof n.toObject === 'function' ? n.toObject().id : n.id));
+    const finalItems = [...orderedItems, ...orphans];
 
     const monitoringData = [];
 
-    for (const item of items) {
+    for (const item of finalItems) {
       const plainItem = typeof item.toObject === 'function' ? item.toObject() : item;
       let indicators = indicators5YByNodeId[plainItem.id] || [];
       if (indicators.length === 0 && plainItem.indikator && plainItem.indikator !== '-') {
@@ -71,25 +72,13 @@ class MonitoringService {
         for (let year = 2025; year <= 2030; year++) {
           const yearTarget = parseFloat(indicator[`target${year}`]) || 0;
 
-          // Find matching annual nodes that share indicators and fields (bidang)
-          const matchingAnnualNodes = enrichedAnnualNodes.filter(c => {
-            const sharesBidang = c.bidangPengampu.some(b => plainItem.bidangPengampu.includes(b));
-            if (!sharesBidang) return false;
+          // Annual Indicator ID is exactly derived from 5-Year Indicator ID in RenjaService sync
+          const annualIndicatorId = `${indicator.id}_${year}`;
 
-            let cIndicators = c.indicators || [];
-            if (cIndicators.length === 0 && c.indikator && c.indikator !== '-') {
-              cIndicators = [{
-                indikator: c.indikator
-              }];
-            }
-            return cIndicators.some(ind => ind.indikator === indicator.indikator);
-          });
-          const matchingIds = matchingAnnualNodes.map(n => n.id);
-
-          // Filter monthly achievements for those indicators in the given year
+          // Filter monthly achievements for this exact indicator in the given year
           const yearRenaksi = renaksis.filter(r =>
             r.tahun === year &&
-            matchingIds.includes(r.indicatorId) &&
+            r.indicatorId === annualIndicatorId &&
             r.realisasiBulanan !== null &&
             r.isCrossCuttingSelected !== false
           );
@@ -108,23 +97,27 @@ class MonitoringService {
         }
 
         let progres = 0;
-        if (targetAkhir > 0) {
-          if (indicator.tipeTarget === 'Kondisi Akhir Menurun') {
-            if (totalRealisasi === 0) progres = 0;
-            else if (totalRealisasi <= targetAkhir) progres = 100;
-            else progres = Math.min(100, (targetAkhir / totalRealisasi) * 100);
+        if (targetAkhir === 0) {
+          // Zero-target indicator: if realisasi also 0, that's perfect (100%)
+          progres = totalRealisasi === 0 ? 100 : 0;
+        } else if (indicator.tipeTarget === 'Kondisi Akhir Menurun') {
+          if (totalRealisasi === 0) {
+            // Realisasi 0 is a perfect score for a decreasing target
+            progres = 100;
+          } else if (totalRealisasi <= targetAkhir) {
+            progres = 100;
           } else {
-            progres = Math.min(100, (totalRealisasi / targetAkhir) * 100);
+            // Exceeded the limit — proportionally lower score, no cap
+            progres = (targetAkhir / totalRealisasi) * 100;
           }
+        } else {
+          // Normal / Akumulatif — no upper cap
+          progres = targetAkhir > 0 ? (totalRealisasi / targetAkhir) * 100 : 0;
         }
 
-        // if the model is a mongoose document, toObject() will exist.
-        // Otherwise, it's just an object or plain object.
-        const baseItem = plainItem;
-
         monitoringData.push({
-          ...baseItem,
-          id: `${item.id}_${indicator.id || Math.random().toString(36).substr(2, 9)}`,
+          ...plainItem,
+          id: `${plainItem.id}_${indicator.id || Math.random().toString(36).substr(2, 9)}`,
           indikator: indicator.indikator,
           satuan: indicator.satuan,
           tipeTarget: indicator.tipeTarget,
