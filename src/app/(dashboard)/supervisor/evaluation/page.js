@@ -40,6 +40,18 @@ export default function SupervisorEvaluationPage() {
   const [activeTab, setActiveTab] = useState('targets'); // 'targets' | 'realisations'
   const [evalMode, setEvalMode] = useState('validation'); // 'validation' | 'akip' for Pemimpin
 
+  // Reject modal state
+  const [rejectModal, setRejectModal] = useState(null); // { id, empName, bulan }
+  const [rejectCatatan, setRejectCatatan] = useState('');
+  const [rejectLoading, setRejectLoading] = useState(false);
+
+  const [rejectTargetModal, setRejectTargetModal] = useState(null); // { employeeId, indicatorId, indicatorName, empName }
+  const [rejectTargetCatatan, setRejectTargetCatatan] = useState('');
+  const [rejectTargetLoading, setRejectTargetLoading] = useState(false);
+
+  // Pemimpin: which employee card is expanded
+  const [expandedEmpId, setExpandedEmpId] = useState(null);
+
   const loadValidationItems = useCallback(async () => {
     if (!currentUser) return;
     setKabidLoading(true);
@@ -93,7 +105,7 @@ export default function SupervisorEvaluationPage() {
         const rxData = subRenaksisMap[sub.id] || [];
         
         // Target validation
-        const subPendingTargets = rxData.filter(r => ['Target_Diajukan', 'Target_ACC_Admin'].includes(r.status));
+        const subPendingTargets = rxData.filter(r => ['Target_Diajukan', 'Target_ACC_Admin', 'Target_Disetujui'].includes(r.status));
         const groupedByIndicator = {};
         subPendingTargets.forEach(r => {
           if (!groupedByIndicator[r.indicatorId]) {
@@ -133,7 +145,10 @@ export default function SupervisorEvaluationPage() {
         });
 
         // Realisasi validation
-        const subPendingRealisasis = rxData.filter(r => ['Diajukan', 'ACC_Admin'].includes(r.status));
+        const statusFilter = activeRole === 'admin_bidang'
+          ? ['Diajukan', 'Ditolak Admin']
+          : ['ACC_Admin'];
+        const subPendingRealisasis = rxData.filter(r => statusFilter.includes(r.status));
         subPendingRealisasis.forEach(r => {
           const node = allNodes.find(n => n.id === r.indicatorId);
           allRealisasis.push({
@@ -150,6 +165,7 @@ export default function SupervisorEvaluationPage() {
             bulan: r.bulan,
             targetBulanan: r.targetBulanan,
             realisasiBulanan: r.realisasiBulanan,
+            capaianBulanan: r.capaianBulanan,
             buktiDukung: r.buktiDukung,
             kendala: r.kendala,
             solusi: r.solusi,
@@ -158,6 +174,7 @@ export default function SupervisorEvaluationPage() {
             variabelJumlahVal: r.variabelJumlahVal,
             variabelPembilangVal: r.variabelPembilangVal,
             variabelPenyebutVal: r.variabelPenyebutVal,
+            catatanAdmin: r.catatanAdmin || '',
             status: r.status,
             isCrossCuttingSelected: r.isCrossCuttingSelected !== false
           });
@@ -223,6 +240,90 @@ export default function SupervisorEvaluationPage() {
       } else {
         const err = await res.json();
         setError(err.error || 'Gagal menyetujui realisasi.');
+      }
+    } catch (e) {
+      setError('Kesalahan jaringan.');
+    }
+  };
+
+  const handleRejectRealisasi = async () => {
+    if (!rejectModal) return;
+    if (!rejectCatatan.trim()) {
+      setError('Catatan penolakan wajib diisi.');
+      return;
+    }
+    setRejectLoading(true);
+    setError('');
+    try {
+      const res = await fetchWithAuth('/api/renaksi/reject', {
+        method: 'POST',
+        body: JSON.stringify({ id: rejectModal.id, catatanAdmin: rejectCatatan })
+      });
+      if (res.ok) {
+        setSuccess(`Realisasi bulan ${rejectModal.bulan} milik ${rejectModal.empName} dikembalikan untuk direvisi.`);
+        setRejectModal(null);
+        setRejectCatatan('');
+        loadValidationItems();
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Gagal menolak realisasi.');
+      }
+    } catch (e) {
+      setError('Kesalahan jaringan.');
+    } finally {
+      setRejectLoading(false);
+    }
+  };
+
+  const handleRejectTargetSubmit = async () => {
+    if (!rejectTargetModal) return;
+    if (!rejectTargetCatatan.trim()) {
+      setError('Catatan penolakan target harus diisi');
+      return;
+    }
+
+    setRejectTargetLoading(true);
+    try {
+      const res = await fetchWithAuth('/api/renaksi/target/reject', {
+        method: 'POST',
+        body: JSON.stringify({
+          employeeId: rejectTargetModal.employeeId,
+          indicatorId: rejectTargetModal.indicatorId,
+          catatanAdmin: rejectTargetCatatan,
+          tahun: selectedYear
+        })
+      });
+
+      if (res.ok) {
+        setSuccess(`Target ${rejectTargetModal.indicatorName} milik ${rejectTargetModal.empName} dikembalikan untuk direvisi.`);
+        setRejectTargetModal(null);
+        setRejectTargetCatatan('');
+        loadValidationItems();
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Gagal menolak target');
+      }
+    } catch (e) {
+      setError('Kesalahan jaringan');
+    } finally {
+      setRejectTargetLoading(false);
+    }
+  };
+
+  const handleBukaRevisiTarget = async (employeeId, empName) => {
+    if (!confirm(`Apakah Anda yakin ingin membuka (unlock) target milik ${empName} menjadi Draft kembali?`)) return;
+    try {
+      const res = await fetchWithAuth('/api/renaksi/target/revisi', {
+        method: 'POST',
+        body: JSON.stringify({ employeeId })
+      });
+
+      if (res.ok) {
+        setSuccess(`Target milik ${empName} berhasil dikembalikan ke status Draft untuk direvisi.`);
+        loadValidationItems();
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Gagal membuka revisi target.');
       }
     } catch (e) {
       setError('Kesalahan jaringan.');
@@ -367,13 +468,13 @@ export default function SupervisorEvaluationPage() {
             style={{ padding: '8px 16px', fontSize: '13px' }}
             onClick={() => setEvalMode('akip')}
           >
-            <i className="fa-solid fa-gavel"></i> Penilaian Akhir AKIP-I Bawahan
+            <i className="fa-solid fa-gavel"></i> Penilaian Akhir AKIP Bawahan
           </button>
         </div>
       )}
 
       {/* 1. Validation Dashboard Mode */}
-      {(activeRole === 'admin_bidang' || (activeRole === 'pemimpin' && evalMode === 'validation')) && (
+      {(activeRole === 'admin_bidang' || isPemimpinMode) && (
         <div className="glass-panel">
           <div className="panel-header justify-between" style={{ flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -395,7 +496,7 @@ export default function SupervisorEvaluationPage() {
                 style={{ border: 'none', padding: '6px 14px', fontSize: '12px', width: 'auto' }}
                 onClick={() => setActiveTab('targets')}
               >
-                <i className="fa-solid fa-list-check"></i> Target Renaksi ({pendingTargets.length})
+                <i className="fa-solid fa-list-check"></i> Verifikasi Perjakin & Target ({pendingTargets.length})
               </button>
               <button
                 className={`btn btn-sm ${activeTab === 'realisations' ? 'btn-orange' : 'btn-secondary'}`}
@@ -539,20 +640,50 @@ export default function SupervisorEvaluationPage() {
                             </div>
                           </div>
 
-                          <button
-                            className="btn btn-orange w-full"
-                            style={{
-                              marginTop: '8px',
-                              padding: '8px',
-                              width: '100%',
-                              opacity: (!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)) ? 0.5 : 1,
-                              cursor: (!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)) ? 'not-allowed' : 'pointer'
-                            }}
-                            disabled={!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)}
-                            onClick={() => handleApproveTarget(item.employeeId, item.indicatorId, item.employeeNama)}
-                          >
-                            <i className="fa-solid fa-circle-check"></i> {buttonText}
-                          </button>
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            {item.status !== 'Target_Disetujui' && (
+                              <>
+                                <button
+                                  className="btn btn-orange"
+                                  style={{
+                                    flex: 2,
+                                    padding: '8px',
+                                    opacity: (!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)) ? 0.5 : 1,
+                                    cursor: (!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)) ? 'not-allowed' : 'pointer'
+                                  }}
+                                  disabled={!isActionable || (item.crossCuttingType === 'split' && Math.abs(item.totalTargetAllSubs - parseFloat(item.yearlyTarget)) >= 0.05)}
+                                  onClick={() => handleApproveTarget(item.employeeId, item.indicatorId, item.employeeNama)}
+                                >
+                                  <i className="fa-solid fa-circle-check"></i> {buttonText}
+                                </button>
+                                
+                                {(activeRole === 'admin_bidang' || activeRole === 'perencana') && isActionable && (
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ flex: 1, padding: '8px', color: '#EF4444', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }}
+                                    onClick={() => setRejectTargetModal({
+                                      employeeId: item.employeeId,
+                                      indicatorId: item.indicatorId,
+                                      indicatorName: item.indicatorName,
+                                      empName: item.employeeNama
+                                    })}
+                                  >
+                                    <i className="fa-solid fa-rotate-left"></i> Tolak
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            
+                            {item.status === 'Target_Disetujui' && (activeRole === 'admin_bidang' || activeRole === 'perencana') && (
+                              <button
+                                className="btn btn-secondary"
+                                style={{ flex: 1, padding: '8px', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.05)' }}
+                                onClick={() => handleBukaRevisiTarget(item.employeeId, item.employeeNama)}
+                              >
+                                <i className="fa-solid fa-lock-open"></i> Buka Revisi (Ke Draft)
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -560,142 +691,107 @@ export default function SupervisorEvaluationPage() {
                 </div>
               )
             ) : (
-              // Tab Realisations
+              // Tab Realisations — split rendering by role
               pendingRealisasis.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
                   Tidak ada usulan realisasi bulanan yang perlu diproses.
                 </div>
-              ) : (
+              ) : activeRole === 'admin_bidang' ? (
+                /* ======== ADMIN BIDANG: full detail card with Tolak button ======== */
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-                  {pendingRealisasis.map((item, idx) => {
-                    const isUnderperform = item.realisasiBulanan < item.targetBulanan;
+                  {pendingRealisasis.map((item) => {
+                    const isUnderperform = (item.realisasiBulanan ?? 0) < (item.targetBulanan ?? 0);
                     const isPercentage = item.metodePenghitungan === 'Persentase';
                     const isJumlah = item.metodePenghitungan === 'Jumlah';
-
-                    const isActionable = activeRole === 'admin_bidang'
-                      ? item.status === 'Diajukan'
-                      : item.status === 'ACC_Admin';
-
-                    const buttonText = activeRole === 'admin_bidang'
-                      ? (item.status === 'ACC_Admin' ? 'Telah di-ACC Admin' : 'ACC Realisasi')
-                      : (item.status === 'Disetujui' ? 'Disetujui Pemimpin' : 'Validasi Realisasi');
+                    const isDitolak = item.status === 'Ditolak Admin';
+                    const isActionable = item.status === 'Diajukan' || item.status === 'Ditolak Admin';
 
                     return (
                       <div key={item.id} className="glass-panel" style={{
                         margin: 0,
-                        border: `1px solid ${item.status === 'ACC_Admin' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(16, 185, 129, 0.2)'}`,
-                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: `1px solid ${isDitolak ? 'rgba(239,68,68,0.35)' : 'rgba(16, 185, 129, 0.2)'}`,
+                        background: isDitolak ? 'rgba(239,68,68,0.04)' : 'rgba(255,255,255,0.02)',
                         boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                         width: '100%'
                       }}>
-                        <div className="panel-header" style={{
+                        {/* Card Header */}
+                        <div style={{
                           padding: '12px 16px',
                           borderBottom: '1px solid var(--glass-border)',
-                          background: 'rgba(16, 185, 129, 0.03)',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center'
+                          background: isDitolak ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.03)',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}>
                           <div>
                             <h4 style={{ fontSize: '14px', color: 'var(--text-primary)', margin: 0 }}>{item.employeeNama}</h4>
                             <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{item.employeeJabatan}</span>
                           </div>
                           <span className="badge" style={{
-                            fontSize: '9px',
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            color: '#10B981',
-                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                            width: 'auto'
+                            fontSize: '9px', width: 'auto',
+                            background: isDitolak ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)',
+                            color: isDitolak ? '#EF4444' : '#10B981',
+                            border: `1px solid ${isDitolak ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`
                           }}>
-                            Bulan {item.bulan}
+                            {isDitolak ? <><i className="fa-solid fa-rotate-left"></i> Revisi</> : <>Bulan {item.bulan}</>}
                           </span>
                         </div>
-                        <div className="panel-body" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {/* Rejection notes alert */}
+                          {isDitolak && item.catatanAdmin && (
+                            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '10px', fontSize: '12px' }}>
+                              <div style={{ color: '#EF4444', fontWeight: 'bold', marginBottom: '4px' }}><i className="fa-solid fa-circle-exclamation"></i> Catatan Penolakan Sebelumnya:</div>
+                              <div style={{ color: 'var(--text-primary)' }}>{item.catatanAdmin}</div>
+                            </div>
+                          )}
+
+                          {/* Bulan badge when rejected */}
+                          {isDitolak && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bulan: <strong style={{ color: 'var(--text-primary)' }}>{item.bulan}</strong></div>
+                          )}
+
+                          {/* Indicator */}
                           <div>
                             <label style={{ fontSize: '11px', color: 'var(--primary-orange)', fontWeight: 600 }}>Indikator:</label>
                             <p style={{ fontSize: '12px', color: 'var(--text-primary)', margin: '2px 0 0 0', fontWeight: 'bold' }}>{item.indicatorName}</p>
                             <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{item.indicatorText}</p>
                           </div>
 
+                          {/* Target vs Realisasi */}
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '6px' }}>
                             <div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target Bulan Ini</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Target</span>
                               <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{item.targetBulanan} {item.indicatorSatuan}</strong>
                             </div>
                             <div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Realisasi Capaian</span>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Realisasi</span>
                               <strong style={{ fontSize: '13px', color: isUnderperform ? '#EF4444' : '#10B981' }}>
                                 {item.realisasiBulanan}{item.indicatorSatuan === '%' || item.indicatorSatuan?.toLowerCase() === 'persen' ? '%' : ''}
                               </strong>
-                              {isPercentage && (
-                                <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>
-                                  ({item.variabelPembilangVal || 0} / {item.variabelPenyebutVal || 0})
-                                </span>
-                              )}
-                              {isJumlah && (
-                                <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>
-                                  (Q: {item.variabelJumlahVal || 0})
-                                </span>
-                              )}
+                              {isPercentage && <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>({item.variabelPembilangVal || 0} / {item.variabelPenyebutVal || 0})</span>}
+                              {isJumlah && <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>(Q: {item.variabelJumlahVal || 0})</span>}
                             </div>
                             <div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Capaian (%)</span>
-                              <strong style={{
-                                fontSize: '15px',
-                                color: item.capaianBulanan == null
-                                  ? 'var(--text-muted)'
-                                  : isUnderperform ? '#EF4444' : '#10B981'
-                              }}>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Capaian</span>
+                              <strong style={{ fontSize: '15px', color: item.capaianBulanan == null ? 'var(--text-muted)' : isUnderperform ? '#EF4444' : '#10B981' }}>
                                 {item.capaianBulanan != null ? `${item.capaianBulanan.toFixed(1)}%` : '-'}
                               </strong>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            {/* Status Badge */}
-                            {item.status === 'Diajukan' && <span className="badge" style={{ fontSize: '10px', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', width: 'auto' }}><i className="fa-solid fa-clock"></i> Diajukan Staf</span>}
-                             {item.status === 'ACC_Admin' && <span className="badge" style={{ fontSize: '10px', background: 'rgba(59,130,246,0.15)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.3)', width: 'auto' }}><i className="fa-solid fa-circle-check"></i> ACC Admin Unit Kerja</span>}
-                            {item.status === 'Disetujui' && <span className="badge" style={{ fontSize: '10px', background: 'rgba(16,185,129,0.15)', color: '#10B981', border: '1px solid rgba(16,185,129,0.3)', width: 'auto' }}><i className="fa-solid fa-circle-check"></i> Disetujui Pemimpin</span>}
-
-                            {/* Cross-cutting badge */}
-                            {item.isCrossCuttingSelected !== undefined && (
-                              <span className="badge" style={{
-                                fontSize: '10px',
-                                background: item.isCrossCuttingSelected ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
-                                color: item.isCrossCuttingSelected ? '#10B981' : '#94A3B8',
-                                border: `1px solid ${item.isCrossCuttingSelected ? 'rgba(16,185,129,0.3)' : 'rgba(100,116,139,0.3)'}`,
-                                width: 'auto'
-                              }}>
-                                <i className="fa-solid fa-share-nodes"></i> {item.isCrossCuttingSelected ? 'Capaian Resmi' : 'Tidak Digunakan'}
-                              </span>
-                            )}
-                          </div>
-
+                          {/* Bukti Dukung */}
                           {(() => {
                             const files = parseBuktiDukung(item.buktiDukung);
-                            if (files.length === 0) return null;
+                            if (files.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}><i className="fa-solid fa-folder-open"></i> Tidak ada bukti dukung dilampirkan.</div>;
                             return (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', marginBottom: '8px' }}>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                              <div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '6px' }}>
                                   <i className="fa-solid fa-folder-open text-orange"></i> Bukti Dukung ({files.length}):
                                 </div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                   {files.map((file, idx) => (
-                                    <button 
-                                      key={idx}
-                                      type="button" 
-                                      onClick={() => setPreviewUrl(file.url)} 
-                                      className="btn btn-sm btn-secondary" 
-                                      style={{ 
-                                        padding: '4px 10px', 
-                                        fontSize: '11px', 
-                                        width: 'auto', 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px',
-                                        background: 'rgba(255,255,255,0.03)',
-                                        border: '1px solid var(--glass-border)'
-                                      }}
+                                    <button key={idx} type="button" onClick={() => setPreviewUrl(file.url)}
+                                      className="btn btn-sm btn-secondary"
+                                      style={{ padding: '4px 10px', fontSize: '11px', width: 'auto', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}
                                       title={file.url}
                                     >
                                       <i className="fa-solid fa-file-lines text-orange"></i> {file.name}
@@ -706,60 +802,192 @@ export default function SupervisorEvaluationPage() {
                             );
                           })()}
 
-                          {/* Analysis and constraints info */}
+                          {/* Kendala/Inovasi info */}
                           <div style={{
-                            background: isUnderperform ? 'rgba(245, 158, 11, 0.06)' : 'rgba(16, 185, 129, 0.06)',
-                            border: `1px solid ${isUnderperform ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                            padding: '10px',
-                            borderRadius: '6px',
-                            fontSize: '12px'
+                            background: isUnderperform ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.06)',
+                            border: `1px solid ${isUnderperform ? 'rgba(245,158,11,0.2)' : 'rgba(16,185,129,0.2)'}`,
+                            padding: '10px', borderRadius: '6px', fontSize: '12px'
                           }}>
                             {isUnderperform ? (
-                              <>
-                                <div style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Kendala:</div>
-                                <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.kendala || '-'}</div>
-                                <div style={{ color: 'var(--info)', fontWeight: 'bold' }}>Solusi:</div>
-                                <div style={{ color: 'var(--text-primary)' }}>{item.solusi || '-'}</div>
-                              </>
+                              <><div style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Kendala:</div>
+                              <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.kendala || '-'}</div>
+                              <div style={{ color: 'var(--info)', fontWeight: 'bold' }}>Solusi:</div>
+                              <div style={{ color: 'var(--text-primary)' }}>{item.solusi || '-'}</div></>
                             ) : (
-                              <>
-                                <div style={{ color: 'var(--success)', fontWeight: 'bold' }}>Faktor Pendorong:</div>
-                                <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.faktorPendorong || '-'}</div>
-                                {item.inovasi && (
-                                  <>
-                                    <div style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>Inovasi:</div>
-                                    <div style={{ color: 'var(--text-primary)' }}>{item.inovasi}</div>
-                                  </>
-                                )}
-                              </>
+                              <><div style={{ color: 'var(--success)', fontWeight: 'bold' }}>Faktor Pendorong:</div>
+                              <div style={{ color: 'var(--text-primary)', marginBottom: '6px' }}>{item.faktorPendorong || '-'}</div>
+                              {item.inovasi && (<><div style={{ color: 'var(--primary-orange)', fontWeight: 'bold' }}>Inovasi:</div><div style={{ color: 'var(--text-primary)' }}>{item.inovasi}</div></>)}</>
                             )}
                           </div>
 
-                          <button
-                            className="btn btn-orange w-full"
-                            style={{
-                              marginTop: '8px',
-                              padding: '8px',
-                              background: isActionable ? '#10B981' : '#64748B',
-                              borderColor: isActionable ? '#10B981' : '#64748B',
-                              opacity: isActionable ? 1 : 0.5,
-                              cursor: isActionable ? 'pointer' : 'not-allowed',
-                              width: '100%'
-                            }}
-                            disabled={!isActionable}
-                            onClick={() => handleApproveRealisasi(item.id, item.employeeNama, item.bulan)}
-                          >
-                            <i className="fa-solid fa-circle-check"></i> {buttonText}
-                          </button>
+                          {/* Action Buttons */}
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            <button
+                              className="btn btn-sm"
+                              style={{ flex: 1, padding: '8px', background: isActionable ? '#10B981' : '#64748B', color: '#fff', border: 'none', borderRadius: '6px', cursor: isActionable ? 'pointer' : 'not-allowed', opacity: isActionable ? 1 : 0.6 }}
+                              disabled={!isActionable}
+                              onClick={() => handleApproveRealisasi(item.id, item.employeeNama, item.bulan)}
+                            >
+                              <i className="fa-solid fa-circle-check"></i> ACC
+                            </button>
+                            <button
+                              className="btn btn-sm"
+                              style={{ flex: 1, padding: '8px', background: isActionable ? '#EF4444' : '#64748B', color: '#fff', border: 'none', borderRadius: '6px', cursor: isActionable ? 'pointer' : 'not-allowed', opacity: isActionable ? 1 : 0.6 }}
+                              disabled={!isActionable}
+                              onClick={() => { setRejectModal({ id: item.id, empName: item.employeeNama, bulan: item.bulan }); setRejectCatatan(''); }}
+                            >
+                              <i className="fa-solid fa-rotate-left"></i> Tolak
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              ) : (
+                /* ======== PEMIMPIN: mobile-first per-pegawai accordion summary ======== */
+                (() => {
+                  // Group by employee
+                  const grouped = {};
+                  pendingRealisasis.forEach(item => {
+                    if (!grouped[item.employeeId]) {
+                      grouped[item.employeeId] = { nama: item.employeeNama, jabatan: item.employeeJabatan, items: [] };
+                    }
+                    grouped[item.employeeId].items.push(item);
+                  });
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '600px', margin: '0 auto' }}>
+                      {Object.entries(grouped).map(([empId, emp]) => {
+                        const isExpanded = expandedEmpId === empId;
+                        const accCount = emp.items.filter(i => i.status === 'ACC_Admin').length;
+                        return (
+                          <div key={empId} style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
+                            {/* Employee Header (tappable) */}
+                            <button
+                              type="button"
+                              onClick={() => setExpandedEmpId(isExpanded ? null : empId)}
+                              style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: 'none', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', textAlign: 'left' }}
+                            >
+                              <div>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>{emp.nama}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{emp.jabatan}</div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: 600, color: '#10B981', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '20px', padding: '3px 10px' }}>
+                                  {accCount} siap validasi
+                                </span>
+                                <i className={`fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ color: 'var(--text-muted)', fontSize: '13px' }}></i>
+                              </div>
+                            </button>
+
+                            {/* Expanded: list of indicators */}
+                            {isExpanded && (
+                              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {emp.items.map((item) => {
+                                  const isUnderperform = (item.realisasiBulanan ?? 0) < (item.targetBulanan ?? 0);
+                                  return (
+                                    <div key={item.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>{item.indicatorName}</div>
+                                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Bulan {item.bulan}</div>
+                                        </div>
+                                        <span className="badge" style={{
+                                          fontSize: '10px', width: 'auto', marginLeft: '8px', flexShrink: 0,
+                                          background: 'rgba(59,130,246,0.15)', color: '#3B82F6', border: '1px solid rgba(59,130,246,0.3)'
+                                        }}>
+                                          <i className="fa-solid fa-circle-check"></i> ACC Admin
+                                        </span>
+                                      </div>
+
+                                      {/* Compact stats */}
+                                      <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
+                                        <div>
+                                          <span style={{ color: 'var(--text-muted)' }}>Target </span>
+                                          <strong style={{ color: 'var(--text-primary)' }}>{item.targetBulanan}</strong>
+                                        </div>
+                                        <div>
+                                          <span style={{ color: 'var(--text-muted)' }}>Realisasi </span>
+                                          <strong style={{ color: isUnderperform ? '#EF4444' : '#10B981' }}>{item.realisasiBulanan}</strong>
+                                        </div>
+                                        <div>
+                                          <span style={{ color: 'var(--text-muted)' }}>Capaian </span>
+                                          <strong style={{ color: isUnderperform ? '#EF4444' : '#10B981' }}>
+                                            {item.capaianBulanan != null ? `${item.capaianBulanan.toFixed(1)}%` : '-'}
+                                          </strong>
+                                        </div>
+                                      </div>
+
+                                      {/* Inovasi/Kendala brief */}
+                                      {!isUnderperform && item.inovasi && (
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--glass-border)', paddingTop: '6px' }}>
+                                          <span style={{ color: 'var(--primary-orange)', fontWeight: 600 }}>Inovasi: </span>{item.inovasi}
+                                        </div>
+                                      )}
+                                      {isUnderperform && item.kendala && (
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', borderTop: '1px solid var(--glass-border)', paddingTop: '6px' }}>
+                                          <span style={{ color: '#F59E0B', fontWeight: 600 }}>Kendala: </span>{item.kendala}
+                                        </div>
+                                      )}
+
+                                      <button
+                                        className="btn btn-sm"
+                                        style={{ width: '100%', padding: '8px', background: '#10B981', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                                        onClick={() => handleApproveRealisasi(item.id, emp.nama, item.bulan)}
+                                      >
+                                        <i className="fa-solid fa-circle-check"></i> Validasi
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
               )
             )}
           </div>
         </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1040 }} onClick={() => setRejectModal(null)}></div>
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1050, background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', border: '1px solid var(--glass-border)', borderRadius: '16px', padding: '28px', width: '90%', maxWidth: '460px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)' }}>
+            <h4 style={{ color: '#EF4444', marginBottom: '8px' }}><i className="fa-solid fa-circle-exclamation"></i> Tolak Realisasi</h4>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Realisasi Bulan <strong style={{ color: 'var(--text-primary)' }}>{rejectModal.bulan}</strong> milik <strong style={{ color: 'var(--text-primary)' }}>{rejectModal.empName}</strong> akan dikembalikan untuk direvisi.
+            </p>
+            {error && <div style={{ color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '8px', borderRadius: '6px', fontSize: '12px', marginBottom: '12px' }}>{error}</div>}
+            <div className="form-group">
+              <label style={{ fontSize: '13px', fontWeight: 600 }}>Catatan untuk Pegawai <span style={{ color: '#EF4444' }}>*</span></label>
+              <textarea
+                className="form-control"
+                rows="4"
+                value={rejectCatatan}
+                onChange={e => setRejectCatatan(e.target.value)}
+                placeholder="Jelaskan alasan penolakan dan perbaikan yang diperlukan..."
+                style={{ marginTop: '6px', resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setRejectModal(null)}>Batal</button>
+              <button
+                type="button"
+                style={{ flex: 2, padding: '10px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: rejectLoading ? 'not-allowed' : 'pointer', opacity: rejectLoading ? 0.7 : 1 }}
+                disabled={rejectLoading}
+                onClick={handleRejectRealisasi}
+              >
+                {rejectLoading ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Memproses...</> : <><i className="fa-solid fa-rotate-left"></i> Kembalikan untuk Revisi</>}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* 2. Subordinate AKIP Evaluation Mode (Only for Pemimpin) */}
@@ -975,6 +1203,48 @@ export default function SupervisorEvaluationPage() {
           url={previewUrl} 
           onClose={() => setPreviewUrl('')} 
         />
+      )}
+      {/* Modal Reject Target */}
+      {rejectTargetModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h4 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#EF4444' }}>
+              <i className="fa-solid fa-triangle-exclamation"></i> Tolak Target
+            </h4>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px', lineHeight: '1.5' }}>
+              Target <strong style={{ color: 'var(--text-primary)' }}>{rejectTargetModal.indicatorName}</strong> milik <strong style={{ color: 'var(--text-primary)' }}>{rejectTargetModal.empName}</strong> akan dikembalikan untuk direvisi.
+            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px', display: 'block' }}>Catatan Penolakan (Wajib)</label>
+              <textarea 
+                className="form-control" 
+                rows="4" 
+                placeholder="Misal: Target bulan Maret tidak realistis dengan ketersediaan SDM, mohon kurangi dan sebar ke bulan lain..."
+                value={rejectTargetCatatan}
+                onChange={e => setRejectTargetCatatan(e.target.value)}
+                style={{ width: '100%', fontSize: '13px', resize: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', fontWeight: 600 }}
+                onClick={() => { setRejectTargetModal(null); setRejectTargetCatatan(''); }}
+                disabled={rejectTargetLoading}
+              >
+                Batal
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 2, padding: '10px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: rejectTargetLoading ? 'not-allowed' : 'pointer', opacity: rejectTargetLoading ? 0.7 : 1 }}
+                disabled={rejectTargetLoading}
+                onClick={handleRejectTargetSubmit}
+              >
+                {rejectTargetLoading ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Memproses...</> : <><i className="fa-solid fa-rotate-left"></i> Kembalikan untuk Revisi</>}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

@@ -16,8 +16,15 @@ const RenaksiSchema = new mongoose.Schema({
   solusi: { type: String, default: '' },
   faktorPendorong: { type: String, default: '' },
   inovasi: { type: String, default: '' },
-  status: { type: String, default: 'Draft' }, // Draft, Diajukan, Disetujui
+  status: { type: String, default: 'Draft' }, // Draft, Diajukan, Ditolak Admin, ACC_Admin, Disetujui
+  catatanAdmin: { type: String, default: '' },
   isCrossCuttingSelected: { type: Boolean, default: true },
+
+  // Rekomendasi Atasan & Tindak Lanjut
+  rekomendasiAtasan: { type: String, default: '' },
+  statusRekomendasi: { type: String, enum: ['Kosong', 'Menunggu Tindak Lanjut', 'Selesai'], default: 'Kosong' },
+  tindakLanjutRekomendasi: { type: String, default: '' },
+  buktiDukungTindakLanjut: { type: String, default: '' },
   
   // Realization calculation variables (Legacy: Tunggal & Persentase)
   variabelJumlahVal: { type: Number, default: null },

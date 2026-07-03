@@ -32,11 +32,28 @@ export default function EmployeeRenaksiPage() {
 
       // 2. Fetch annual Renja nodes
       const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
-      let matchedNodes = [];
       if (nodesRes.ok) {
         const allNodes = await nodesRes.json();
-        matchedNodes = allNodes.filter(n => selectedIds.includes(n.id));
-        setSelectedIndicators(matchedNodes);
+        let matchedIndicators = [];
+        allNodes.forEach(n => {
+          if (n.indicators && n.indicators.length > 0) {
+            n.indicators.forEach(ind => {
+              if (selectedIds.includes(ind.id)) {
+                matchedIndicators.push({
+                  ...ind,
+                  parentNode: n
+                });
+              }
+            });
+          } else if (selectedIds.includes(n.id)) {
+            // Legacy fallback
+            matchedIndicators.push({
+              ...n,
+              parentNode: null
+            });
+          }
+        });
+        setSelectedIndicators(matchedIndicators);
       }
 
       // 3. Fetch existing Renaksi records
@@ -78,12 +95,43 @@ export default function EmployeeRenaksiPage() {
     }
   }, [currentUser, loadData]);
 
+  const autosaveTimerRef = React.useRef(null);
+
   const handleInputChange = (indicatorId, month, value) => {
     if (systemSettings?.renja_locked) return;
-    setTargetsMap({
+    const newMap = {
       ...targetsMap,
       [`${indicatorId}_${month}`]: value
+    };
+    setTargetsMap(newMap);
+
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    
+    // Autosave after 1.5 seconds of inactivity
+    autosaveTimerRef.current = setTimeout(() => {
+      saveTargetsBackground(newMap);
+    }, 1500);
+  };
+
+  const saveTargetsBackground = async (mapToSave) => {
+    const targetsPayload = [];
+    selectedIndicators.forEach(node => {
+      for (let month = 1; month <= 12; month++) {
+        const key = `${node.id}_${month}`;
+        const val = parseFloat(mapToSave[key]) || 0;
+        targetsPayload.push({ indicatorId: node.id, bulan: month, targetBulanan: val });
+      }
     });
+
+    try {
+      await fetchWithAuth('/api/renaksi/target/batch', {
+        method: 'POST',
+        body: JSON.stringify({ employeeId: currentUser.id, targets: targetsPayload })
+      });
+      // Silent save in background
+    } catch (e) {
+      console.error('Autosave failed:', e);
+    }
   };
 
   // Calculate row total sum for visualization
@@ -98,8 +146,16 @@ export default function EmployeeRenaksiPage() {
 
   const getEffectiveAnnualTarget = (node) => {
     let targetVal = parseFloat(node.target);
-    if (node.crossCuttingType === 'split' && node.splitTargets && currentUser) {
-      const portion = parseFloat(node.splitTargets[currentUser.id]);
+    // splitTargets disimpan di level indikator (ind), bukan parentNode
+    const isSplit = node.crossCuttingType === 'split';
+    if (isSplit && node.splitTargets && currentUser) {
+      // Cari porsi berdasarkan employee ID
+      let portion = parseFloat(node.splitTargets[currentUser.id]);
+      // Jika tidak ditemukan via ID, cari via jabatan (jabatan:...)
+      if (isNaN(portion) && currentUser.jabatan) {
+        const jabatanKey = `jabatan:${currentUser.jabatan}`;
+        portion = parseFloat(node.splitTargets[jabatanKey]);
+      }
       if (!isNaN(portion)) {
         targetVal = portion;
       }
@@ -107,47 +163,12 @@ export default function EmployeeRenaksiPage() {
     return targetVal;
   };
 
-  const handleSaveTargets = async () => {
-    setError('');
-    setSuccess('');
-
-    // Prepare payload
-    const targetsPayload = [];
-    selectedIndicators.forEach(node => {
-      for (let month = 1; month <= 12; month++) {
-        const key = `${node.id}_${month}`;
-        const val = parseFloat(targetsMap[key]) || 0;
-        targetsPayload.push({
-          indicatorId: node.id,
-          bulan: month,
-          targetBulanan: val
-        });
-      }
-    });
-
-    try {
-      const res = await fetchWithAuth('/api/renaksi/target/batch', {
-        method: 'POST',
-        body: JSON.stringify({
-          employeeId: currentUser.id,
-          targets: targetsPayload
-        })
-      });
-
-      if (res.ok) {
-        setSuccess('Matriks target bulanan berhasil disimpan.');
-        loadData();
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Gagal menyimpan target.');
-      }
-    } catch (e) {
-      setError('Kesalahan jaringan.');
-    }
-  };
-
   const getTargetStatusText = () => {
     if (renaksiRecords.length === 0) return 'Draft';
+    
+    const hasRejected = renaksiRecords.some(r => r.status === 'Target_Ditolak');
+    if (hasRejected) return 'Target_Ditolak';
+
     const hasPending = renaksiRecords.some(r => ['Target_Diajukan', 'Target_ACC_Admin'].includes(r.status));
     if (hasPending) return 'Menunggu Persetujuan';
     
@@ -158,9 +179,46 @@ export default function EmployeeRenaksiPage() {
     return 'Draft';
   };
 
-  const handleAjukanTarget = async () => {
+  const handleAjukanPerjakin = async () => {
     setError('');
     setSuccess('');
+    
+    // Validasi Frontend
+    for (const node of selectedIndicators) {
+      if (node.tipeTarget === 'Akumulatif') {
+        const annualTarget = getEffectiveAnnualTarget(node);
+        const monthlySum = getRowTotal(node.id);
+        if (Math.abs(monthlySum - annualTarget) > 0.05) {
+          setError(`Gagal: Indikator "${node.indikator || node.text}" bertipe Akumulatif. Target tahunan adalah ${annualTarget}, namun total isian bulanan Anda adalah ${monthlySum}.`);
+          const el = document.getElementById(`indicator-row-${node.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.style.boxShadow = '0 0 0 2px var(--danger)';
+            setTimeout(() => { el.style.boxShadow = 'none'; }, 3000);
+          }
+          return;
+        }
+      } else {
+        let isComplete = true;
+        for (let m = 1; m <= 12; m++) {
+          const val = targetsMap[`${node.id}_${m}`];
+          if (val === undefined || val === '') {
+            isComplete = false; break;
+          }
+        }
+        if (!isComplete) {
+          setError(`Gagal: Indikator "${node.indikator || node.text}" bertipe Non-Akumulatif. Semua 12 bulan wajib diisi.`);
+          const el = document.getElementById(`indicator-row-${node.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.style.boxShadow = '0 0 0 2px var(--danger)';
+            setTimeout(() => { el.style.boxShadow = 'none'; }, 3000);
+          }
+          return;
+        }
+      }
+    }
+
     try {
       const res = await fetchWithAuth('/api/renaksi/target/submit', {
         method: 'POST',
@@ -168,19 +226,20 @@ export default function EmployeeRenaksiPage() {
       });
 
       if (res.ok) {
-        setSuccess('Matriks rencana target renaksi berhasil diajukan ke atasan.');
+        setSuccess('Perjanjian Kinerja dan Rencana Target berhasil diajukan.');
         loadData();
       } else {
         const err = await res.json();
-        setError(err.error || 'Gagal mengajukan target.');
+        setError(err.error || 'Gagal mengajukan.');
       }
-    } catch (e) {
-      setError('Kesalahan jaringan.');
+    } catch (err) {
+      console.error(err);
+      setError('Terjadi kesalahan koneksi.');
     }
   };
 
   const targetStatus = getTargetStatusText();
-  const isTargetEditable = targetStatus === 'Draft' && !systemSettings?.renja_locked;
+  const isTargetEditable = (targetStatus === 'Draft' || targetStatus === 'Target_Ditolak') && !systemSettings?.renja_locked;
 
   const months = [
     { num: 1, label: 'Jan' },
@@ -232,25 +291,26 @@ export default function EmployeeRenaksiPage() {
                 gap: '12px',
                 width: '100%'
               }}>
-                <div>
-                  <span className="text-muted" style={{ fontSize: '12px' }}>Status Rencana Target:</span>
-                  {targetStatus === 'Draft' && (
-                    <span className="badge" style={{ marginLeft: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '11px' }}>Draft Rencana</span>
-                  )}
-                  {targetStatus === 'Menunggu Persetujuan' && (
-                    <span className="badge" style={{ marginLeft: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#F59E0B', border: '1px solid rgba(245, 158, 11, 0.3)', fontSize: '11px' }}>Menunggu Persetujuan Atasan</span>
-                  )}
-                  {targetStatus === 'Target Disetujui' && (
-                    <span className="badge" style={{ marginLeft: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', border: '1px solid rgba(16, 185, 129, 0.3)', fontSize: '11px' }}>Rencana Target Disetujui</span>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  {targetStatus === 'Draft' && <span className="badge badge-draft" style={{ fontSize: '11px' }}>Draft (Menunggu Diajukan)</span>}
+                  {targetStatus === 'Target_Ditolak' && <span className="badge badge-danger" style={{ fontSize: '11px' }}>Target Ditolak (Perlu Revisi)</span>}
+                  {targetStatus === 'Menunggu Persetujuan' && <span className="badge badge-warning" style={{ fontSize: '11px' }}>Menunggu Persetujuan</span>}
+                  {targetStatus === 'Target Disetujui' && <span className="badge badge-success" style={{ fontSize: '11px' }}>Target Disetujui (Perjakin Sah)</span>}
                 </div>
-                
-                {targetStatus === 'Draft' && !systemSettings?.renja_locked && (
-                  <button className="btn btn-orange" onClick={handleAjukanTarget} style={{ padding: '6px 14px', fontSize: '12px', width: 'auto' }}>
-                    <i className="fa-solid fa-paper-plane"></i> Ajukan Target ke Atasan
-                  </button>
-                )}
               </div>
+
+              {targetStatus === 'Target_Ditolak' && (
+                <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                  <div style={{ color: '#EF4444', fontWeight: 600, marginBottom: '8px' }}><i className="fa-solid fa-triangle-exclamation"></i> Ada target yang ditolak oleh Admin/Verifikator:</div>
+                  <ul style={{ color: 'var(--text-primary)', margin: 0, paddingLeft: '20px', fontSize: '13px' }}>
+                    {renaksiRecords.filter(r => r.status === 'Target_Ditolak' && r.catatanAdmin).map(r => {
+                      const ind = selectedIndicators.find(i => i.id === r.indicatorId);
+                      return <li key={r.id}><strong>{ind?.indikator || 'Indikator'}:</strong> {r.catatanAdmin}</li>;
+                    })}
+                  </ul>
+                  <div style={{ color: '#F59E0B', fontSize: '12px', marginTop: '12px' }}><i className="fa-solid fa-info-circle"></i> Silakan perbaiki inputan target Anda di bawah, sistem akan menyimpan otomatis secara berkala, lalu klik <strong>Ajukan Perjakin</strong> kembali.</div>
+                </div>
+              )}
 
               <div className="table-responsive">
                 <table className="table" style={{ fontSize: '12px', borderCollapse: 'collapse' }}>
@@ -269,19 +329,20 @@ export default function EmployeeRenaksiPage() {
                     {selectedIndicators.map(node => {
                       const effectiveTarget = getEffectiveAnnualTarget(node);
                       const totalSum = getRowTotal(node.id);
-                      const isAccumulative = node.tipeTarget === 'Akumulatif';
+                      const tipeTarget = node.tipeTarget || node.parentNode?.tipeTarget || 'Kondisi Akhir Menurun';
+                      const isAccumulative = tipeTarget === 'Akumulatif';
                       const isSumValid = !isAccumulative || Math.abs(totalSum - effectiveTarget) < 0.05;
 
                       return (
-                        <tr key={node.id}>
+                        <tr key={node.id} id={`indicator-row-${node.id}`} style={{ transition: 'box-shadow 0.3s' }}>
                           <td>
-                            <strong>{node.text}</strong>
-                            <div className="text-muted" style={{ fontSize: '11px', marginTop: '2px' }}>
-                              Indikator: {node.indikator} ({node.satuan})
+                            <strong>{node.indikator}</strong>
+                            <div className="text-muted" style={{ fontSize: '11px', marginTop: '6px', borderLeft: '2px solid rgba(255,107,0,0.5)', paddingLeft: '6px' }}>
+                              <span style={{color: 'var(--primary-orange)'}}>{node.parentNode?.level?.replace('_', ' ').toUpperCase() || 'KEGIATAN'}:</span> {node.parentNode?.text || node.text}
                             </div>
                           </td>
                           <td>
-                            <span style={{ fontSize: '10px' }}>{node.tipeTarget}</span>
+                            <span style={{ fontSize: '10px' }}>{tipeTarget}</span>
                           </td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold' }}>
                             {effectiveTarget}
@@ -322,10 +383,13 @@ export default function EmployeeRenaksiPage() {
               </div>
 
               {isTargetEditable && (
-                <div style={{ marginTop: '20px' }}>
-                  <button className="btn btn-orange" onClick={handleSaveTargets}>
-                    <i className="fa-solid fa-floppy-disk"></i> Simpan Semua Target
+                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                  <button className="btn btn-primary" onClick={handleAjukanPerjakin}>
+                    <i className="fa-solid fa-paper-plane"></i> Ajukan Perjakin & Rencana Target
                   </button>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', alignSelf: 'center', marginLeft: '10px' }}>
+                    *Sistem menyimpan inputan target Anda secara otomatis. Jika sudah sesuai dengan target tahunan, klik tombol ajukan.
+                  </span>
                 </div>
               )}
             </>
@@ -407,9 +471,9 @@ export default function EmployeeRenaksiPage() {
             <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px !important' }}>
               <thead>
                 <tr style={{ background: '#f2f2f2' }}>
-                  <th rowspan="2" style={{ border: '1px solid black', padding: '4px', textAlign: 'center', width: '30px' }}>No</th>
-                  <th rowspan="2" style={{ border: '1px solid black', padding: '4px', textAlign: 'left' }}>Indikator Kinerja</th>
-                  <th colspan="12" style={{ border: '1px solid black', padding: '4px', textAlign: 'center' }}>Target Bulanan</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '4px', textAlign: 'center', width: '30px' }}>No</th>
+                  <th rowSpan="2" style={{ border: '1px solid black', padding: '4px', textAlign: 'left' }}>Indikator Kinerja</th>
+                  <th colSpan="12" style={{ border: '1px solid black', padding: '4px', textAlign: 'center' }}>Target Bulanan</th>
                 </tr>
                 <tr style={{ background: '#f2f2f2' }}>
                   {months.map(m => (

@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }) {
   // Determine which sections to show
   const showAdminMenu = activeRole === 'admin' || activeRole === 'perencana';
   const showUserManagement = activeRole === 'admin';
-  const showEmployeeMenu = activeRole === 'staff' || activeRole === 'pemimpin' || activeRole === 'admin_bidang';
+  const showEmployeeMenu = activeRole === 'staff' || activeRole === 'pemimpin';
   const showSupervisorMenu = activeRole === 'pemimpin' || activeRole === 'admin_bidang';
 
   const getRoleLabel = (role) => {
@@ -191,14 +191,17 @@ export default function DashboardLayout({ children }) {
               <Link href="/admin/cascading-annual" className={`nav-item ${isLinkActive('/admin/cascading-annual') ? 'active' : ''}`}>
                 <i className="fa-solid fa-network-wired"></i> Indikator Renja
               </Link>
-              <Link href="/admin/realisasi-schedule" className={`nav-item ${isLinkActive('/admin/realisasi-schedule') ? 'active' : ''}`}>
-                <i className="fa-solid fa-calendar-check"></i> Jadwal Realisasi
-              </Link>
               <Link href="/admin/perjakin" className={`nav-item ${isLinkActive('/admin/perjakin') ? 'active' : ''}`}>
                 <i className="fa-solid fa-print"></i> Cetak Perjakin
               </Link>
               <Link href="/admin/monitoring-5years" className={`nav-item ${isLinkActive('/admin/monitoring-5years') ? 'active' : ''}`}>
                 <i className="fa-solid fa-chart-bar"></i> Monitoring Renstra
+              </Link>
+              <Link href="/admin/monitoring-rekomendasi" className={`nav-item ${isLinkActive('/admin/monitoring-rekomendasi') ? 'active' : ''}`}>
+                <i className="fa-solid fa-clipboard-question"></i> Monitoring Rekomendasi
+              </Link>
+              <Link href="/admin/rekap-realisasi" className={`nav-item ${isLinkActive('/admin/rekap-realisasi') ? 'active' : ''}`}>
+                <i className="fa-solid fa-file-invoice"></i> Rekap Capaian Kinerja
               </Link>
 
               {/* Capaian Fisik Kinerja - Admin Perencana & Admin Sistem */}
@@ -214,7 +217,7 @@ export default function DashboardLayout({ children }) {
             <>
               <div className="nav-group-title">KINERJA PEGAWAI</div>
               <Link href="/employee/select" className={`nav-item ${isLinkActive('/employee/select') ? 'active' : ''}`}>
-                <i className="fa-solid fa-square-check"></i> Pilih Indikator IKU
+                <i className="fa-solid fa-clipboard-list"></i> Indikator Kinerja Saya
               </Link>
               <Link href="/employee/renaksi" className={`nav-item ${isLinkActive('/employee/renaksi') ? 'active' : ''}`}>
                 <i className="fa-solid fa-list-check"></i> Rencana Aksi
@@ -238,15 +241,24 @@ export default function DashboardLayout({ children }) {
             </>
           )}
 
-          {/* Capaian Fisik Menu - Admin Unit Kerja only */}
+          {/* Manajemen Kinerja Bidang - Admin Unit Kerja only */}
           {activeRole === 'admin_bidang' && (
             <>
-              <div className="nav-group-title">CAPAIAN FISIK</div>
+              <div className="nav-group-title">MANAJEMEN KINERJA BIDANG</div>
+              <Link href="/admin/assignments" className={`nav-item ${isLinkActive('/admin/assignments') ? 'active' : ''}`}>
+                <i className="fa-solid fa-people-arrows"></i> Pembagian Indikator
+              </Link>
               <Link href="/admin/target-fisik" className={`nav-item ${isLinkActive('/admin/target-fisik') ? 'active' : ''}`}>
                 <i className="fa-solid fa-bullseye"></i> Target Fisik
               </Link>
               <Link href="/admin/realisasi-fisik" className={`nav-item ${isLinkActive('/admin/realisasi-fisik') ? 'active' : ''}`}>
                 <i className="fa-solid fa-chart-line"></i> Realisasi Fisik
+              </Link>
+              <Link href="/admin/monitoring-rekomendasi" className={`nav-item ${isLinkActive('/admin/monitoring-rekomendasi') ? 'active' : ''}`}>
+                <i className="fa-solid fa-clipboard-question"></i> Monitoring Rekomendasi
+              </Link>
+              <Link href="/admin/rekap-realisasi" className={`nav-item ${isLinkActive('/admin/rekap-realisasi') ? 'active' : ''}`}>
+                <i className="fa-solid fa-file-invoice"></i> Rekap Capaian Kinerja
               </Link>
             </>
           )}

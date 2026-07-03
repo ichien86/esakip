@@ -25,16 +25,12 @@ export async function GET(request, { params }) {
     const resolvedNodes = resolveTreePICs(allNodes, allIndicators);
 
     // Filter indicators where the employee is caretaker
-    const assignedIndicators = resolvedNodes.filter(node => {
-      if (!node.penanggungJawab) return false;
+    const checkCaretakers = (picStr, emp) => {
+      if (!picStr) return false;
+      const caretakers = picStr.split(',');
+      if (caretakers.includes(emp.id)) return true;
 
-      const caretakers = node.penanggungJawab.split(',');
-
-      // 1. Direct match
-      if (caretakers.includes(employeeId)) return true;
-
-      // 2. Position match (leaders & Plt)
-      if (employee.roles.includes('pemimpin')) {
+      if (emp.roles && emp.roles.includes('pemimpin')) {
         const getOfficialLeaderJabatan = (bidang) => {
           const map = {
             'Badan': 'Kepala Pelaksana',
@@ -50,32 +46,61 @@ export async function GET(request, { params }) {
         for (const pic of caretakers) {
           if (pic.startsWith('jabatan:')) {
             const targetJabatan = pic.replace('jabatan:', '');
-            if (employee.jabatan === targetJabatan) return true;
-            const matchedPlt = employee.bidangs.some(b => {
-              const officialJab = getOfficialLeaderJabatan(b);
-              return officialJab === targetJabatan;
-            });
-            if (matchedPlt) return true;
+            if (emp.jabatan === targetJabatan) return true;
+            if (emp.bidangs) {
+              const matchedPlt = emp.bidangs.some(b => getOfficialLeaderJabatan(b) === targetJabatan);
+              if (matchedPlt) return true;
+            }
           }
         }
       }
-
       return false;
+    };
+
+    let selectedIdsSet = new Set();
+
+    resolvedNodes.forEach(node => {
+      // 1. Check if node itself is assigned (legacy or header nodes)
+      if (checkCaretakers(node.penanggungJawab, employee)) {
+        selectedIdsSet.add(node.id);
+      }
+      
+      // 2. Check if any specific indicators are assigned
+      if (node.indicators && node.indicators.length > 0) {
+        node.indicators.forEach(ind => {
+          if (checkCaretakers(ind.penanggungJawab, employee)) {
+            selectedIdsSet.add(ind.id);
+            selectedIdsSet.add(node.id); // Also include parent node id so it renders properly in legacy views
+          }
+        });
+      }
     });
 
-    let selected = assignedIndicators.map(node => node.id);
+    let selected = Array.from(selectedIdsSet);
 
     // 3. Auto-add program level indicators for Kabids (as fallback / safety)
-    const programIndicators = resolvedNodes.filter(node => node.level === 'program');
-    const isKabid = employee.roles && (employee.roles.includes('kabid') || (employee.roles.includes('pemimpin') && (employee.scopeLeader === 'Bidang' || employee.bidangs.some(b => b.startsWith('Bidang')))));
+    const programIndicators = resolvedNodes.filter(node => node.level === 'program' || node.level === 'sasaran_program');
+    const isKabid = employee.roles && (employee.roles.includes('kabid') || (employee.roles.includes('pemimpin') && (employee.scopeLeader === 'Bidang' || employee.bidangs?.some(b => b.startsWith('Bidang')))));
     if (isKabid) {
       const empBidangs = employee.bidangs || [];
-      const autoProgramIds = programIndicators
-        .filter(node => node.bidangPengampu.some(b => empBidangs.includes(b)))
-        .map(node => node.id);
-      
-      selected = [...new Set([...selected, ...autoProgramIds])];
+      const autoProgramNodes = programIndicators.filter(node => node.bidangPengampu?.some(b => empBidangs.includes(b)));
+      autoProgramNodes.forEach(node => {
+        selectedIdsSet.add(node.id);
+        if (node.indicators) node.indicators.forEach(ind => selectedIdsSet.add(ind.id));
+      });
     }
+
+    // 4. Auto-add tujuan & sasaran level indicators for Kepala Badan (Top Leadership)
+    const isKepalaBadan = employee.roles && employee.roles.includes('pemimpin') && employee.scopeLeader === 'Badan';
+    if (isKepalaBadan) {
+      const topNodes = resolvedNodes.filter(node => node.level === 'tujuan' || node.level === 'sasaran');
+      topNodes.forEach(node => {
+        selectedIdsSet.add(node.id);
+        if (node.indicators) node.indicators.forEach(ind => selectedIdsSet.add(ind.id));
+      });
+    }
+
+    selected = Array.from(selectedIdsSet);
 
     return NextResponse.json({
       employeeId,

@@ -2,6 +2,8 @@
 const nextConfig = {
   /* config options here */
   allowedDevOrigins: [
+    '192.168.139.23',
+    '192.168.139.*',
     '192.168.139.98',
     '192.168.139.179',
     '192.168.1.*',

@@ -30,19 +30,42 @@ export async function POST(request) {
     }
 
     const { role: requesterRole } = getValidatedUser(request, request.headers.get('x-requester-role'));
+    
+    const Employee = (await import('@/models/Employee')).default;
+    const emp = await Employee.findOne({ id: employeeId });
+    if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    const userBidang = emp.bidangs[0] || '';
+
     let targetStatusFilter = 'Target_Diajukan';
     let nextStatus = 'Target_Disetujui';
 
-    if (requesterRole === 'admin_bidang') {
-      targetStatusFilter = 'Target_Diajukan';
-      nextStatus = 'Target_ACC_Admin';
-    } else if (requesterRole === 'pemimpin') {
-      targetStatusFilter = 'Target_ACC_Admin';
-      nextStatus = 'Target_Disetujui';
-    } else {
-      // Admin, perencana
-      targetStatusFilter = { $in: ['Target_ACC_Admin', 'Target_Diajukan'] };
-      nextStatus = 'Target_Disetujui';
+    if (emp.jenisJabatan === 'Pimpinan Tinggi') {
+      if (requesterRole === 'perencana') {
+        targetStatusFilter = 'Target_Diajukan';
+        nextStatus = 'Target_Disetujui'; // Admin perencana acts as both verifier and validator
+      } else {
+        return NextResponse.json({ error: 'Target Pimpinan Tinggi hanya dapat disetujui oleh Admin Perencana.' }, { status: 403 });
+      }
+    } else if (emp.jenisJabatan === 'Administrator') {
+      if (requesterRole === 'perencana') {
+        targetStatusFilter = 'Target_Diajukan';
+        nextStatus = 'Target_ACC_Admin';
+      } else if (requesterRole === 'pemimpin') {
+        targetStatusFilter = 'Target_ACC_Admin';
+        nextStatus = 'Target_Disetujui';
+      } else {
+        return NextResponse.json({ error: 'Target Administrator diverifikasi oleh Admin Perencana dan disetujui Pimpinan Tinggi.' }, { status: 403 });
+      }
+    } else { // Pengawas & Fungsional
+      if (requesterRole === 'admin_bidang') {
+        targetStatusFilter = 'Target_Diajukan';
+        nextStatus = 'Target_ACC_Admin';
+      } else if (requesterRole === 'pemimpin') {
+        targetStatusFilter = 'Target_ACC_Admin';
+        nextStatus = 'Target_Disetujui';
+      } else {
+        return NextResponse.json({ error: 'Target Pengawas/Fungsional diverifikasi oleh Admin Unit dan disetujui Administrator.' }, { status: 403 });
+      }
     }
 
     // Set the status of all monthly records of this employee for this indicator for the selected year
@@ -51,11 +74,11 @@ export async function POST(request) {
       { $set: { status: nextStatus, isCrossCuttingSelected: true } }
     );
 
-    if (result.modifiedCount === 0 && (requesterRole === 'pemimpin' || requesterRole === 'admin_bidang')) {
+    if (result.modifiedCount === 0) {
       return NextResponse.json({
         error: requesterRole === 'pemimpin'
-          ? 'Tidak ada target yang berstatus ACC Admin Bidang untuk divalidasi.'
-          : 'Tidak ada target diajukan staf untuk di-ACC.'
+          ? 'Tidak ada target yang berstatus ACC Admin untuk divalidasi.'
+          : 'Tidak ada target yang diajukan untuk di-ACC.'
       }, { status: 400 });
     }
 

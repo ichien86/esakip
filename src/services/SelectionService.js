@@ -28,26 +28,25 @@ class SelectionService {
       
       if (!penanggungJawabStr) continue;
 
-      let node = await CascadingAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+      let node = null;
       let indicatorName = '';
       let level = '';
 
-      if (node) {
-        level = node.level;
-        indicatorName = node.text;
-      } else {
-        const ind = await IndicatorAnnualRepository.findOne({ id: idKey, tahun: yearNum });
-        if (ind) {
-          node = await CascadingAnnualRepository.findOne({ id: ind.nodeId, tahun: yearNum });
-          if (node) {
-            level = node.level;
-            indicatorName = ind.indikator;
-          }
+      const ind = await IndicatorAnnualRepository.findOne({ id: idKey, tahun: yearNum });
+      if (ind) {
+        node = await CascadingAnnualRepository.findOne({ id: ind.nodeId, tahun: yearNum });
+        if (node) {
+          level = node.level;
+          indicatorName = ind.indikator;
         }
+      } else {
+        // If not found in indicators, it's likely a node. We skip processing nodes directly.
+        continue;
       }
 
       if (!node) continue;
 
+      // Crosscutting ownership validation
       if (node.crossCuttingType === 'bersama' && node.selectedBidang && requesterBidang && requesterBidang !== 'Pimpinan') {
         if (node.selectedBidang !== requesterBidang) {
           const err = new Error(`Validasi Gagal: Hanya Bidang Penanggung Jawab Utama (${node.selectedBidang}) yang dapat mengelola penanggung jawab untuk indikator "${indicatorName}".`);
@@ -55,51 +54,9 @@ class SelectionService {
           throw err;
         }
       }
-
-      let isValid = false;
-      const targetIsJabatan = penanggungJawab.startsWith('jabatan:');
-      const targetValue = penanggungJawab.replace('jabatan:', '');
-
-      if (targetIsJabatan) {
-        // Must be a leader position (excluding Kepala Pelaksana / Plt. Kepala Pelaksana / Kalaksa)
-        const matchedLeader = allEmployees.find(e =>
-          e.isActive !== false &&
-          e.roles.includes('pemimpin') &&
-          e.jabatan === targetValue &&
-          e.scopeLeader !== 'Badan' &&
-          !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
-          !e.jabatan.toLowerCase().includes('kalaksa')
-        );
-        if (matchedLeader) {
-          if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
-            if (matchedLeader.bidangs.includes(node.selectedBidang)) {
-              isValid = true;
-            }
-          } else {
-            isValid = true;
-          }
-        }
-      } else {
-        // Must be a non-leader (staff) active employee
-        const emp = allEmployees.find(e => e.id === penanggungJawab);
-        if (emp && emp.isActive !== false && !emp.roles.includes('pemimpin') && emp.id !== 'admin') {
-          if (node.crossCuttingType === 'bersama' && node.selectedBidang) {
-            if (emp.bidangs.includes(node.selectedBidang)) {
-              isValid = true;
-            }
-          } else {
-            isValid = true;
-          }
-        }
-      }
-
-      if (!isValid) {
-        const displayLevel = level.replace('sasaran_', '');
-        const targetName = targetIsJabatan ? targetValue : (allEmployees.find(e => e.id === penanggungJawab)?.nama || penanggungJawab);
-        const err = new Error(`Validasi Gagal: Indikator level '${displayLevel}' (${indicatorName}) tidak dapat didelegasikan ke '${targetName}'.`);
-        err.status = 400;
-        throw err;
-      }
+      
+      // We removed the strict 'leader vs staff' role validation here because the UI now dynamically determines 
+      // the appropriate assignees based on the indicator's context. Legacy assignments also caused false positives.
     }
 
     // Execution phase
@@ -121,14 +78,12 @@ class SelectionService {
         targetIndicators = [singleInd];
         parentNode = await CascadingAnnualRepository.findOne({ id: singleInd.nodeId, tahun: yearNum });
       } else {
-        const node = await CascadingAnnualRepository.findOne({ id: idKey, tahun: yearNum });
-        if (node) {
-          parentNode = node;
-          targetIndicators = await IndicatorAnnualRepository.find({ nodeId: idKey, tahun: yearNum });
-        }
+        // We no longer overwrite indicator PICs using the node-level PIC payload.
+        // Node-level PICs will be auto-derived by pic-resolver.js
+        continue;
       }
 
-      if (parentNode && ['kegiatan', 'sasaran_kegiatan', 'subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'].includes(parentNode.level)) {
+      if (parentNode) {
         for (const indicator of targetIndicators) {
           let nextPenanggungJawab = penanggungJawabStr || null;
 
@@ -168,6 +123,7 @@ class SelectionService {
           // Save Cross-cutting Type and Split Targets at the indicator level
           indicator.crossCuttingType = crossCuttingType;
           indicator.splitTargets = splitTargets;
+          indicator.markModified('splitTargets');
 
           await IndicatorAnnualRepository.saveDocument(indicator);
         }

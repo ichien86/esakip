@@ -7,12 +7,22 @@ export function getEmbedUrl(rawUrl) {
   try {
     const urlObj = new URL(rawUrl);
     
-    // 1. Google Drive (Files)
-    // from: https://drive.google.com/file/d/12345/view?usp=sharing
-    // to:   https://drive.google.com/file/d/12345/preview
-    if (urlObj.hostname.includes('drive.google.com') && urlObj.pathname.includes('/view')) {
-      const newPath = urlObj.pathname.replace('/view', '/preview');
-      return `${urlObj.origin}${newPath}`;
+    // 1. Google Drive (Files & Folders)
+    if (urlObj.hostname.includes('drive.google.com')) {
+      // For single files: /file/d/ID/view -> /file/d/ID/preview
+      if (urlObj.pathname.includes('/view')) {
+        const newPath = urlObj.pathname.replace('/view', '/preview');
+        return `${urlObj.origin}${newPath}`;
+      }
+      
+      // For folders: /drive/folders/ID or /drive/u/0/folders/ID
+      if (urlObj.pathname.includes('/folders/')) {
+        const parts = urlObj.pathname.split('/');
+        const folderId = parts[parts.length - 1]; // usually the last part
+        if (folderId) {
+          return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+        }
+      }
     }
 
     // 2. Google Docs/Sheets/Slides

@@ -12,6 +12,7 @@ export default function AdminSettingsPage() {
   const [renstraLocked, setRenstraLocked] = useState(false);
   const [renjaLocked, setRenjaLocked] = useState(false);
   const [fisikLocked, setFisikLocked] = useState(false);
+  const [bupatiName, setBupatiName] = useState('Agus Irawan');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -23,6 +24,7 @@ export default function AdminSettingsPage() {
       const timer = setTimeout(() => {
         setRenstraLocked(!!systemSettings.renstra_locked);
         setRenjaLocked(!!systemSettings.renja_locked);
+        setBupatiName(systemSettings.bupati_name || 'Agus Irawan');
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -55,6 +57,33 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         setFisikLocked(!fisikLocked);
         setSuccess(`Kunci Target Fisik berhasil ${!fisikLocked ? 'diaktifkan' : 'dinonaktifkan'}.`);
+      } else {
+        const err = await res.json();
+        setError(err.error || 'Gagal memperbarui pengaturan.');
+      }
+    } catch (e) {
+      setError('Kesalahan jaringan.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveBupati = async () => {
+    setError('');
+    setSuccess('');
+    setIsSaving(true);
+    try {
+      const res = await fetchWithAuth('/api/admin/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          key: 'bupati_name',
+          value: bupatiName,
+          requesterRole: activeRole
+        })
+      });
+      if (res.ok) {
+        setSuccess('Nama Bupati berhasil disimpan.');
+        await refreshMetadata();
       } else {
         const err = await res.json();
         setError(err.error || 'Gagal memperbarui pengaturan.');
@@ -127,6 +156,46 @@ export default function AdminSettingsPage() {
           {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Konfigurasi Nama Bupati */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--glass-border)',
+              padding: '20px',
+              borderRadius: '12px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '60%' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <i className="fa-solid fa-user-tie text-orange"></i>
+                  Pengaturan Nama Bupati (Perjakin)
+                </h4>
+                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                  Nama ini akan dicetak otomatis sebagai Pihak Kedua (Atasan Langsung) pada dokumen Perjanjian Kinerja milik Pimpinan Tinggi (Kepala BPBD).
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  value={bupatiName} 
+                  onChange={(e) => setBupatiName(e.target.value)} 
+                  placeholder="Nama Bupati" 
+                  style={{ width: '250px' }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveBupati}
+                  disabled={isSaving || !bupatiName.trim()}
+                  className="btn btn-primary"
+                  style={{ fontWeight: 600 }}
+                >
+                  {isSaving ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-save"></i>} Simpan
+                </button>
+              </div>
+            </div>
+
             {/* Renstra Lock Option */}
             <div style={{
               display: 'flex',

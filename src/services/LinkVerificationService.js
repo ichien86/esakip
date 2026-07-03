@@ -47,21 +47,43 @@ class LinkVerificationService {
         let data = '';
         res.on('data', (chunk) => {
           data += chunk;
-          if (data.includes('ServiceLogin') || data.includes('signIn') || data.includes('accounts.google.com')) {
-            res.destroy();
-            resolve({ isDrive: true, isPublic: false, message: 'Link bersifat Privat (Butuh Akses / Login).' });
-          }
         });
 
         res.on('end', () => {
-          if (data.includes('ServiceLogin') || data.includes('signIn') || data.includes('accounts.google.com')) {
-            resolve({ isDrive: true, isPublic: false, message: 'Link bersifat Privat (Butuh Akses / Login).' });
+          // If it's a 404
+          if (statusCode === 404) {
+            resolve({ isDrive: true, isPublic: false, message: 'File tidak ditemukan (404).' });
+            return;
+          }
+
+          // Check title for access denied/request access pages
+          const titleMatch = data.match(/<title>(.*?)<\/title>/i);
+          let rawTitle = titleMatch ? titleMatch[1] : '';
+          const titleLower = rawTitle.toLowerCase();
+          
+          let cleanTitle = rawTitle
+            .replace(/\s*-\s*Google Drive$/i, '')
+            .replace(/\s*-\s*Google Docs$/i, '')
+            .replace(/\s*-\s*Google Sheets$/i, '')
+            .replace(/\s*-\s*Google Slides$/i, '');
+
+          if (titleLower.includes('meet google drive') || titleLower.includes('google drive - access denied') || titleLower.includes('meminta akses')) {
+            resolve({ isDrive: true, isPublic: false, message: 'Link bersifat Privat (Butuh Akses / Login).', title: '' });
           } else {
-            resolve({ isDrive: true, isPublic: true, message: 'Link Publik (Siap diverifikasi).' });
+            // Cek ekstensi terlarang (Arsip & Program)
+            const forbiddenExts = ['.zip', '.rar', '.7z', '.tar', '.gz', '.exe', '.apk', '.msi', '.bat'];
+            const hasForbiddenExt = forbiddenExts.some(ext => cleanTitle.toLowerCase().endsWith(ext));
+
+            if (hasForbiddenExt) {
+              resolve({ isDrive: true, isPublic: false, message: 'Jenis file ditolak (Arsip / Program tidak diizinkan).', title: cleanTitle });
+            } else {
+              // It's a 200 OK and not a known private page title
+              resolve({ isDrive: true, isPublic: true, message: 'Link Publik (Siap diverifikasi).', title: cleanTitle });
+            }
           }
         });
       }).on('error', (err) => {
-        resolve({ isDrive: false, isPublic: false, message: 'Tautan tidak dapat dihubungi: ' + err.message });
+        resolve({ isDrive: false, isPublic: false, message: 'Tautan tidak dapat dihubungi: ' + err.message, title: '' });
       });
     });
   }

@@ -1,107 +1,84 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useFetchWithAuth } from '@/context/useFetchWithAuth';
 import { useSimulationInternal } from '@/context/SimulationInternalContext';
 import { useUI } from '@/context/UIContext';
 import { useMetadata } from '@/context/MetadataContext';
 
-export default function EmployeeSelectIndicatorsPage() {
+export default function EmployeeIndicatorsPage() {
   const { fetchWithAuth } = useFetchWithAuth();
   const { currentUser } = useSimulationInternal();
-  const { activeRole, activeBidang, activeYear } = useUI();
-  const { systemSettings, allEmployees } = useMetadata();
+  const { activeBidang, activeYear } = useUI();
+  const { allEmployees } = useMetadata();
   const [annualNodes, setAnnualNodes] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [assignments, setAssignments] = useState({});
+  const [indicatorSummary, setIndicatorSummary] = useState({});
   const [loading, setLoading] = useState(true);
-  
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const isAdminUnitKerja = activeRole === 'admin_bidang';
-
-  const getOfficialLeaderJabatan = (bidang) => {
-    const map = {
-      'Badan': 'Kepala Pelaksana',
-      'Sekretariat': 'Sekretaris',
-      'Tata Usaha': 'Kepala Sub Bagian Tata Usaha',
-      'Bidang Pencegahan dan Kesiapsiagaan': 'Kepala Bidang Pencegahan dan Kesiapsiagaan',
-      'Bidang Kedaruratan dan Logistik': 'Kepala Bidang Kedaruratan dan Logistik',
-      'Bidang Rehabilitasi dan Rekonstruksi': 'Kepala Bidang Rehabilitasi dan Rekonstruksi'
-    };
-    return map[bidang] || `Kepala ${bidang}`;
+  const resolvePenanggungJawabLabel = (val) => {
+    if (!val) return 'Belum ditentukan';
+    return val.split(',').map(v => {
+      if (v.startsWith('jabatan:')) return v.replace('jabatan:', '');
+      const emp = allEmployees.find(e => e.id === v);
+      return emp ? emp.nama : v;
+    }).join(', ');
   };
 
-  const getPenanggungJawabOptionsForNode = (node) => {
-    const options = [];
-
-    // 1. Leader positions in this unit (excluding Kepala Pelaksana / Kalaksa / Kepala Badan)
-    const unitLeaders = allEmployees.filter(e =>
-      e.isActive !== false &&
-      e.roles.includes('pemimpin') &&
-      e.bidangs.includes(activeBidang) &&
-      e.scopeLeader !== 'Badan' &&
-      !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
-      !e.jabatan.toLowerCase().includes('kalaksa')
-    );
-
-    // Get unique leader positions
-    const uniqueLeaderJabatans = [...new Set(unitLeaders.map(l => l.jabatan))];
-    uniqueLeaderJabatans.forEach(jab => {
-      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
-    });
-
-    // 2. Active staff (non-pemimpin) employees in this unit
-    const staffInUnit = allEmployees.filter(e =>
-      e.isActive !== false &&
-      e.id !== 'admin' &&
-      !e.roles.includes('pemimpin') &&
-      e.bidangs.includes(activeBidang)
-    );
-    staffInUnit.forEach(s => {
-      options.push({ value: s.id, label: `${s.nama} (${s.jabatan})`, type: 'staff' });
-    });
-
-    return options;
+  // Menghitung target efektif untuk user ini — jika Split, ambil porsi miliknya
+  const getEffectiveTarget = (ind) => {
+    if (ind.crossCuttingType === 'split' && ind.splitTargets && currentUser) {
+      // Coba cari berdasarkan employee ID
+      let portion = parseFloat(ind.splitTargets[currentUser.id]);
+      // Fallback: cari berdasarkan jabatan
+      if (isNaN(portion) && currentUser.jabatan) {
+        portion = parseFloat(ind.splitTargets[`jabatan:${currentUser.jabatan}`]);
+      }
+      if (!isNaN(portion)) return portion;
+    }
+    return parseFloat(ind.target);
   };
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetchWithAuth(`/api/renja/${activeYear}`);
       if (res.ok) {
         const nodes = await res.json();
-        // Filter nodes that match employee's active bidang
+
+        // Filter: only nodes belonging to this user's bidang
         const filtered = nodes.filter(n => {
           const belongsToBidang = n.bidangPengampu.includes(activeBidang) || activeBidang === 'Pimpinan';
           if (!belongsToBidang) return false;
-
-          // If cross-cutting type is bersama, only selectedBidang can select it
           if (n.crossCuttingType === 'bersama' && n.selectedBidang && activeBidang !== 'Pimpinan') {
             return n.selectedBidang === activeBidang;
           }
           return true;
         });
-        setAnnualNodes(filtered);
 
-        // Populate assignments map for Admin Unit Kerja
-        const initialAssignments = {};
-        filtered.forEach(n => {
-          initialAssignments[n.id] = {
-            penanggungJawab: (n.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean),
-            crossCuttingType: n.crossCuttingType || 'shared',
-            splitTargets: n.splitTargets || {}
-          };
+        // For non-admin employees: only show nodes that have indicators assigned to this user
+        const userNodes = filtered.filter(node => {
+          if (!node.indicators || node.indicators.length === 0) return false;
+          if (!currentUser) return false;
+          return node.indicators.some(ind => {
+            const pics = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
+            return pics.includes(currentUser.id) || pics.some(p => {
+              if (p.startsWith('jabatan:')) {
+                const jab = p.replace('jabatan:', '');
+                return currentUser.jabatan === jab;
+              }
+              return false;
+            });
+          });
         });
-        setAssignments(initialAssignments);
-      }
 
-      if (currentUser) {
-        const selRes = await fetchWithAuth(`/api/selections/${currentUser.id}`);
-        if (selRes.ok) {
-          const selection = await selRes.json();
-          setSelectedIds(selection.selectedIndicators || []);
-        }
+        setAnnualNodes(userNodes);
+
+        // Load summary after getting nodes
+        fetchWithAuth(`/api/renaksi/summary/${activeYear}`)
+          .then(r => r.ok ? r.json() : {})
+          .then(data => setIndicatorSummary(data))
+          .catch(e => console.error('Failed to load summary', e));
       }
     } catch (e) {
       console.error('Failed to load indicators', e);
@@ -112,310 +89,188 @@ export default function EmployeeSelectIndicatorsPage() {
 
   useEffect(() => {
     if (currentUser) {
-      const timer = setTimeout(() => {
-        loadData();
-      }, 0);
+      const timer = setTimeout(() => loadData(), 0);
       return () => clearTimeout(timer);
     }
   }, [currentUser, loadData]);
 
-  const handleAssignmentChange = (nodeId, val, action = 'toggle') => {
-    if (systemSettings?.renja_locked) return;
-    
-    setAssignments(prev => {
-      const current = prev[nodeId] || { penanggungJawab: [], crossCuttingType: 'shared', splitTargets: {} };
-      let newPics = [...current.penanggungJawab];
-      
-      if (action === 'toggle') {
-        if (newPics.includes(val)) {
-          newPics = newPics.filter(p => p !== val);
-        } else {
-          newPics.push(val);
-        }
-      } else if (action === 'set') {
-        newPics = [val]; // Fallback if we just want single select
-      }
-
-      return {
-        ...prev,
-        [nodeId]: {
-          ...current,
-          penanggungJawab: newPics
-        }
-      };
-    });
-  };
-
-  const handleCrossCuttingChange = (nodeId, type) => {
-    setAssignments(prev => ({
-      ...prev,
-      [nodeId]: { ...prev[nodeId], crossCuttingType: type }
-    }));
-  };
-
-  const handleSplitTargetChange = (nodeId, picId, val) => {
-    setAssignments(prev => ({
-      ...prev,
-      [nodeId]: {
-        ...prev[nodeId],
-        splitTargets: {
-          ...prev[nodeId].splitTargets,
-          [picId]: val
-        }
-      }
-    }));
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (isAdminUnitKerja) {
-      // Validate split targets
-      for (const nodeId in assignments) {
-        const assign = assignments[nodeId];
-        if (assign.penanggungJawab && assign.penanggungJawab.length > 1 && assign.crossCuttingType === 'split') {
-          const node = annualNodes.find(n => n.id === nodeId);
-          if (node) {
-            let sum = 0;
-            assign.penanggungJawab.forEach(pic => {
-              sum += parseFloat(assign.splitTargets[pic] || 0);
-            });
-            const targetNum = parseFloat(node.target) || 0;
-            
-            if (Math.abs(sum - targetNum) > 0.05) {
-              setError(`Validasi Gagal: Total pembagian target untuk indikator "${node.indikator}" adalah ${sum}, sedangkan target keseluruhannya adalah ${targetNum}. Silakan sesuaikan porsi.`);
-              return;
-            }
-          }
-        }
-      }
-    }
-
-    try {
-      const payload = isAdminUnitKerja 
-        ? { assignments } 
-        : { employeeId: currentUser.id, selectedIndicators: selectedIds };
-
-      const res = await fetchWithAuth('/api/selections', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        setSuccess(isAdminUnitKerja ? 'Penanggung jawab indikator berhasil disimpan.' : 'Pilihan indikator IKU berhasil disimpan.');
-        loadData();
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Gagal menyimpan.');
-      }
-    } catch (e) {
-      setError('Kesalahan jaringan.');
-    }
-  };
-
-  const getGroupedNodes = (level) => {
-    return annualNodes.filter(n => n.level === level);
-  };
-
-  const levels = ['tujuan', 'sasaran', 'program', 'kegiatan', 'subkegiatan', 'aktivitas'];
-
-  const getLevelLabel = (lvl) => {
-    const labels = {
-      tujuan: '1. Tujuan Strategis',
-      sasaran: '2. Sasaran Strategis',
-      program: '3. Program',
-      kegiatan: '4. Kegiatan',
-      subkegiatan: '5. Subkegiatan',
-      aktivitas: '6. Aktivitas'
-    };
-    return labels[lvl] || lvl;
-  };
-
-  const resolvePenanggungJawabLabel = (val) => {
-    if (!val) return 'Belum ditentukan';
-    return val.split(',').map(v => {
-      if (v.startsWith('jabatan:')) {
-        const pos = v.replace('jabatan:', '');
-        return `Jabatan Melekat: ${pos}`;
-      }
-      const emp = allEmployees.find(e => e.id === v);
-      return emp ? `${emp.nama} (${emp.jabatan})` : v;
-    }).join(', ');
+  const getLevelColor = (level) => {
+    if (['program', 'sasaran_program'].includes(level)) return { bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.3)', badge: '#10b981', label: 'Program' };
+    if (['kegiatan', 'sasaran_kegiatan'].includes(level)) return { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', badge: '#3b82f6', label: 'Kegiatan' };
+    if (['subkegiatan', 'sasaran_subkegiatan'].includes(level)) return { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', badge: '#f59e0b', label: 'Subkegiatan' };
+    if (['aktivitas', 'sasaran_aktivitas'].includes(level)) return { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.3)', badge: '#8b5cf6', label: 'Aktivitas' };
+    return { bg: 'rgba(15,23,42,0.3)', border: 'var(--glass-border)', badge: 'gray', label: level };
   };
 
   return (
     <div className="glass-panel">
       <div className="panel-header">
         <h3>
-          <i className="fa-solid fa-square-check text-orange"></i> 
-          {isAdminUnitKerja ? ' Pengaturan Penanggung Jawab IKU Unit Kerja' : ' Daftar Indikator Kinerja yang Diampu (IKU)'}
+          <i className="fa-solid fa-clipboard-list text-orange"></i> Indikator Kinerja Saya
         </h3>
         <p className="text-muted">
-          {isAdminUnitKerja 
-            ? `Tentukan penanggung jawab (PIC) untuk indikator kinerja di unit kerja ${activeBidang}.` 
-            : `Berikut adalah indikator kinerja Anda untuk tahun anggaran ${activeYear} di unit ${activeBidang}.`
-          }
+          Berikut adalah indikator kinerja yang Anda ampu di unit <strong>{activeBidang}</strong> tahun anggaran <strong>{activeYear}</strong>.
         </p>
-        
-        {systemSettings?.renja_locked && (
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#EF4444',
-            padding: '12px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            marginTop: '12px'
-          }}>
-            <i className="fa-solid fa-lock" style={{ marginRight: '8px' }}></i>
-            Masa perencanaan telah dikunci. Pengaturan penanggung jawab tidak dapat diubah.
-          </div>
-        )}
       </div>
 
       <div className="panel-body">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <i className="fa-solid fa-circle-notch fa-spin"></i> Memuat data indikator...
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+            <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '24px', marginBottom: '12px', display: 'block' }}></i>
+            Memuat data indikator...
+          </div>
+        ) : annualNodes.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+            <i className="fa-solid fa-inbox" style={{ fontSize: '40px', marginBottom: '16px', display: 'block', opacity: 0.3 }}></i>
+            <div style={{ fontSize: '14px', marginBottom: '8px' }}>Belum ada indikator yang ditugaskan kepada Anda.</div>
+            <div style={{ fontSize: '12px', opacity: 0.7 }}>Hubungi Admin Unit Kerja untuk pembagian indikator.</div>
           </div>
         ) : (
-          <form onSubmit={handleSave}>
-            {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
-            {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {annualNodes.map(node => {
+              const styleObj = getLevelColor(node.level);
+              // Only show indicators that belong to this user
+              const myIndicators = (node.indicators || []).filter(ind => {
+                if (!currentUser) return false;
+                const pics = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
+                return pics.includes(currentUser.id) || pics.some(p => {
+                  if (p.startsWith('jabatan:')) {
+                    return currentUser.jabatan === p.replace('jabatan:', '');
+                  }
+                  return false;
+                });
+              });
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {levels.map(level => {
-                const groupNodes = getGroupedNodes(level);
-                
-                // For non-admin unit kerja, filter list to show only their assigned indicators
-                const filteredGroupNodes = isAdminUnitKerja 
-                  ? groupNodes 
-                  : groupNodes.filter(node => selectedIds.includes(node.id));
+              if (myIndicators.length === 0) return null;
 
-                if (filteredGroupNodes.length === 0) return null;
+              return (
+                <div key={node.id} style={{ borderRadius: '10px', background: styleObj.bg, border: `1px solid ${styleObj.border}`, overflow: 'hidden' }}>
+                  {/* Node header */}
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <span style={{ display: 'inline-block', background: styleObj.badge, color: 'white', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', marginBottom: '4px' }}>
+                      {styleObj.label}
+                    </span>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                      {(node.sasaran || node.text) && (
+                        <div><span style={{ color: 'var(--text-primary)' }}>Sasaran:</span> <strong style={{ color: 'var(--primary-orange)' }}>{node.sasaran || node.text}</strong></div>
+                      )}
+                      {node.nomenklatur && <div><span style={{ color: 'var(--text-primary)' }}>Nomenklatur:</span> {node.nomenklatur}</div>}
+                    </div>
+                  </div>
 
-                return (
-                  <div key={level} style={{
-                    background: 'rgba(255, 255, 255, 0.01)',
-                    border: '1px solid var(--glass-border)',
-                    borderRadius: '8px',
-                    padding: '16px'
-                  }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--primary-orange)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '6px', marginBottom: '12px' }}>
-                      {getLevelLabel(level)}
-                    </h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {filteredGroupNodes.map(node => (
-                        <div key={node.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '20px',
-                          padding: '10px',
-                          borderRadius: '8px',
-                          background: 'rgba(15,23,42,0.3)',
-                          border: '1px solid var(--glass-border)',
-                          flexWrap: 'wrap'
-                        }}>
-                          <div style={{ flex: 1, minWidth: '250px' }}>
-                            <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>{node.text}</strong>
-                            <div className="text-muted" style={{ fontSize: '11px', marginTop: '4px' }}>
-                              Indikator: <strong>{node.indikator}</strong> | Target: <strong>{node.target} {node.satuan}</strong>
+                  {/* Indicators */}
+                  <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {myIndicators.map(ind => {
+                      const sum = indicatorSummary[ind.id];
+                      const capaianPct = sum?.capaian;
+                      const capaianColor = capaianPct === null || capaianPct === undefined
+                        ? '#6b7280'
+                        : capaianPct >= 100 ? '#10b981'
+                        : capaianPct >= 75 ? '#f59e0b'
+                        : '#ef4444';
+                      const capaianBg = capaianPct === null || capaianPct === undefined
+                        ? 'rgba(107,114,128,0.12)'
+                        : capaianPct >= 100 ? 'rgba(16,185,129,0.12)'
+                        : capaianPct >= 75 ? 'rgba(245,158,11,0.12)'
+                        : 'rgba(239,68,68,0.12)';
+
+                      const allPics = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
+                      const isSplit = ind.crossCuttingType === 'split' && allPics.length > 1;
+                      const effectiveTarget = getEffectiveTarget(ind);
+
+                      return (
+                        <div key={ind.id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', borderLeft: '3px solid var(--primary-orange)', overflow: 'hidden' }}>
+                          {/* Indicator top: name + target */}
+                          <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: '500', marginBottom: '4px' }}>{ind.indikator}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                Target{isSplit ? ' Anda' : ''}: <strong style={{ color: 'var(--text-primary)' }}>{effectiveTarget} {ind.satuan}</strong>
+                                {isSplit && (
+                                  <span style={{ marginLeft: '6px', color: 'var(--text-muted)', fontStyle: 'italic' }}>(dari total {ind.target} {ind.satuan})</span>
+                                )}
+                                <span style={{ marginLeft: '10px', background: 'rgba(255,107,0,0.1)', color: 'var(--primary-orange)', padding: '1px 6px', borderRadius: '4px', fontSize: '10px' }}>{ind.tipeTarget}</span>
+                              </div>
+                              {allPics.length > 1 && (
+                                <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 'bold' }}>
+                                  <i className="fa-solid fa-people-group" style={{ marginRight: '4px' }}></i>
+                                  Bersama: {resolvePenanggungJawabLabel(ind.penanggungJawab)} · {isSplit ? 'Split Target' : 'Shared Target'}
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {isAdminUnitKerja ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <label style={{ fontSize: '10px', color: 'var(--primary-orange)', fontWeight: 'bold', margin: 0 }}>
-                                  Penanggung Jawab:
-                                </label>
-                                {['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(node.level) ? (
-                                  <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--glass-border)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', minWidth: '220px' }}>
-                                    <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
-                                    <strong style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
-                                  </div>
-                                ) : (
-                                  <div style={{ minWidth: '280px', fontSize: '12px', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
-                                    <div style={{ marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-muted)' }}>-- Pilih Penanggung Jawab --</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto', paddingRight: '8px' }}>
-                                      {getPenanggungJawabOptionsForNode(node).map(opt => (
-                                        <label key={opt.value} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', margin: 0, cursor: systemSettings?.renja_locked ? 'not-allowed' : 'pointer' }}>
-                                          <input 
-                                            type="checkbox" 
-                                            style={{ marginTop: '2px' }}
-                                            checked={(assignments[node.id]?.penanggungJawab || []).includes(opt.value)}
-                                            onChange={() => handleAssignmentChange(node.id, opt.value, 'toggle')}
-                                            disabled={systemSettings?.renja_locked}
-                                          />
-                                          <span style={{ color: 'var(--text-primary)', lineHeight: '1.4' }}>{opt.label}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                    
-                                    {(assignments[node.id]?.penanggungJawab || []).length > 1 && (
-                                      <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
-                                        <div style={{ marginBottom: '10px', fontWeight: 'bold', color: 'var(--primary-orange)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                          <i className="fa-solid fa-people-group"></i> Kolaborasi (Crosscutting)
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-                                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, cursor: 'pointer' }}>
-                                            <input type="radio" checked={assignments[node.id]?.crossCuttingType === 'shared'} onChange={() => handleCrossCuttingChange(node.id, 'shared')} /> Shared (Sama)
-                                          </label>
-                                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0, cursor: 'pointer' }}>
-                                            <input type="radio" checked={assignments[node.id]?.crossCuttingType === 'split'} onChange={() => handleCrossCuttingChange(node.id, 'split')} /> Split (Bagi Porsi)
-                                          </label>
-                                        </div>
-                                        {assignments[node.id]?.crossCuttingType === 'split' && (
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(255,107,0,0.05)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,107,0,0.2)' }}>
-                                            <div style={{ fontSize: '11px', color: 'var(--info)', fontWeight: 600, borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '6px', marginBottom: '4px' }}>
-                                              Target Keseluruhan: {node.target} {node.satuan}
-                                            </div>
-                                            {(assignments[node.id]?.penanggungJawab || []).map(pic => (
-                                              <div key={pic} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                                                <span style={{ fontSize: '11px', color: 'var(--text-primary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{resolvePenanggungJawabLabel(pic)}</span>
-                                                <input 
-                                                  type="number" 
-                                                  style={{ width: '80px', padding: '4px 6px', fontSize: '11px', background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '4px', textAlign: 'center' }}
-                                                  placeholder="Porsi"
-                                                  value={assignments[node.id]?.splitTargets[pic] || ''}
-                                                  onChange={(e) => handleSplitTargetChange(node.id, pic, e.target.value)}
-                                                />
-                                              </div>
-                                            ))}
-                                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
-                                              * Pastikan jumlah dari semua porsi sama dengan {node.target}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div style={{ background: 'rgba(255, 107, 0, 0.08)', border: '1px solid rgba(255, 107, 0, 0.2)', padding: '6px 12px', borderRadius: '6px', fontSize: '12px' }}>
-                                <i className="fa-solid fa-user-tie text-orange" style={{ marginRight: '6px' }}></i>
-                                Penanggung Jawab: <strong style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
+                          {/* Definisi & Metode */}
+                          {(ind.definisiOperasional || ind.metodePenghitungan) && (
+                            <div style={{ padding: '10px 14px', background: 'rgba(0,0,0,0.1)', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {ind.definisiOperasional && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: '1.5' }}>
+                                  <i className="fa-solid fa-circle-info" style={{ color: 'var(--primary-orange)', marginRight: '6px', fontSize: '10px' }}></i>
+                                  {ind.definisiOperasional}
+                                </div>
+                              )}
+                              {ind.metodePenghitungan && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <i className="fa-solid fa-calculator" style={{ color: 'var(--primary-orange)', fontSize: '10px' }}></i>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Cara Hitung:</span>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-primary)', background: 'rgba(255,107,0,0.1)', padding: '1px 7px', borderRadius: '10px', border: '1px solid rgba(255,107,0,0.2)' }}>{ind.metodePenghitungan}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Status & CTA Buttons */}
+                          <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {/* Status badges */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                              <span style={{ padding: '3px 9px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', background: sum?.hasTarget ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: sum?.hasTarget ? '#10b981' : '#ef4444', border: `1px solid ${sum?.hasTarget ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                                <i className={`fa-solid fa-${sum?.hasTarget ? 'check' : 'xmark'}`} style={{ marginRight: '4px' }}></i>
+                                {sum?.hasTarget ? `Target: ${sum.bulanTarget} bulan` : 'Belum Ada Target Renaksi'}
+                              </span>
+                              <span style={{ padding: '3px 9px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', background: sum?.hasRealisasi ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', color: sum?.hasRealisasi ? '#10b981' : '#ef4444', border: `1px solid ${sum?.hasRealisasi ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+                                <i className={`fa-solid fa-${sum?.hasRealisasi ? 'check' : 'xmark'}`} style={{ marginRight: '4px' }}></i>
+                                {sum?.hasRealisasi ? `Realisasi: ${sum.bulanRealisasi} bulan` : 'Belum Ada Realisasi'}
+                              </span>
+                            </div>
+
+                            {/* Progress bar (only if realisasi exists) */}
+                            {sum?.hasRealisasi && (
+                              <div style={{ background: capaianBg, borderRadius: '6px', padding: '8px 10px', border: `1px solid ${capaianColor}30` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Capaian</span>
+                                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: capaianColor }}>
+                                    {capaianPct !== null && capaianPct !== undefined ? `${capaianPct}%` : '-'}
+                                  </span>
+                                </div>
+                                <div style={{ height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                                  <div style={{ height: '100%', width: `${Math.min(capaianPct || 0, 100)}%`, background: capaianColor, borderRadius: '3px', transition: 'width 0.6s ease' }} />
+                                </div>
+                                {sum.label && <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{sum.label}</div>}
                               </div>
                             )}
+
+                            {/* CTA Buttons */}
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {!sum?.hasTarget && (
+                                <Link href="/employee/renaksi" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(255,107,0,0.85)', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', border: '1px solid rgba(255,107,0,0.5)', transition: 'all 0.2s' }}>
+                                  <i className="fa-solid fa-pen-to-square"></i> Isi Target
+                                </Link>
+                              )}
+                              {sum?.hasTarget && !sum?.hasRealisasi && (
+                                <Link href="/employee/realisasi" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(59,130,246,0.85)', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', border: '1px solid rgba(59,130,246,0.5)', transition: 'all 0.2s' }}>
+                                  <i className="fa-solid fa-chart-line"></i> Isi Realisasi
+                                </Link>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-
-            {isAdminUnitKerja && !systemSettings?.renja_locked && (
-              <button type="submit" className="btn btn-orange mt-4" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px' }}>
-                <i className="fa-solid fa-floppy-disk"></i> Simpan Penanggung Jawab
-              </button>
-            )}
-          </form>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

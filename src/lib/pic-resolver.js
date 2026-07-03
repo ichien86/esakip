@@ -203,13 +203,13 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
     const resolvedPICs = Array.from(resolvedSet).filter(Boolean);
     const nodePIC = resolvedPICs.length > 0 ? resolvedPICs.join(',') : null;
     
-    // For each indicator, set its penanggungJawab to the node's penanggungJawab if the indicator level is tujuan, sasaran, or program!
+    // For each indicator, prioritize its own explicitly saved penanggungJawab. 
+    // Fallback to the auto-derived nodePIC only if the indicator has no explicit PIC.
     const inds = (indicatorsByNodeId[rawObj.id] || []).map(ind => {
       const plainInd = typeof ind.toObject === 'function' ? ind.toObject() : ind;
-      const isHigherLevel = ['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(rawObj.level);
       return {
         ...plainInd,
-        penanggungJawab: isHigherLevel ? nodePIC : (plainInd.penanggungJawab || nodePIC)
+        penanggungJawab: plainInd.penanggungJawab || nodePIC
       };
     });
 

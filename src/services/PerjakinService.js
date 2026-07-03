@@ -27,8 +27,12 @@ class PerjakinService {
       // Atasan Pimpinan Tinggi adalah Bupati
       pihakKedua = await EmployeeRepository.findOne({ roles: 'bupati' });
       if (!pihakKedua) {
+        const Setting = (await import('@/models/Setting')).default;
+        const bupatiSetting = await Setting.findOne({ key: 'bupati_name' });
+        const namaBupati = bupatiSetting ? bupatiSetting.value : 'Agus Irawan';
+        
         pihakKedua = {
-          nama: 'M. Said Hidayat, S.H.',
+          nama: namaBupati,
           jabatan: 'Bupati Boyolali',
           nip: '-'
         };
@@ -41,7 +45,8 @@ class PerjakinService {
         pihakKedua = {
           nama: 'Belum Ditentukan',
           jabatan: 'Atasan Langsung',
-          nip: '-'
+          nip: '-',
+          pangkatGolongan: ''
         };
       }
     }
@@ -72,25 +77,75 @@ class PerjakinService {
       nodesById[node.id] = typeof node.toObject === 'function' ? node.toObject() : node;
     });
 
+    // 4. Dapatkan Status Dokumen Perjakin (Berdasarkan status Renaksi target bulanan)
+    const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+    const renaksiRecords = await RenaksiRepository.find({ employeeId, tahun: Number(tahun) });
+
     // Urutkan dan format data indikator untuk dicetak
     const perjakinItems = assignedIndicators.map(ind => {
       const parentNode = nodesById[ind.nodeId] || {};
+
+      // Hitung target efektif — untuk Split, ambil porsi milik pegawai ini
+      let effectiveTarget = ind.target;
+      if (ind.crossCuttingType === 'split' && ind.splitTargets) {
+        const splitMap = typeof ind.splitTargets.toObject === 'function'
+          ? ind.splitTargets.toObject()
+          : (ind.splitTargets || {});
+        // Cari berdasarkan employee ID dulu
+        let portion = parseFloat(splitMap[pihakPertama.id]);
+        // Fallback: cari berdasarkan jabatan
+        if (isNaN(portion) && pihakPertama.jabatan) {
+          portion = parseFloat(splitMap[`jabatan:${pihakPertama.jabatan}`]);
+        }
+        if (!isNaN(portion)) {
+          effectiveTarget = portion.toString();
+        }
+      }
+
+      // Ambil rencana aksi (target bulanan) dari renaksiRecords
+      const aksiBulanan = {};
+      for (let i = 1; i <= 12; i++) {
+        const rek = renaksiRecords.find(r => r.indicatorId === ind.id && r.bulan === i);
+        aksiBulanan[i] = rek && rek.targetBulanan !== null ? rek.targetBulanan : 0;
+      }
+
       return {
         id: ind.id,
         sasaran: parentNode.sasaran || parentNode.text || '-',
         indikator: ind.indikator,
-        target: ind.target,
+        target: effectiveTarget,
+        targetPenuh: ind.target,           // target asli (untuk referensi)
+        isSplit: ind.crossCuttingType === 'split',
         satuan: ind.satuan,
-        anggaran: parentNode.anggaran || 0
+        anggaran: parentNode.anggaran || 0,
+        rencanaAksi: aksiBulanan
       };
     });
 
     // 4. Dapatkan Status Dokumen Perjakin
-    let document = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });
+    const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+    const existingDoc = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });
     
-    // Jika belum ada dokumen, buatkan status virtual Draft
-    const docStatus = document ? document.status : 'Draft';
-    const docHistory = document ? document.history : [];
+    let docStatus = 'Draft';
+    let docHistory = [];
+    
+    if (existingDoc && existingDoc.status) {
+      docStatus = existingDoc.status;
+      docHistory = existingDoc.history || [];
+    } else {
+      const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+      const renaksiRecords = await RenaksiRepository.find({ employeeId, tahun: Number(tahun) });
+
+      if (renaksiRecords.length > 0) {
+        if (renaksiRecords.some(r => r.status === 'Target_Ditolak')) {
+          docStatus = 'Target_Ditolak';
+        } else if (renaksiRecords.some(r => ['Target_Diajukan', 'Target_ACC_Admin'].includes(r.status))) {
+          docStatus = 'Target_Diajukan'; // Menunggu Verifikasi
+        } else if (renaksiRecords.every(r => r.status === 'Target_Disetujui')) {
+          docStatus = 'Target_Disetujui';
+        }
+      }
+    }
 
     return {
       tahun,
@@ -101,13 +156,15 @@ class PerjakinService {
         nip: pihakPertama.nip,
         jabatan: pihakPertama.jabatan,
         jenisJabatan: pihakPertama.jenisJabatan || 'JFU',
+        pangkatGolongan: pihakPertama.pangkatGolongan || '',
         roles: pihakPertama.roles
       },
       pihakKedua: {
         id: pihakKedua.id || null,
         nama: pihakKedua.nama,
         nip: pihakKedua.nip,
-        jabatan: pihakKedua.jabatan
+        jabatan: pihakKedua.jabatan,
+        pangkatGolongan: pihakKedua.pangkatGolongan || ''
       },
       items: perjakinItems
     };

@@ -15,6 +15,12 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
 
   const isBupati = pihakKedua.jabatan?.toLowerCase().includes('bupati');
 
+  let documentTitle = `PERJANJIAN KINERJA TAHUN ${tahun}`;
+  if (pihakPertama.jenisJabatan === 'Pengawas') documentTitle = `PERJANJIAN KINERJA PEJABAT PENGAWAS TAHUN ${tahun}`;
+  else if (pihakPertama.jenisJabatan === 'Administrator') documentTitle = `PERJANJIAN KINERJA PEJABAT ADMINISTRATOR TAHUN ${tahun}`;
+  else if (pihakPertama.jenisJabatan === 'JFT') documentTitle = `PERJANJIAN KINERJA JABATAN FUNGSIONAL TAHUN ${tahun}`;
+  else if (pihakPertama.jenisJabatan === 'Pimpinan Tinggi') documentTitle = `PERJANJIAN KINERJA TAHUN ${tahun}`; // as per Eselon II template
+
   return (
     <div ref={ref} className="perjakin-print-container" style={{ padding: '20px', fontFamily: '"Times New Roman", Times, serif', color: '#000', background: '#fff' }}>
       
@@ -22,8 +28,11 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
       <style>{`
         @media print {
           @page {
-            size: A4;
+            size: A4 portrait;
             margin: 20mm;
+          }
+          @page landscape-page {
+            size: A4 landscape;
           }
           body * {
             visibility: hidden;
@@ -42,6 +51,10 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
           tr    { page-break-inside:avoid; page-break-after:auto }
           thead { display:table-header-group }
           tfoot { display:table-footer-group }
+          
+          .rencana-aksi-page {
+            page: landscape-page;
+          }
         }
         
         .perjakin-table {
@@ -60,6 +73,13 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
           text-align: center;
           font-weight: bold;
         }
+
+        .table-aksi {
+          font-size: 9pt;
+        }
+        .table-aksi th, .table-aksi td {
+          padding: 4px;
+        }
         
         .perjakin-signatures {
           display: flex;
@@ -72,7 +92,7 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
           text-align: center;
         }
         .signature-space {
-          height: 100px;
+          height: 80px;
         }
         
         .watermark-draft {
@@ -96,9 +116,22 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
         </div>
       )}
 
+      {/* Kop Surat */}
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid #000', paddingBottom: '10px', marginBottom: '30px' }}>
+        <img src="/logo.png" alt="Logo Boyolali" style={{ width: '80px', height: 'auto', marginRight: '20px' }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>PEMERINTAH KABUPATEN BOYOLALI</div>
+          <div style={{ fontSize: '18pt', fontWeight: 'bold', margin: '5px 0' }}>BADAN PENANGGULANGAN BENCANA DAERAH</div>
+          <div style={{ fontSize: '10pt' }}>
+            Jalan Raya Boyolali–Solo KM 1 Kelurahan Mojosongo, Kecamatan Mojosongo, Kabupaten Boyolali Provinsi Jawa Tengah 57372<br />
+            Telepon (0276) 324518, 08112950033 laman: bpbd.boyolali.go.id pos-el: bpbd@boyolali.go.id
+          </div>
+        </div>
+      </div>
+
       {/* Header Document */}
       <div style={{ textAlign: 'center', marginBottom: '30px', fontWeight: 'bold' }}>
-        <div style={{ fontSize: '14pt' }}>PERJANJIAN KINERJA TAHUN {tahun}</div>
+        <div style={{ fontSize: '14pt' }}>{documentTitle}</div>
       </div>
 
       <div style={{ textAlign: 'justify', marginBottom: '20px', lineHeight: '1.5' }}>
@@ -172,23 +205,25 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
       {/* Signatures for Page 1 */}
       <div className="perjakin-signatures">
         <div className="signature-box">
-          <div style={{ marginBottom: '10px' }}>Boyolali, {formatDate()}</div>
-          <div><strong>PIHAK PERTAMA</strong></div>
-          <div className="signature-space"></div>
-          <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakPertama.nama}</div>
-          {pihakPertama.nip !== '-' && <div>NIP. {pihakPertama.nip}</div>}
-        </div>
-        <div className="signature-box">
           <div style={{ marginBottom: '10px' }}>&nbsp;</div>
           <div><strong>PIHAK KEDUA</strong></div>
           <div className="signature-space"></div>
           <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakKedua.nama}</div>
+          {pihakKedua.pangkatGolongan && <div>{pihakKedua.pangkatGolongan}</div>}
           {pihakKedua.nip !== '-' && !isBupati && <div>NIP. {pihakKedua.nip}</div>}
           {status !== 'Disetujui' && <div style={{ fontSize: '10px', color: '#ef4444', fontStyle: 'italic', marginTop: '5px' }}>(Belum disetujui)</div>}
         </div>
+        <div className="signature-box">
+          <div style={{ marginBottom: '10px' }}>Boyolali, {formatDate()}</div>
+          <div><strong>PIHAK PERTAMA</strong></div>
+          <div className="signature-space"></div>
+          <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakPertama.nama}</div>
+          {pihakPertama.pangkatGolongan && <div>{pihakPertama.pangkatGolongan}</div>}
+          {pihakPertama.nip !== '-' && <div>NIP. {pihakPertama.nip}</div>}
+        </div>
       </div>
 
-      {/* Page Break for Lampiran */}
+      {/* Page Break for Lampiran 1 (Target Tahunan & Anggaran) */}
       <div style={{ pageBreakBefore: 'always', paddingTop: '20px' }}>
         <div style={{ textAlign: 'center', marginBottom: '20px', fontWeight: 'bold' }}>
           <div style={{ fontSize: '12pt' }}>LAMPIRAN PERJANJIAN KINERJA TAHUN {tahun}</div>
@@ -230,18 +265,106 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
         <div className="perjakin-signatures">
           <div className="signature-box">
             <div style={{ marginBottom: '10px' }}>&nbsp;</div>
-            <div><strong>PIHAK PERTAMA</strong></div>
-            <div className="signature-space"></div>
-            <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakPertama.nama}</div>
-            {pihakPertama.nip !== '-' && <div>NIP. {pihakPertama.nip}</div>}
-          </div>
-          <div className="signature-box">
-            <div style={{ marginBottom: '10px' }}>Boyolali, {formatDate()}</div>
             <div><strong>PIHAK KEDUA</strong></div>
             <div className="signature-space"></div>
             <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakKedua.nama}</div>
+            {pihakKedua.pangkatGolongan && <div>{pihakKedua.pangkatGolongan}</div>}
             {pihakKedua.nip !== '-' && !isBupati && <div>NIP. {pihakKedua.nip}</div>}
             {status !== 'Disetujui' && <div style={{ fontSize: '10px', color: '#ef4444', fontStyle: 'italic', marginTop: '5px' }}>(Belum disetujui)</div>}
+          </div>
+          <div className="signature-box">
+            <div style={{ marginBottom: '10px' }}>Boyolali, {formatDate()}</div>
+            <div><strong>PIHAK PERTAMA</strong></div>
+            <div className="signature-space"></div>
+            <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakPertama.nama}</div>
+            {pihakPertama.pangkatGolongan && <div>{pihakPertama.pangkatGolongan}</div>}
+            {pihakPertama.nip !== '-' && <div>NIP. {pihakPertama.nip}</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* Page Break for Lampiran 2 (Rencana Aksi) */}
+      <div className="rencana-aksi-page" style={{ pageBreakBefore: 'always', paddingTop: '20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '12pt' }}>RENCANA AKSI ATAS PERJANJIAN KINERJA TAHUN {tahun}</div>
+        </div>
+        
+        {/* Pesan bantuan untuk layar non-cetak */}
+        <div className="print-only-hidden" style={{ marginBottom: '10px', fontSize: '12px', fontStyle: 'italic', color: '#666' }}>
+          *Tabel Rencana Aksi ini dirancang memanjang (landscape) dengan 12 bulan. Jika saat mencetak terpotong, silakan ubah pengaturan kertas (Orientation) ke Landscape.
+        </div>
+        <style>{`@media print { .print-only-hidden { display: none !important; } }`}</style>
+
+        {/* Tabel Rencana Aksi */}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="perjakin-table table-aksi" style={{ minWidth: '1000px' }}>
+            <thead>
+              <tr>
+                <th rowSpan="2" style={{ width: '3%' }}>No</th>
+                <th rowSpan="2" style={{ width: '15%' }}>Sasaran / Kegiatan</th>
+                <th rowSpan="2" style={{ width: '20%' }}>Indikator Kinerja</th>
+                <th rowSpan="2" style={{ width: '8%' }}>Target<br/>Tahunan</th>
+                <th colSpan="12">Target Bulan</th>
+              </tr>
+              <tr>
+                <th style={{ width: '4.5%' }}>Jan</th>
+                <th style={{ width: '4.5%' }}>Feb</th>
+                <th style={{ width: '4.5%' }}>Mar</th>
+                <th style={{ width: '4.5%' }}>Apr</th>
+                <th style={{ width: '4.5%' }}>Mei</th>
+                <th style={{ width: '4.5%' }}>Jun</th>
+                <th style={{ width: '4.5%' }}>Jul</th>
+                <th style={{ width: '4.5%' }}>Ags</th>
+                <th style={{ width: '4.5%' }}>Sep</th>
+                <th style={{ width: '4.5%' }}>Okt</th>
+                <th style={{ width: '4.5%' }}>Nov</th>
+                <th style={{ width: '4.5%' }}>Des</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan="16" style={{ textAlign: 'center', fontStyle: 'italic', padding: '20px' }}>
+                    Belum ada data rencana aksi.
+                  </td>
+                </tr>
+              ) : (
+                items.map((item, index) => (
+                  <tr key={item.id}>
+                    <td style={{ textAlign: 'center' }}>{index + 1}</td>
+                    <td>{item.sasaran}</td>
+                    <td>{item.indikator}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{item.target} {item.satuan}</td>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(bulan => (
+                      <td key={bulan} style={{ textAlign: 'center' }}>
+                        {item.rencanaAksi && item.rencanaAksi[bulan] != 0 ? item.rencanaAksi[bulan] : '-'}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Lampiran Signatures Rencana Aksi */}
+        <div className="perjakin-signatures">
+          <div className="signature-box">
+            <div style={{ marginBottom: '10px' }}>&nbsp;</div>
+            <div><strong>PIHAK KEDUA</strong></div>
+            <div className="signature-space"></div>
+            <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakKedua.nama}</div>
+            {pihakKedua.pangkatGolongan && <div>{pihakKedua.pangkatGolongan}</div>}
+            {pihakKedua.nip !== '-' && !isBupati && <div>NIP. {pihakKedua.nip}</div>}
+            {status !== 'Disetujui' && <div style={{ fontSize: '10px', color: '#ef4444', fontStyle: 'italic', marginTop: '5px' }}>(Belum disetujui)</div>}
+          </div>
+          <div className="signature-box">
+            <div style={{ marginBottom: '10px' }}>Boyolali, {formatDate()}</div>
+            <div><strong>PIHAK PERTAMA</strong></div>
+            <div className="signature-space"></div>
+            <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>{pihakPertama.nama}</div>
+            {pihakPertama.pangkatGolongan && <div>{pihakPertama.pangkatGolongan}</div>}
+            {pihakPertama.nip !== '-' && <div>NIP. {pihakPertama.nip}</div>}
           </div>
         </div>
       </div>

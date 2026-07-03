@@ -9,6 +9,8 @@ const IndicatorAnnualSchema = new mongoose.Schema({
   satuan: { type: String, required: true },
   tipeTarget: { type: String, required: true },
   penanggungJawab: { type: String, default: null }, // PIC per indikator!
+  crossCuttingType: { type: String, default: 'shared' }, // 'shared' or 'split'
+  splitTargets: { type: mongoose.Schema.Types.Mixed, default: {} }, // Map of PIC ID to their target portion
 
   definisiOperasional: { type: String, default: '' },
   metodePenghitungan: { type: String, default: 'Tunggal' }, // Tunggal, Persentase, Rata-rata, Penjumlahan, Pembobotan (legacy: Jumlah)
