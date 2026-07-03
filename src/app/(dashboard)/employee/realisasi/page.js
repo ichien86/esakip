@@ -48,13 +48,29 @@ export default function EmployeeRealisasiPage() {
 
       // 2. Fetch annual Renja nodes
       const nodesRes = await fetchWithAuth(`/api/renja/${activeYear}`);
-      let matchedNodes = [];
       if (nodesRes.ok) {
         const allNodes = await nodesRes.json();
-        matchedNodes = allNodes.filter(n => selectedIds.includes(n.id));
-        setSelectedIndicators(matchedNodes);
-        if (matchedNodes.length > 0) {
-          setSelectedId(matchedNodes[0].id);
+        let matchedIndicators = [];
+        allNodes.forEach(n => {
+          if (n.indicators && n.indicators.length > 0) {
+            n.indicators.forEach(ind => {
+              if (selectedIds.includes(ind.id)) {
+                matchedIndicators.push({
+                  ...ind,
+                  parentNode: n
+                });
+              }
+            });
+          } else if (selectedIds.includes(n.id)) {
+            matchedIndicators.push({
+              ...n,
+              parentNode: null
+            });
+          }
+        });
+        setSelectedIndicators(matchedIndicators);
+        if (matchedIndicators.length > 0) {
+          setSelectedId(matchedIndicators[0].id);
         }
       }
 
@@ -360,6 +376,10 @@ export default function EmployeeRealisasiPage() {
         if (newVars[varIdx] && newVars[varIdx].buktiDukungFiles[fileIdx]) {
           if (res.ok) {
             newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = parsedRes;
+            // Overwrite generic name with the actual document title if available
+            if (parsedRes.title && parsedRes.title.trim() !== '') {
+              newVars[varIdx].buktiDukungFiles[fileIdx].name = parsedRes.title;
+            }
           } else {
             newVars[varIdx].buktiDukungFiles[fileIdx].verifyStatus = { isDrive: false, isPublic: false, message: 'Gagal menghubungi server verifikasi.' };
           }
@@ -460,7 +480,7 @@ export default function EmployeeRealisasiPage() {
       // Rata-rata, Penjumlahan, Pembobotan calculated on the fly and handled automatically
     }
 
-    const isDecreasing = activeNode && activeNode.tipeTarget === 'Kondisi Akhir Menurun';
+    const isDecreasing = activeNode && (activeNode.tipeTarget || activeNode.parentNode?.tipeTarget) === 'Kondisi Akhir Menurun';
     const isUnderperforming = isDecreasing ? realisasi > target : realisasi < target;
 
     const finalVariablesRealization = variablesRealizationVals.map(v => {
@@ -516,7 +536,7 @@ export default function EmployeeRealisasiPage() {
   // Determine which subform to render based on compliance
   const targetVal = activeRecord ? activeRecord.targetBulanan : 0;
   const currentReal = parseFloat(realisasiValue);
-  const isDecreasing = activeNode && activeNode.tipeTarget === 'Kondisi Akhir Menurun';
+  const isDecreasing = activeNode && (activeNode.tipeTarget || activeNode.parentNode?.tipeTarget) === 'Kondisi Akhir Menurun';
   
   const showUnderperformSubform = !isNaN(currentReal) && (
     isDecreasing ? currentReal > targetVal : currentReal < targetVal
@@ -572,7 +592,9 @@ export default function EmployeeRealisasiPage() {
                 <label>1. Pilih Indikator:</label>
                 <select className="select-sim mt-1" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
                   {selectedIndicators.map(node => (
-                    <option key={node.id} value={node.id}>{node.text}</option>
+                    <option key={node.id} value={node.id}>
+                      {node.parentNode ? `${node.parentNode.level?.replace('_', ' ').toUpperCase()} - ${node.indikator}` : node.text}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -600,7 +622,7 @@ export default function EmployeeRealisasiPage() {
                 <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
                   <p style={{ fontSize: '14px', margin: 0 }}>
                     Target Bulan Ini: <strong style={{ color: 'var(--primary-orange)' }}>{targetVal}</strong> {activeNode?.satuan}
-                    {activeNode?.tipeTarget === 'Kondisi Akhir Menurun' && (
+                    {(activeNode?.tipeTarget || activeNode?.parentNode?.tipeTarget) === 'Kondisi Akhir Menurun' && (
                       <span className="badge badge-score" style={{ marginLeft: '10px' }}>Tipe: Target Menurun</span>
                     )}
                   </p>
@@ -619,11 +641,21 @@ export default function EmployeeRealisasiPage() {
                     </span>
                   )}
                   {/* Live preview saat user mengetik nilai baru */}
-                  {!isNaN(currentReal) && activeRecord.capaianBulanan == null && currentReal > 0 && targetVal > 0 && (
+                  {!isNaN(currentReal) && activeRecord.capaianBulanan == null && currentReal >= 0 && targetVal >= 0 && (
                     (() => {
-                      const liveCapaian = isDecreasing
-                        ? (currentReal === 0 ? 100 : (targetVal / currentReal) * 100)
-                        : (currentReal / targetVal) * 100;
+                      let liveCapaian = 0;
+                      if (targetVal === 0) {
+                        if (isDecreasing) {
+                          liveCapaian = currentReal === 0 ? 100 : 0;
+                        } else {
+                          liveCapaian = currentReal >= 0 ? 100 : 0;
+                        }
+                      } else if (isDecreasing) {
+                        liveCapaian = currentReal === 0 ? 100 : (targetVal / currentReal) * 100;
+                      } else {
+                        liveCapaian = (currentReal / targetVal) * 100;
+                      }
+
                       return (
                         <span style={{
                           fontSize: '13px',
@@ -637,6 +669,17 @@ export default function EmployeeRealisasiPage() {
                     })()
                   )}
                 </div>
+                {activeRecord.status === 'Ditolak Admin' && activeRecord.catatanAdmin && (
+                  <div style={{ marginTop: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px', padding: '14px' }}>
+                    <div style={{ color: '#EF4444', fontWeight: 700, fontSize: '13px', marginBottom: '6px' }}>
+                      <i className="fa-solid fa-circle-exclamation"></i> Realisasi Ditolak oleh Admin Unit Kerja
+                    </div>
+                    <div style={{ color: 'var(--text-primary)', fontSize: '13px', lineHeight: 1.5 }}>{activeRecord.catatanAdmin}</div>
+                    <div style={{ color: '#F59E0B', fontSize: '12px', marginTop: '8px' }}>
+                      <i className="fa-solid fa-pen-to-square"></i> Silakan perbaiki bukti dukung / isian sesuai catatan di atas, lalu ajukan ulang.
+                    </div>
+                  </div>
+                )}
                 {activeRecord.status === 'Diajukan' && (
                   <p style={{ marginTop: '6px', color: '#F59E0B', fontSize: '12px' }}>
                     <i className="fa-solid fa-clock"></i> Laporan ini telah diajukan dan menunggu persetujuan (ACC) dari Admin Unit Kerja.

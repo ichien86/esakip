@@ -1,9 +1,11 @@
 import RenaksiRepository from '@/repositories/RenaksiRepository';
 import CascadingAnnualRepository from '@/repositories/CascadingAnnualRepository';
+import IndicatorAnnualRepository from '@/repositories/IndicatorAnnualRepository';
 import Employee from '@/models/Employee';
 import Setting from '@/models/Setting';
 import RealisasiSchedule from '@/models/RealisasiSchedule';
 import Renaksi from '@/models/Renaksi';
+import LinkVerificationService from './LinkVerificationService';
 
 class RenaksiService {
   /**
@@ -37,24 +39,11 @@ class RenaksiService {
     const indicatorsToVerify = [...new Set(targets.map(t => t.indicatorId))];
 
     for (let indicatorId of indicatorsToVerify) {
-      const node = await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
-      if (node && node.tipeTarget === 'Akumulatif') {
-        let annualTarget = parseFloat(node.target);
-        if (node.crossCuttingType === 'split' && node.splitTargets && employeeId) {
-          const portion = parseFloat(node.splitTargets[employeeId]);
-          if (!isNaN(portion)) {
-            annualTarget = portion;
-          }
-        }
-
-        const indicatorTargets = targets.filter(t => t.indicatorId === indicatorId);
-        const monthlySum = indicatorTargets.reduce((sum, item) => sum + (parseFloat(item.targetBulanan) || 0), 0);
-
-        if (Math.abs(monthlySum - annualTarget) > 0.05) {
-          const err = new Error(`Validasi gagal untuk indikator "${node.indikator}". Tipe target adalah Akumulatif, sehingga jumlah target bulanan (Jan-Des) harus berjumlah persis ${annualTarget} ${node.satuan} (Input saat ini: ${monthlySum}).`);
-          err.status = 400;
-          throw err;
-        }
+      // Ambil dari IndicatorAnnual karena crossCuttingType & splitTargets disimpan di sana
+      const indAnnual = await IndicatorAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
+      const node = indAnnual || await CascadingAnnualRepository.findOne({ id: indicatorId, tahun: yearNum });
+      if (node?.tipeTarget === 'Akumulatif') {
+        // Validation moved to submitTargets to allow saving partial drafts
       }
     }
 
@@ -131,7 +120,29 @@ class RenaksiService {
 
       if (node.tipeTarget !== 'Akumulatif') {
         if (nodeDrafts.length < 12) {
-          const err = new Error(`Validasi Gagal: Indikator "${node.indikator}" bertipe non-akumulatif (${node.tipeTarget}). Setiap bulan wajib diisi sebagai proses target, tidak boleh ada bulan yang kosong.`);
+          const err = new Error(`Validasi Gagal: Indikator "${node.indikator || node.text}" bertipe non-akumulatif (${node.tipeTarget}). Setiap bulan wajib diisi sebagai proses target, tidak boleh ada bulan yang kosong.`);
+          err.status = 400;
+          throw err;
+        }
+      } else {
+        const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+        const emp = await EmployeeRepository.findOne({ id: employeeId });
+        let annualTarget = parseFloat(node.target) || 0;
+
+        if (node.crossCuttingType === 'split' && node.splitTargets) {
+          const splitTargets = typeof node.splitTargets.toObject === 'function' ? node.splitTargets.toObject() : node.splitTargets;
+          let portion = parseFloat(splitTargets[employeeId]);
+          if (isNaN(portion) && emp?.jabatan) {
+            portion = parseFloat(splitTargets[`jabatan:${emp.jabatan}`]);
+          }
+          if (!isNaN(portion)) {
+            annualTarget = portion;
+          }
+        }
+
+        const monthlySum = nodeDrafts.reduce((sum, item) => sum + (parseFloat(item.targetBulanan) || 0), 0);
+        if (Math.abs(monthlySum - annualTarget) > 0.05) {
+          const err = new Error(`Validasi Gagal: Indikator "${node.indikator || node.text}" bertipe Akumulatif. Jumlah target bulanan harus persis ${annualTarget} ${node.satuan || ''} (Input saat ini: ${monthlySum}).`);
           err.status = 400;
           throw err;
         }
@@ -142,6 +153,32 @@ class RenaksiService {
     const result = await RenaksiRepository.updateMany(
       { employeeId, tahun: yearNum, status: 'Draft' },
       { $set: { status: 'Target_Diajukan' } }
+    );
+
+    return result.modifiedCount;
+  }
+
+  async revisiTargets(employeeId, requestYear) {
+    if (!employeeId) {
+      const err = new Error('employeeId wajib diisi');
+      err.status = 400;
+      throw err;
+    }
+    const yearNum = parseInt(requestYear || '2026');
+
+    // Pastikan tidak dikunci admin
+    const lockSetting = await Setting.findOne({ key: 'renja_locked' });
+    if (lockSetting && lockSetting.value === true) {
+      const err = new Error('Revisi ditolak karena sistem telah dikunci oleh Administrator.');
+      err.status = 403;
+      throw err;
+    }
+
+    // Set semua yang Target_Disetujui menjadi Draft
+    const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+    const result = await RenaksiRepository.updateMany(
+      { employeeId, tahun: yearNum, status: { $in: ['Target_Disetujui', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'] } },
+      { $set: { status: 'Draft' } }
     );
 
     return result.modifiedCount;
@@ -227,11 +264,40 @@ class RenaksiService {
       throw err;
     }
 
+    // Cek tindak lanjut rekomendasi bulan lalu
+    let prevMonth = bulan - 1;
+    let prevYear = record.tahun;
+    
+    if (bulan === 1) {
+      prevMonth = 12;
+      prevYear = record.tahun - 1;
+    }
+
+    if (bulan > 1 || prevYear > 0) {
+      const uncompletedRecs = await RenaksiRepository.find({
+        employeeId: employeeId,
+        tahun: prevYear,
+        bulan: prevMonth,
+        statusRekomendasi: 'Menunggu Tindak Lanjut'
+      });
+
+      if (uncompletedRecs && uncompletedRecs.length > 0) {
+        const err = new Error(`Anda memiliki rekomendasi kinerja pada Bulan ${prevMonth} Tahun ${prevYear} yang belum ditindaklanjuti. Harap selesaikan terlebih dahulu sebelum mengisi realisasi.`);
+        err.status = 403;
+        throw err;
+      }
+    }
+
     // Check if realization has already been approved / verified
     if (record.status === 'ACC_Admin' || record.status === 'Disetujui') {
       const err = new Error(`Pengisian realisasi untuk Bulan ${bulan} tahun ${record.tahun || 2026} tidak dapat diubah karena telah di-ACC/Disetujui oleh atasan.`);
       err.status = 403;
       throw err;
+    }
+
+    // If pegawai is re-submitting after rejection, clear the admin rejection note
+    if (record.status === 'Ditolak Admin') {
+      record.catatanAdmin = '';
     }
 
     // Check realization schedule lock status and deadline
@@ -298,8 +364,13 @@ class RenaksiService {
     let capaianBulanan = null;
     const isDecreasingTarget = node && node.tipeTarget === 'Kondisi Akhir Menurun';
     if (target === 0) {
-      // Target nol: sempurna jika realisasi juga 0, sebaliknya 0%
-      capaianBulanan = realisasi === 0 ? 100 : 0;
+      if (isDecreasingTarget) {
+        // Target menurun: sempurna jika realisasi juga 0, sebaliknya 0%
+        capaianBulanan = realisasi === 0 ? 100 : 0;
+      } else {
+        // Target normal/akumulatif: realisasi >= 0 adalah percepatan/keberhasilan
+        capaianBulanan = realisasi >= 0 ? 100 : 0;
+      }
     } else if (isDecreasingTarget) {
       // Target menurun: makin kecil makin baik — rumus dibalik
       capaianBulanan = realisasi === 0 ? 100 : parseFloat(((target / realisasi) * 100).toFixed(2));
@@ -360,6 +431,115 @@ class RenaksiService {
     if (status === 'Diajukan' || status === 'Disetujui') {
       record.tanggalRealisasi = new Date().toISOString();
     }
+
+    await RenaksiRepository.saveDocument(record);
+    return record;
+  }
+
+  async approveRealisasi(id, requesterRole, rekomendasiAtasan = '') {
+    const record = await RenaksiRepository.findOne({ id });
+    if (!record) throw Object.assign(new Error('Data renaksi tidak ditemukan'), { status: 404 });
+
+    const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+    const emp = await EmployeeRepository.findOne({ id: record.employeeId });
+    if (!emp) throw Object.assign(new Error('Employee not found'), { status: 404 });
+
+    if (record.status !== 'Diajukan' && record.status !== 'Ditolak Admin' && record.status !== 'ACC_Admin') {
+      throw Object.assign(new Error(`Realisasi dengan status ${record.status} tidak dapat diproses.`), { status: 400 });
+    }
+
+    let nextStatus = 'Disetujui';
+
+    if (emp.jenisJabatan === 'Pimpinan Tinggi') {
+      if (requesterRole === 'perencana') {
+        if (record.status !== 'Diajukan' && record.status !== 'Ditolak Admin') throw Object.assign(new Error('Realisasi belum diajukan.'), { status: 400 });
+        nextStatus = 'Disetujui';
+      } else {
+        throw Object.assign(new Error('Realisasi Pimpinan Tinggi hanya dapat disetujui oleh Admin Perencana.'), { status: 403 });
+      }
+    } else if (emp.jenisJabatan === 'Administrator') {
+      if (requesterRole === 'perencana') {
+        if (record.status !== 'Diajukan' && record.status !== 'Ditolak Admin') throw Object.assign(new Error('Realisasi belum diajukan.'), { status: 400 });
+        nextStatus = 'ACC_Admin';
+      } else if (requesterRole === 'pemimpin') {
+        if (record.status !== 'ACC_Admin') throw Object.assign(new Error('Realisasi harus di-ACC Admin Perencana sebelum divalidasi Pimpinan Tinggi.'), { status: 400 });
+        nextStatus = 'Disetujui';
+      } else {
+        throw Object.assign(new Error('Realisasi Administrator diverifikasi oleh Admin Perencana dan disetujui Pimpinan Tinggi.'), { status: 403 });
+      }
+    } else { // Pengawas & Fungsional
+      if (requesterRole === 'admin_bidang') {
+        if (record.status !== 'Diajukan' && record.status !== 'Ditolak Admin') throw Object.assign(new Error('Realisasi belum diajukan.'), { status: 400 });
+        nextStatus = 'ACC_Admin';
+      } else if (requesterRole === 'pemimpin') {
+        if (record.status !== 'ACC_Admin') throw Object.assign(new Error('Realisasi harus di-ACC Admin Unit sebelum divalidasi Administrator.'), { status: 400 });
+        nextStatus = 'Disetujui';
+      } else {
+        throw Object.assign(new Error('Realisasi Pengawas/Fungsional diverifikasi oleh Admin Unit dan disetujui Administrator.'), { status: 403 });
+      }
+    }
+
+    // Logic Rekomendasi Atasan (Hanya dieksekusi saat status FINAL = Disetujui)
+    if (nextStatus === 'Disetujui') {
+      if (record.capaianBulanan < 100) { // Underperforming
+        if (!rekomendasiAtasan || rekomendasiAtasan.trim() === '') {
+          throw Object.assign(new Error('Capaian di bawah target. Rekomendasi dari atasan wajib diisi.'), { status: 400 });
+        }
+        record.rekomendasiAtasan = rekomendasiAtasan;
+        record.statusRekomendasi = 'Menunggu Tindak Lanjut';
+      } else { // Sesuai/Melebihi target
+        if (rekomendasiAtasan && rekomendasiAtasan.trim() !== '') {
+          record.rekomendasiAtasan = rekomendasiAtasan;
+          record.statusRekomendasi = 'Selesai';
+        }
+      }
+    }
+
+    record.status = nextStatus;
+    record.catatanAdmin = ''; 
+    record.isCrossCuttingSelected = true;
+    await RenaksiRepository.saveDocument(record);
+
+    if (requesterRole === 'admin_bidang' || requesterRole === 'perencana') {
+       let query = {
+          id: { $ne: record.id },
+          indicatorId: record.indicatorId,
+          tahun: record.tahun,
+          bulan: record.bulan
+       };
+       if (requesterRole === 'admin_bidang') query.bidang = record.bidang;
+       await RenaksiRepository.updateMany(query, { $set: { isCrossCuttingSelected: false } });
+    }
+
+    return record;
+  }
+
+  async saveTindakLanjutRekomendasi(id, tindakLanjut, buktiDukung) {
+    if (!tindakLanjut || tindakLanjut.trim() === '') {
+      throw Object.assign(new Error('Tindak lanjut rekomendasi wajib diisi.'), { status: 400 });
+    }
+    if (!buktiDukung || buktiDukung.trim() === '') {
+      throw Object.assign(new Error('Bukti dukung tindak lanjut wajib dilampirkan.'), { status: 400 });
+    }
+    
+    // Validate Link
+    const isValid = await LinkVerificationService.verifyLink(buktiDukung);
+    if (!isValid) {
+      throw Object.assign(new Error('Tautan bukti dukung tidak valid atau tidak dapat diakses.'), { status: 400 });
+    }
+
+    const record = await RenaksiRepository.findOne({ id });
+    if (!record) {
+      throw Object.assign(new Error('Data renaksi tidak ditemukan.'), { status: 404 });
+    }
+    
+    if (record.statusRekomendasi !== 'Menunggu Tindak Lanjut') {
+      throw Object.assign(new Error('Rekomendasi ini tidak sedang menunggu tindak lanjut.'), { status: 400 });
+    }
+
+    record.tindakLanjutRekomendasi = tindakLanjut;
+    record.buktiDukungTindakLanjut = buktiDukung;
+    record.statusRekomendasi = 'Selesai';
 
     await RenaksiRepository.saveDocument(record);
     return record;
