@@ -305,7 +305,7 @@ export default function EmployeeRenaksiPage() {
             <div style={{ textAlign: 'center', padding: '20px' }}><i className="fa-solid fa-circle-notch fa-spin"></i> Memuat matriks target...</div>
           ) : selectedIndicators.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>
-              Anda belum memilih indikator IKU. Silakan masuk ke menu <strong>Pilih Indikator IKU</strong> terlebih dahulu.
+              Anda belum memilih indikator IKU. Silakan masuk ke menu <strong>Indikator Kinerja Saya</strong> terlebih dahulu.
             </div>
           ) : (
             <>
