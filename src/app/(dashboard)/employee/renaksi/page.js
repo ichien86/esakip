@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useFetchWithAuth } from '@/context/useFetchWithAuth';
 import { useSimulationInternal } from '@/context/SimulationInternalContext';
 import { useUI } from '@/context/UIContext';
 import { useMetadata } from '@/context/MetadataContext';
 
 export default function EmployeeRenaksiPage() {
+  const router = useRouter();
   const { fetchWithAuth } = useFetchWithAuth();
   const { currentUser } = useSimulationInternal();
   const { activeBidang, activeYear } = useUI();
@@ -15,6 +17,7 @@ export default function EmployeeRenaksiPage() {
   const [renaksiRecords, setRenaksiRecords] = useState([]);
   const [targetsMap, setTargetsMap] = useState({}); // { "indicatorId_bulan": value }
   const [supervisor, setSupervisor] = useState(null);
+  const [profileInfo, setProfileInfo] = useState(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -78,6 +81,12 @@ export default function EmployeeRenaksiPage() {
           const boss = emps.find(e => e.id === currentUser.parentId);
           setSupervisor(boss);
         }
+      }
+
+      // 5. Fetch profile info
+      const profRes = await fetchWithAuth('/api/profile');
+      if (profRes.ok) {
+        setProfileInfo(await profRes.json());
       }
     } catch (e) {
       console.error('Failed to load renaksi spreadsheet data', e);
@@ -236,6 +245,28 @@ export default function EmployeeRenaksiPage() {
       console.error(err);
       setError('Terjadi kesalahan koneksi.');
     }
+  };
+
+  const handlePrintClick = () => {
+    setError('');
+    
+    // 1. Cek apakah target sudah diisi
+    if (renaksiRecords.length === 0) {
+      setError('Anda belum mengisi target bulanan. Silakan isi dan simpan Rencana Aksi terlebih dahulu sebelum mencetak Perjakin.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
+    // 2. Cek apakah tanda tangan sudah diatur
+    const hasSignature = profileInfo?.hasDigitalSignature || profileInfo?.signatureUrl;
+    if (!hasSignature) {
+      alert('Anda belum mengatur Tanda Tangan Digital. Anda akan dialihkan ke halaman Profil untuk mengaturnya.');
+      router.push('/profile');
+      return;
+    }
+    
+    // 3. Print
+    window.print();
   };
 
   const targetStatus = getTargetStatusText();
@@ -402,20 +433,40 @@ export default function EmployeeRenaksiPage() {
         <div className="glass-panel" style={{ marginTop: '24px' }}>
           <div className="panel-header justify-between print-exclude">
             <h3><i className="fa-solid fa-file-signature text-orange"></i> Cetak Dokumen Resmi Perjanjian Kinerja (PK)</h3>
-            <button className="btn btn-secondary" onClick={() => window.print()}>
+            <button className="btn btn-secondary" onClick={handlePrintClick}>
               <i className="fa-solid fa-print"></i> Cetak Dokumen Resmi
             </button>
           </div>
 
-          <div className="print-only-layout" id="pkPrintTemplate" style={{ display: 'block', padding: '30px', background: 'white', color: 'black' }}>
-            <div className="kop-surat" style={{ textAlign: 'center', borderBottom: '2px solid black', paddingBottom: '10px', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase' }}>Pemerintah Kabupaten Boyolali</h3>
-              <h2 style={{ margin: '4px 0', fontSize: '18px', textTransform: 'uppercase' }}>Badan Penanggulangan Bencana Daerah (BPBD)</h2>
-              <p style={{ margin: 0, fontSize: '10px' }}>Kompleks Perkantoran Terpadu Kabupaten Boyolali, Jawa Tengah</p>
-            </div>
+          <div className="print-only-layout" id="pkPrintTemplate" style={{ display: 'block', padding: '30px', background: 'white', color: 'black', position: 'relative', overflow: 'hidden' }}>
+            
+            {/* Watermark DRAFT */}
+            {targetStatus !== 'Target Disetujui' && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) rotate(-45deg)',
+                fontSize: '80px',
+                fontWeight: 'bold',
+                color: 'rgba(239, 68, 68, 0.15)',
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+                zIndex: 0
+              }}>
+                DRAFT - BELUM DISETUJUI
+              </div>
+            )}
 
-            <h3 style={{ textAlign: 'center', textDecoration: 'underline', fontSize: '14px', margin: '0 0 4px 0' }}>PERJANJIAN KINERJA INDIVIDU</h3>
-            <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN {activeYear}</p>
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div className="kop-surat" style={{ textAlign: 'center', borderBottom: '2px solid black', paddingBottom: '10px', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '14px', textTransform: 'uppercase' }}>Pemerintah Kabupaten Boyolali</h3>
+                <h2 style={{ margin: '4px 0', fontSize: '18px', textTransform: 'uppercase' }}>Badan Penanggulangan Bencana Daerah (BPBD)</h2>
+                <p style={{ margin: 0, fontSize: '10px' }}>Kompleks Perkantoran Terpadu Kabupaten Boyolali, Jawa Tengah</p>
+              </div>
+
+              <h3 style={{ textAlign: 'center', textDecoration: 'underline', fontSize: '14px', margin: '0 0 4px 0' }}>PERJANJIAN KINERJA INDIVIDU</h3>
+              <p style={{ textAlign: 'center', fontSize: '12px', margin: '0 0 20px 0' }}>TAHUN ANGGARAN {activeYear}</p>
 
             <p style={{ fontSize: '12px', lineHeight: 1.6, marginBottom: '16px' }}>
               Dalam rangka mewujudkan manajemen pemerintahan yang efektif, transparan dan akuntabel serta berorientasi pada hasil, kami yang bertanda tangan di bawah ini berjanji akan mewujudkan target kinerja tahunan sesuai lampiran perjanjian ini.

@@ -40,18 +40,8 @@ export default function LoginPage() {
         setError(result.error);
         setSubmitting(false);
       } else {
-        // Set UI preferences saat pertama login
-        const user = result.user;
-        const rolePriority = ['staff', 'pemimpin', 'admin_bidang', 'perencana', 'admin'];
-        let defaultRole = user.roles?.[0] || '';
-        for (const r of rolePriority) {
-          if (user.roles?.includes(r)) { defaultRole = r; break; }
-        }
-        localStorage.setItem('activeRole', defaultRole);
-        localStorage.setItem('activeBidang', user.bidangs?.[0] || '');
-        localStorage.setItem('activeYear', new Date().getFullYear().toString());
-
-        // Hard redirect dihapus. Navigasi sudah ditangani oleh AuthContext via router.push('/dashboard')
+        // Navigasi sudah ditangani oleh AuthContext via router.push('/dashboard')
+        // UI preferences will be handled by UIContext automatically when user state changes.
       }
     } catch (err) {
       setError('Terjadi kesalahan sistem. Silakan coba lagi.');
