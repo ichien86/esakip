@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { useFetchWithAuth } from '@/context/useFetchWithAuth';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -12,6 +12,7 @@ const BULAN_NAMES = [
 ];
 
 export default function AdminRekapRealisasiPage() {
+  const { fetchWithAuth } = useFetchWithAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

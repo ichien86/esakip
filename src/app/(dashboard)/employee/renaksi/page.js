@@ -563,6 +563,8 @@ export default function EmployeeRenaksiPage() {
                 <p>NIP. {supervisor ? supervisor.nip : '-'}</p>
               </div>
             </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
