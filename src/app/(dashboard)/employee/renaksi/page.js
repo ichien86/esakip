@@ -566,7 +566,6 @@ export default function EmployeeRenaksiPage() {
               </div>
             </div>
           </div>
-        </div>
       )}
     </section>
   );
