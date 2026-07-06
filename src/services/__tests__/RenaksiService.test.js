@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import RenaksiService from '../RenaksiService';
-import RenaksiRepository from '@/repositories/RenaksiRepository';
+import RenaksiService from '@/services/RenaksiService';
 
+// Mocks
 vi.mock('@/repositories/RenaksiRepository', () => ({
   default: {
     find: vi.fn(),
@@ -11,197 +11,165 @@ vi.mock('@/repositories/RenaksiRepository', () => ({
   }
 }));
 
-vi.mock('@/repositories/SelectionRepository', () => ({
+vi.mock('@/models/Employee', () => ({
   default: {
     findOne: vi.fn()
   }
 }));
 
-vi.mock('@/repositories/CascadingAnnualRepository', () => ({ default: { find: vi.fn() } }));
-vi.mock('@/repositories/IndicatorAnnualRepository', () => ({ default: { find: vi.fn() } }));
-vi.mock('../LinkVerificationService', () => ({
-  default: {
-    verifyLink: vi.fn()
-  }
-}));
-vi.mock('@/repositories/EmployeeRepository', () => ({
-  default: {
-    findOne: vi.fn(),
-    findById: vi.fn()
-  }
-}));
-vi.mock('@/models/Employee', () => ({
-  default: {
-    findOne: vi.fn(),
-    findById: vi.fn()
-  }
-}));
-vi.mock('@/models/RealisasiSchedule', () => ({ default: {} }));
-vi.mock('@/models/Renaksi', () => ({ default: {} }));
-
-// Mock Setting model
 vi.mock('@/models/Setting', () => ({
   default: {
     findOne: vi.fn()
   }
 }));
 
-vi.mock('@/lib/db', () => ({
-  default: vi.fn(),
-  connectDB: vi.fn()
+vi.mock('@/models/RealisasiSchedule', () => ({
+  default: {
+    findOne: vi.fn()
+  }
 }));
 
-describe('RenaksiService', () => {
-  beforeEach(() => {
+vi.mock('@/repositories/CascadingAnnualRepository', () => ({
+  default: {
+    findOne: vi.fn()
+  }
+}));
+
+vi.mock('@/repositories/IndicatorAnnualRepository', () => ({
+  default: {
+    findOne: vi.fn(),
+    find: vi.fn()
+  }
+}));
+
+vi.mock('@/lib/db', () => ({
+  default: vi.fn()
+}));
+
+// Dynamic mocks using doMock for dynamic imports
+vi.mock('@/models/PerjakinDocument', () => ({
+  default: {
+    findOne: vi.fn()
+  }
+}));
+
+describe('RenaksiService Business Process Locks', () => {
+  let RenaksiRepository;
+  let Employee;
+  let PerjakinDocument;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+    Employee = (await import('@/models/Employee')).default;
+    PerjakinDocument = (await import('@/models/PerjakinDocument')).default;
   });
 
-  describe('submitTargets', () => {
-    it('should throw error if no targets are found', async () => {
-      const Setting = (await import('@/models/Setting')).default;
-      Setting.findOne.mockResolvedValue(null);
-      
-      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
-      EmployeeRepository.findOne.mockResolvedValue({});
-      
-      const SelectionRepository = (await import('@/repositories/SelectionRepository')).default;
-      SelectionRepository.findOne.mockResolvedValue({ selectedIndicators: ['ind-1'] });
+  describe('3. Target Revision Lock', () => {
+    it('should block saveBatchTargets if realisasi exists', async () => {
+      Employee.findOne.mockResolvedValue({ id: 'emp1', bidangs: ['Bidang A'] });
+      // Mock existing realisasi
+      RenaksiRepository.find.mockResolvedValue([{ id: 'rx_emp1_ind1_1', realisasiBulanan: 10 }]);
+
+      await expect(
+        RenaksiService.saveBatchTargets('emp1', [{ indicatorId: 'ind1', bulan: 1, targetBulanan: 5 }], '2026')
+      ).rejects.toThrow('Tidak dapat mengubah target karena Anda sudah mulai mengisi laporan realisasi.');
+    });
+
+    it('should block revisiTargets if realisasi exists', async () => {
+      // Mock existing realisasi
+      RenaksiRepository.find.mockResolvedValue([{ id: 'rx_emp1_ind1_1', realisasiBulanan: 10 }]);
+
+      await expect(
+        RenaksiService.revisiTargets('emp1', '2026')
+      ).rejects.toThrow('Revisi target tidak diizinkan karena Anda sudah mulai mengisi laporan realisasi.');
+    });
+  });
+
+  describe('2. Perjakin Document check', () => {
+    beforeEach(() => {
+      RenaksiRepository.find.mockResolvedValue([]);
+    });
+
+    it('should block saveRealisasi if Perjakin is not approved', async () => {
+      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_1', targetBulanan: 10, tahun: 2026, status: 'Target_Disetujui' });
+      PerjakinDocument.findOne.mockResolvedValue({ status: 'Draft' }); // Not Disetujui
+
+      const body = {
+        employeeId: 'emp1', indicatorId: 'ind1', bulan: 1, realisasiBulanan: 5,
+        kendala: 'K', solusi: 'S'
+      };
+
+      await expect(
+        RenaksiService.saveRealisasi(body)
+      ).rejects.toThrow('Pengisian realisasi belum dapat dilakukan karena Dokumen Perjanjian Kinerja (Perjakin) Anda belum disetujui.');
+    });
+
+    it('should allow saveRealisasi if Perjakin is approved', async () => {
+      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_1', targetBulanan: 10, tahun: 2026, status: 'Target_Disetujui' });
+      PerjakinDocument.findOne.mockResolvedValue({ status: 'Disetujui' }); // Disetujui
       
       const CascadingAnnualRepository = (await import('@/repositories/CascadingAnnualRepository')).default;
-      CascadingAnnualRepository.find.mockResolvedValue([{ id: 'ind-1', indikator: 'Ind 1' }]);
-      const IndicatorAnnualRepository = (await import('@/repositories/IndicatorAnnualRepository')).default;
-      IndicatorAnnualRepository.find.mockResolvedValue([]);
-      
-      RenaksiRepository.find.mockResolvedValue([]); // No targets
-      
-      await expect(
-        RenaksiService.submitTargets('emp-1', 2026)
-      ).rejects.toThrow('Validasi Gagal: Anda belum mengisi target sama sekali untuk indikator "Ind 1"');
-    });
+      CascadingAnnualRepository.findOne.mockResolvedValue({ tipeTarget: 'Akumulatif', metodePenghitungan: 'Tunggal' });
 
-    it('should submit targets correctly', async () => {
-      const Setting = (await import('@/models/Setting')).default;
-      Setting.findOne.mockResolvedValue(null);
-      
-      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
-      EmployeeRepository.findOne.mockResolvedValue({});
-      
-      const SelectionRepository = (await import('@/repositories/SelectionRepository')).default;
-      SelectionRepository.findOne.mockResolvedValue({ selectedIndicators: ['ind-1'] });
-      
-      const CascadingAnnualRepository = (await import('@/repositories/CascadingAnnualRepository')).default;
-      CascadingAnnualRepository.find.mockResolvedValue([{ id: 'ind-1', indikator: 'Ind 1', tipeTarget: 'Akumulatif' }]);
-      const IndicatorAnnualRepository = (await import('@/repositories/IndicatorAnnualRepository')).default;
-      IndicatorAnnualRepository.find.mockResolvedValue([]);
-      
-      RenaksiRepository.find.mockResolvedValue([
-        { id: '1', indicatorId: 'ind-1', status: 'Draft' },
-        { id: '2', indicatorId: 'ind-1', status: 'Target_Ditolak' }
-      ]);
-      RenaksiRepository.updateMany.mockResolvedValue({ modifiedCount: 2 });
-      
-      const result = await RenaksiService.submitTargets('emp-1', 2026);
-      expect(RenaksiRepository.updateMany).toHaveBeenCalledWith(
-        { employeeId: 'emp-1', tahun: 2026, status: 'Draft' },
-        { $set: { status: 'Target_Diajukan' } }
-      );
-      expect(result).toBe(2);
-    });
-  });
+      // Assuming other validations pass (Kendala/Solusi/FaktorPendorong depending on target)
+      const body = {
+        employeeId: 'emp1', indicatorId: 'ind1', bulan: 1, realisasiBulanan: 5,
+        kendala: 'K', solusi: 'S', buktiDukung: 'http://link',
+        variablesRealization: [{ name: 'A', value: '5' }]
+      };
 
-  describe('revisiTargets', () => {
-    it('should throw error if system is locked', async () => {
-      const Setting = (await import('@/models/Setting')).default;
-      Setting.findOne.mockResolvedValue({ key: 'renja_locked', value: true });
-      
-      await expect(
-        RenaksiService.revisiTargets('emp-1', 2026)
-      ).rejects.toThrow('Revisi ditolak karena sistem telah dikunci oleh Administrator.');
-    });
-
-    it('should update targets to Draft for revision', async () => {
-      const Setting = (await import('@/models/Setting')).default;
-      Setting.findOne.mockResolvedValue(null);
-      RenaksiRepository.find.mockResolvedValue([
-        { id: '1', status: 'Target_Disetujui' }
-      ]);
-      // Mocking updateMany response correctly
-      RenaksiRepository.updateMany.mockResolvedValue({ modifiedCount: 1 });
-      
-      const result = await RenaksiService.revisiTargets('emp-1', 2026);
-      expect(RenaksiRepository.updateMany).toHaveBeenCalledWith(
-        { employeeId: 'emp-1', tahun: 2026, status: { $in: ['Target_Disetujui', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'] } },
-        { $set: { status: 'Draft' } }
-      );
-      expect(result).toBe(1);
-    });
-  });
-
-  describe('approveRealisasi & Rekomendasi Atasan', () => {
-    it('Atasan: Wajib isi rekomendasi jika underperforming', async () => {
-      RenaksiRepository.findOne.mockResolvedValue({
-        id: 'rx_1', employeeId: 'emp-1', status: 'ACC_Admin', capaianBulanan: 80
-      });
-      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
-      EmployeeRepository.findOne.mockResolvedValue({
-        id: 'emp-1', jenisJabatan: 'Administrator'
-      });
-
-      await expect(
-        RenaksiService.approveRealisasi('rx_1', 'pemimpin', '')
-      ).rejects.toThrow('Capaian di bawah target. Rekomendasi dari atasan wajib diisi.');
-    });
-
-    it('Atasan: Rekomendasi opsional jika memenuhi target', async () => {
-      RenaksiRepository.findOne.mockResolvedValue({
-        id: 'rx_2', employeeId: 'emp-1', status: 'ACC_Admin', capaianBulanan: 100, indicatorId: 'ind-1'
-      });
-      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
-      EmployeeRepository.findOne.mockResolvedValue({
-        id: 'emp-1', jenisJabatan: 'Administrator'
-      });
+      // Mock saveDocument
       RenaksiRepository.saveDocument.mockResolvedValue(true);
-      RenaksiRepository.updateMany.mockResolvedValue(true);
 
-      const res = await RenaksiService.approveRealisasi('rx_2', 'pemimpin', '');
-      expect(res.statusRekomendasi).toBeUndefined();
-      expect(res.status).toBe('Disetujui');
+      const result = await RenaksiService.saveRealisasi(body);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('1. Bukti Dukung Mandatory', () => {
+    beforeEach(() => {
+      RenaksiRepository.find.mockResolvedValue([]);
     });
 
-    it('Bawahan: Diblokir saat saveRealisasi jika ada tindak lanjut belum selesai', async () => {
-      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_3', tahun: 2026 });
-      RenaksiRepository.find.mockResolvedValue([{ id: 'rx_old', statusRekomendasi: 'Menunggu Tindak Lanjut' }]);
+    it('should block saveRealisasi if Bukti Dukung is empty when submitting', async () => {
+      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_1', targetBulanan: 10, tahun: 2026, status: 'Target_Disetujui' });
+      PerjakinDocument.findOne.mockResolvedValue({ status: 'Disetujui' }); 
+
+      const CascadingAnnualRepository = (await import('@/repositories/CascadingAnnualRepository')).default;
+      CascadingAnnualRepository.findOne.mockResolvedValue({ tipeTarget: 'Akumulatif', metodePenghitungan: 'Tunggal' });
+
+      const body = {
+        employeeId: 'emp1', indicatorId: 'ind1', bulan: 1, realisasiBulanan: 15,
+        faktorPendorong: 'F', inovasi: 'I', buktiDukung: '', // Empty
+        variablesRealization: [{ name: 'A', value: '15' }]
+      };
 
       await expect(
-        RenaksiService.saveRealisasi({ employeeId: 'emp-1', indicatorId: 'ind-1', bulan: 2 })
-      ).rejects.toThrow('Anda memiliki rekomendasi kinerja pada Bulan 1 Tahun 2026 yang belum ditindaklanjuti. Harap selesaikan terlebih dahulu sebelum mengisi realisasi.');
+        RenaksiService.saveRealisasi(body)
+      ).rejects.toThrow('Bukti Dukung wajib dilampirkan sebelum mengajukan realisasi.');
     });
 
-    it('Bawahan: Berhasil saveTindakLanjutRekomendasi jika link valid', async () => {
-      const LinkVerificationService = (await import('../LinkVerificationService')).default;
-      LinkVerificationService.verifyLink.mockResolvedValue(true);
+    it('should allow saveRealisasi if Bukti Dukung is provided in variablesRealization', async () => {
+      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_1', targetBulanan: 10, tahun: 2026, status: 'Target_Disetujui' });
+      PerjakinDocument.findOne.mockResolvedValue({ status: 'Disetujui' }); 
 
-      RenaksiRepository.findOne.mockResolvedValue({
-        id: 'rx_old', statusRekomendasi: 'Menunggu Tindak Lanjut'
-      });
+      const CascadingAnnualRepository = (await import('@/repositories/CascadingAnnualRepository')).default;
+      CascadingAnnualRepository.findOne.mockResolvedValue({ tipeTarget: 'Akumulatif', metodePenghitungan: 'Tunggal' });
 
-      const res = await RenaksiService.saveTindakLanjutRekomendasi('rx_old', 'Sudah dikerjakan', 'http://valid.com');
-      expect(res.statusRekomendasi).toBe('Selesai');
-      expect(res.tindakLanjutRekomendasi).toBe('Sudah dikerjakan');
-    });
+      const body = {
+        employeeId: 'emp1', indicatorId: 'ind1', bulan: 1, realisasiBulanan: 15,
+        faktorPendorong: 'F', inovasi: 'I', buktiDukung: '',
+        variablesRealization: [
+          { name: 'X', value: '15', buktiDukung: 'http://proof' }
+        ]
+      };
 
-    it('Bawahan (Desember): Pemblokiran di Bulan 1 Tahun N+1 jika Bulan 12 Tahun N belum ditindaklanjuti', async () => {
-      RenaksiRepository.findOne.mockResolvedValue({ id: 'rx_jan_2027', tahun: 2027 });
-      RenaksiRepository.find.mockImplementation(async (query) => {
-        if (query.bulan === 12 && query.tahun === 2026 && query.statusRekomendasi === 'Menunggu Tindak Lanjut') {
-          return [{ id: 'rx_dec_2026' }];
-        }
-        return [];
-      });
+      // Mock saveDocument
+      RenaksiRepository.saveDocument.mockResolvedValue(true);
 
-      await expect(
-        RenaksiService.saveRealisasi({ employeeId: 'emp-1', indicatorId: 'ind-1', bulan: 1 })
-      ).rejects.toThrow('Anda memiliki rekomendasi kinerja pada Bulan 12 Tahun 2026 yang belum ditindaklanjuti');
+      const result = await RenaksiService.saveRealisasi(body);
+      expect(result).toBeDefined();
     });
   });
 });

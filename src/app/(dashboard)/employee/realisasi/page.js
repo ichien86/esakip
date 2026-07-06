@@ -15,6 +15,7 @@ export default function EmployeeRealisasiPage() {
   const [renaksiRecords, setRenaksiRecords] = useState([]);
   const [monthlySchedules, setMonthlySchedules] = useState([]);
   const [sharedGlobalVariables, setSharedGlobalVariables] = useState({});
+  const [perjakinStatus, setPerjakinStatus] = useState(null);
 
   // Selections
   const [selectedId, setSelectedId] = useState('');
@@ -85,6 +86,13 @@ export default function EmployeeRealisasiPage() {
       if (schedRes.ok) {
         setMonthlySchedules(await schedRes.json());
       }
+
+      // 5. Fetch perjakin document status
+      const perjakinRes = await fetchWithAuth(`/api/perjakin?employeeId=${currentUser.id}&tahun=${activeYear}`);
+      if (perjakinRes.ok) {
+        const pData = await perjakinRes.json();
+        setPerjakinStatus(pData.data?.docStatus || 'Draft');
+      }
     } catch (e) {
       console.error('Failed to load realisasi data sources', e);
     } finally {
@@ -142,11 +150,15 @@ export default function EmployeeRealisasiPage() {
   }
 
   let isTargetLocked = false;
+  let isPerjakinLocked = false;
   if (activeRecord) {
     const unapprovedTargetStatuses = ['Draft', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'];
     if (unapprovedTargetStatuses.includes(activeRecord.status)) {
       isTargetLocked = true;
       lockReason = `Target renaksi belum disetujui (Status: ${activeRecord.status.replace(/_/g, ' ')}). Anda belum bisa mengisi realisasi.`;
+    } else if (perjakinStatus !== 'Disetujui') {
+      isPerjakinLocked = true;
+      lockReason = `Dokumen Perjanjian Kinerja (Perjakin) Anda belum berstatus Disetujui (Status Saat Ini: ${perjakinStatus?.replace(/_/g, ' ') || 'Belum Dibuat'}).`;
     }
   }
 
@@ -154,7 +166,8 @@ export default function EmployeeRealisasiPage() {
     activeRecord.status !== 'ACC_Admin' && 
     activeRecord.status !== 'Disetujui' && 
     !isMonthLocked &&
-    !isTargetLocked;
+    !isTargetLocked &&
+    !isPerjakinLocked;
 
   useEffect(() => {
     const timer = setTimeout(() => {

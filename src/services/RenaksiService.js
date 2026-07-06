@@ -36,6 +36,17 @@ class RenaksiService {
     const emp = await Employee.findOne({ id: employeeId });
     const userBidang = emp ? (emp.bidangs[0] || '') : '';
 
+    const existingRealisasi = await RenaksiRepository.find({
+      employeeId,
+      tahun: yearNum,
+      realisasiBulanan: { $ne: null }
+    });
+    if (existingRealisasi && existingRealisasi.length > 0) {
+      const err = new Error('Tidak dapat mengubah target karena Anda sudah mulai mengisi laporan realisasi.');
+      err.status = 403;
+      throw err;
+    }
+
     const indicatorsToVerify = [...new Set(targets.map(t => t.indicatorId))];
 
     for (let indicatorId of indicatorsToVerify) {
@@ -174,8 +185,17 @@ class RenaksiService {
       throw err;
     }
 
-    // Set semua yang Target_Disetujui menjadi Draft
     const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+    const existingRealisasi = await RenaksiRepository.find({
+      employeeId,
+      tahun: yearNum,
+      realisasiBulanan: { $ne: null }
+    });
+    if (existingRealisasi && existingRealisasi.length > 0) {
+      const err = new Error('Revisi target tidak diizinkan karena Anda sudah mulai mengisi laporan realisasi.');
+      err.status = 403;
+      throw err;
+    }
     const result = await RenaksiRepository.updateMany(
       { employeeId, tahun: yearNum, status: { $in: ['Target_Disetujui', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'] } },
       { $set: { status: 'Draft' } }
@@ -261,6 +281,15 @@ class RenaksiService {
     if (!record) {
       const err = new Error('Target bulanan belum diset');
       err.status = 404;
+      throw err;
+    }
+
+    // Pengecekan status Perjakin
+    const PerjakinDocument = (await import('@/models/PerjakinDocument')).default;
+    const perjakinDoc = await PerjakinDocument.findOne({ employeeId, tahun: record.tahun || 2026 });
+    if (!perjakinDoc || perjakinDoc.status !== 'Disetujui') {
+      const err = new Error('Pengisian realisasi belum dapat dilakukan karena Dokumen Perjanjian Kinerja (Perjakin) Anda belum disetujui.');
+      err.status = 403;
       throw err;
     }
 
@@ -415,6 +444,17 @@ class RenaksiService {
 
     record.buktiDukung = buktiDukung || '';
     record.status = status || 'Diajukan';
+
+    if (record.status === 'Diajukan') {
+      const isBuktiDukungEmpty = (!record.buktiDukung || record.buktiDukung.trim() === '');
+      const isVariablesEmpty = !record.variablesRealization || record.variablesRealization.length === 0 || !record.variablesRealization.some(v => v.buktiDukung && v.buktiDukung.trim() !== '');
+      
+      if (isBuktiDukungEmpty && isVariablesEmpty) {
+        const err = new Error('Bukti Dukung wajib dilampirkan sebelum mengajukan realisasi.');
+        err.status = 400;
+        throw err;
+      }
+    }
 
     if (isUnderperforming) {
       record.kendala = kendala;
