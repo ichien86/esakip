@@ -78,6 +78,10 @@ export async function GET(request, { params }) {
           r.targetBulanan !== undefined &&
           r.targetBulanan > 0
       );
+      
+      const unapprovedStatuses = ['Draft', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'];
+      const isTargetApproved = hasTarget && records.every(r => !unapprovedStatuses.includes(r.status));
+
       const realisasiRecs = records.filter(
         (r) => r.realisasiBulanan !== null && r.realisasiBulanan !== undefined
       );
@@ -138,6 +142,7 @@ export async function GET(request, { params }) {
 
       result[indId] = {
         hasTarget,
+        isTargetApproved,
         hasRealisasi,
         bulanTarget: records.filter((r) => r.targetBulanan > 0).length,
         bulanRealisasi: realisasiRecs.length,

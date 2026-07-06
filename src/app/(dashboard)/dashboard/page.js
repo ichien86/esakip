@@ -481,6 +481,10 @@ export default function DashboardPage() {
                                 <span style={{ fontSize: '11.5px', color: 'var(--success)' }}>
                                   <i className="fa-solid fa-circle-check"></i> Selesai
                                 </span>
+                              ) : ['Draft', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak', 'Belum Diisi'].includes(target.status) ? (
+                                <span style={{ fontSize: '11px', color: 'var(--warning)', fontStyle: 'italic' }}>
+                                  <i className="fa-solid fa-clock"></i> Tunggu ACC
+                                </span>
                               ) : (
                                 <a 
                                   href="/employee/realisasi" 
@@ -537,14 +541,18 @@ export default function DashboardPage() {
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 {['Disetujui', 'ACC_Admin'].includes(target.status) ? (
-                                  <span style={{ fontSize: '12px', color: 'var(--success)' }}>
+                                  <span style={{ fontSize: '12px', color: 'var(--success)', fontWeight: 'bold' }}>
                                     <i className="fa-solid fa-circle-check"></i> Selesai
+                                  </span>
+                                ) : ['Draft', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak', 'Belum Diisi'].includes(target.status) ? (
+                                  <span style={{ fontSize: '12px', color: 'var(--warning)', fontStyle: 'italic' }}>
+                                    <i className="fa-solid fa-clock"></i> Tunggu ACC Target
                                   </span>
                                 ) : (
                                   <a 
                                     href="/employee/realisasi" 
                                     className="btn btn-sm btn-orange"
-                                    style={{ padding: '4px 10px', fontSize: '11.5px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                    style={{ padding: '6px 12px', fontSize: '12px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                                   >
                                     <i className="fa-solid fa-pen-to-square"></i>
                                     Isi Realisasi

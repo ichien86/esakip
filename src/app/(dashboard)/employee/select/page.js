@@ -256,7 +256,7 @@ export default function EmployeeIndicatorsPage() {
                                   <i className="fa-solid fa-pen-to-square"></i> Isi Target
                                 </Link>
                               )}
-                              {sum?.hasTarget && !sum?.hasRealisasi && (
+                              {sum?.hasTarget && sum?.isTargetApproved && !sum?.hasRealisasi && (
                                 <Link href="/employee/realisasi" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(59,130,246,0.85)', color: 'white', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none', border: '1px solid rgba(59,130,246,0.5)', transition: 'all 0.2s' }}>
                                   <i className="fa-solid fa-chart-line"></i> Isi Realisasi
                                 </Link>
