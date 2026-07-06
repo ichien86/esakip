@@ -141,10 +141,20 @@ export default function EmployeeRealisasiPage() {
     lockReason = 'Bulan ini telah dikunci oleh Administrator.';
   }
 
+  let isTargetLocked = false;
+  if (activeRecord) {
+    const unapprovedTargetStatuses = ['Draft', 'Target_Diajukan', 'Target_ACC_Admin', 'Target_Ditolak'];
+    if (unapprovedTargetStatuses.includes(activeRecord.status)) {
+      isTargetLocked = true;
+      lockReason = `Target renaksi belum disetujui (Status: ${activeRecord.status.replace(/_/g, ' ')}). Anda belum bisa mengisi realisasi.`;
+    }
+  }
+
   const isRealisasiEditable = activeRecord && 
     activeRecord.status !== 'ACC_Admin' && 
     activeRecord.status !== 'Disetujui' && 
-    !isMonthLocked;
+    !isMonthLocked &&
+    !isTargetLocked;
 
   useEffect(() => {
     const timer = setTimeout(() => {
