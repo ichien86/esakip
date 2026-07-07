@@ -541,7 +541,7 @@ export default function OperationalDefinitionPage() {
                   <button type="submit" className="btn btn-orange" disabled={isSaving} style={{ flex:1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     {isSaving ? (
                       <>
-                        <img src="/logo.png" alt="Loading" className="fa-spin" style={{ width: '16px', height: '16px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                        <img src="/logo.png" alt="Loading" className="fa-spin" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
                         Menyimpan...
                       </>
                     ) : (
