@@ -541,7 +541,8 @@ export default function OperationalDefinitionPage() {
                   <button type="submit" className="btn btn-orange" disabled={isSaving} style={{ flex:1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     {isSaving ? (
                       <>
-                        <img src="/logo.png" alt="Loading" className="fa-spin" style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                        <img src="/logo.png" alt="Loading" style={{ width: '14px', height: '14px', objectFit: 'contain', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                        <style dangerouslySetInnerHTML={{__html:`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}} />
                         Menyimpan...
                       </>
                     ) : (

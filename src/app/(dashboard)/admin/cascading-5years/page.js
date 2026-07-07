@@ -3042,13 +3042,16 @@ export default function AdminCascading5YearsPage() {
                   return (
                     <tr key={idx}>
                       {/* Tujuan */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.tujuan && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.tujuan.text}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.tujuan.text}</div>
                             {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator} ({ind.satuan})</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2px' }}><tbody><tr style={{ background: '#f5f5f5' }}>
+                                  {['2025','2026','2027','2028','2029','2030'].map(y => (<td key={y} style={{ border: '1px solid #ccc', padding: '1px 3px', textAlign: 'center', fontSize: '8px' }}><div style={{ color: '#777' }}>{y}</div><div style={{ fontWeight: 'bold' }}>{ind[`target${y}`] || '0'}</div></td>))}
+                                </tr></tbody></table>
                               </div>
                             ))}
                           </>
@@ -3056,13 +3059,16 @@ export default function AdminCascading5YearsPage() {
                       </td>
 
                       {/* Sasaran */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran.text}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran.text}</div>
                             {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator} ({ind.satuan})</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2px' }}><tbody><tr style={{ background: '#f5f5f5' }}>
+                                  {['2025','2026','2027','2028','2029','2030'].map(y => (<td key={y} style={{ border: '1px solid #ccc', padding: '1px 3px', textAlign: 'center', fontSize: '8px' }}><div style={{ color: '#777' }}>{y}</div><div style={{ fontWeight: 'bold' }}>{ind[`target${y}`] || '0'}</div></td>))}
+                                </tr></tbody></table>
                               </div>
                             ))}
                           </>
@@ -3070,14 +3076,17 @@ export default function AdminCascading5YearsPage() {
                       </td>
 
                       {/* Program */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran_program && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran_program.text}</div>
-                            <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_program.nomenklatur}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran_program.text}</div>
+                            <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#555' }}>{path.sasaran_program.nomenklatur}</div>
                             {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator} ({ind.satuan})</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2px' }}><tbody><tr style={{ background: '#f5f5f5' }}>
+                                  {['2025','2026','2027','2028','2029','2030'].map(y => (<td key={y} style={{ border: '1px solid #ccc', padding: '1px 3px', textAlign: 'center', fontSize: '8px' }}><div style={{ color: '#777' }}>{y}</div><div style={{ fontWeight: 'bold' }}>{ind[`target${y}`] || '0'}</div></td>))}
+                                </tr></tbody></table>
                               </div>
                             ))}
                           </>
@@ -3085,14 +3094,17 @@ export default function AdminCascading5YearsPage() {
                       </td>
 
                       {/* Kegiatan */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran_kegiatan && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran_kegiatan.text}</div>
-                            <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_kegiatan.nomenklatur}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran_kegiatan.text}</div>
+                            <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#555' }}>{path.sasaran_kegiatan.nomenklatur}</div>
                             {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator} ({ind.satuan})</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2px' }}><tbody><tr style={{ background: '#f5f5f5' }}>
+                                  {['2025','2026','2027','2028','2029','2030'].map(y => (<td key={y} style={{ border: '1px solid #ccc', padding: '1px 3px', textAlign: 'center', fontSize: '8px' }}><div style={{ color: '#777' }}>{y}</div><div style={{ fontWeight: 'bold' }}>{ind[`target${y}`] || '0'}</div></td>))}
+                                </tr></tbody></table>
                               </div>
                             ))}
                           </>
@@ -3100,18 +3112,21 @@ export default function AdminCascading5YearsPage() {
                       </td>
 
                       {/* Subkegiatan */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran_subkegiatan && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran_subkegiatan.text}</div>
-                            <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_subkegiatan.nomenklatur}</div>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran_subkegiatan.text}</div>
+                            <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#555' }}>{path.sasaran_subkegiatan.nomenklatur}</div>
                             {path.sasaran_subkegiatan.indicators && path.sasaran_subkegiatan.indicators.map((ind, i) => (
-                              <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px' }}>
-                                • {ind.indikator} ({ind.target2025} - {ind.target2030} | {ind.satuan} | Tipe: {ind.tipeTarget || 'Kondisi Akhir Naik'})
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator} ({ind.satuan})</div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '2px' }}><tbody><tr style={{ background: '#f5f5f5' }}>
+                                  {['2025','2026','2027','2028','2029','2030'].map(y => (<td key={y} style={{ border: '1px solid #ccc', padding: '1px 3px', textAlign: 'center', fontSize: '8px' }}><div style={{ color: '#777' }}>{y}</div><div style={{ fontWeight: 'bold' }}>{ind[`target${y}`] || '0'}</div></td>))}
+                                </tr></tbody></table>
                               </div>
                             ))}
-                            <div style={{ fontSize: '10px', color: 'green', marginTop: '4px' }}>
-                              Total Anggaran: Rp{parseFloat(path.sasaran_subkegiatan.anggaranAkhir || 0).toLocaleString('id-ID')}
+                            <div style={{ fontSize: '9px', color: 'green', marginTop: '4px' }}>
+                              Anggaran: Rp{parseFloat(path.sasaran_subkegiatan.anggaranAkhir || 0).toLocaleString('id-ID')}
                             </div>
                           </>
                         )}

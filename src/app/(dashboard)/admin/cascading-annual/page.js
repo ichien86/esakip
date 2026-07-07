@@ -1793,123 +1793,71 @@ export default function AdminCascadingAnnualPage() {
                   return (
                     <tr key={idx}>
                       {/* Tujuan */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.tujuan && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.tujuan.text}</div>
-                            {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => {
-                              const mismatch = getIndicatorMismatch(ind, path.tujuan);
-                              return (
-                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                                  {mismatch && (
-                                    <div className="custom-tooltip-wrapper" style={{ cursor: 'help' }}>
-                                      <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }}></i>
-                                      <div className="custom-tooltip-content">
-                                        <strong style={{ color: '#f59e0b', display: 'block', marginBottom: '4px' }}>Detail Perbedaan:</strong>
-                                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
-                                          {mismatch.reasonsList.map((reason, rIdx) => (
-                                            <li key={rIdx} style={{ marginBottom: '2px' }}>{reason}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  )}
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.tujuan.text}</div>
+                            {path.tujuan.indicators && path.tujuan.indicators.map((ind, i) => (
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator}</div>
+                                <div style={{ marginTop: '2px', background: '#eef6ff', border: '1px solid #bfdbfe', borderRadius: '3px', padding: '2px 5px', display: 'inline-block', fontWeight: 'bold' }}>
+                                  Target {tahun}: {ind.target} {ind.satuan}
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </>
                         )}
                       </td>
 
                       {/* Sasaran */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran.text}</div>
-                            {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => {
-                              const mismatch = getIndicatorMismatch(ind, path.sasaran);
-                              return (
-                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                                  {mismatch && (
-                                    <div className="custom-tooltip-wrapper" style={{ cursor: 'help' }}>
-                                      <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }}></i>
-                                      <div className="custom-tooltip-content">
-                                        <strong style={{ color: '#f59e0b', display: 'block', marginBottom: '4px' }}>Detail Perbedaan:</strong>
-                                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
-                                          {mismatch.reasonsList.map((reason, rIdx) => (
-                                            <li key={rIdx} style={{ marginBottom: '2px' }}>{reason}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  )}
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran.text}</div>
+                            {path.sasaran.indicators && path.sasaran.indicators.map((ind, i) => (
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator}</div>
+                                <div style={{ marginTop: '2px', background: '#eef6ff', border: '1px solid #bfdbfe', borderRadius: '3px', padding: '2px 5px', display: 'inline-block', fontWeight: 'bold' }}>
+                                  Target {tahun}: {ind.target} {ind.satuan}
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </>
                         )}
                       </td>
 
                       {/* Program */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran_program && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran_program.text}</div>
-                            <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_program.nomenklatur}</div>
-                            {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => {
-                              const mismatch = getIndicatorMismatch(ind, path.sasaran_program);
-                              return (
-                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                                  {mismatch && (
-                                    <div className="custom-tooltip-wrapper" style={{ cursor: 'help' }}>
-                                      <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }}></i>
-                                      <div className="custom-tooltip-content">
-                                        <strong style={{ color: '#f59e0b', display: 'block', marginBottom: '4px' }}>Detail Perbedaan:</strong>
-                                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
-                                          {mismatch.reasonsList.map((reason, rIdx) => (
-                                            <li key={rIdx} style={{ marginBottom: '2px' }}>{reason}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  )}
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran_program.text}</div>
+                            <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#555' }}>{path.sasaran_program.nomenklatur}</div>
+                            {path.sasaran_program.indicators && path.sasaran_program.indicators.map((ind, i) => (
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator}</div>
+                                <div style={{ marginTop: '2px', background: '#eef6ff', border: '1px solid #bfdbfe', borderRadius: '3px', padding: '2px 5px', display: 'inline-block', fontWeight: 'bold' }}>
+                                  Target {tahun}: {ind.target} {ind.satuan}
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </>
                         )}
                       </td>
 
                       {/* Kegiatan */}
-                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', verticalAlign: 'top' }}>
+                      <td style={{ border: '1px solid black', padding: '6px', fontSize: '10px', verticalAlign: 'top' }}>
                         {path.sasaran_kegiatan && (
                           <>
-                            <div style={{ fontWeight: 'bold' }}>{path.sasaran_kegiatan.text}</div>
-                            <div style={{ fontSize: '10px', fontStyle: 'italic', color: '#555' }}>Nomenklatur: {path.sasaran_kegiatan.nomenklatur}</div>
-                            {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => {
-                              const mismatch = getIndicatorMismatch(ind, path.sasaran_kegiatan);
-                              return (
-                                <div key={i} style={{ fontSize: '10px', color: '#333', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  • {ind.indikator} (Target: {ind.target} {ind.satuan})
-                                  {mismatch && (
-                                    <div className="custom-tooltip-wrapper" style={{ cursor: 'help' }}>
-                                      <i className="fa-solid fa-triangle-exclamation" style={{ color: '#eab308' }}></i>
-                                      <div className="custom-tooltip-content">
-                                        <strong style={{ color: '#f59e0b', display: 'block', marginBottom: '4px' }}>Detail Perbedaan:</strong>
-                                        <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc' }}>
-                                          {mismatch.reasonsList.map((reason, rIdx) => (
-                                            <li key={rIdx} style={{ marginBottom: '2px' }}>{reason}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    </div>
-                                  )}
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{path.sasaran_kegiatan.text}</div>
+                            <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#555' }}>{path.sasaran_kegiatan.nomenklatur}</div>
+                            {path.sasaran_kegiatan.indicators && path.sasaran_kegiatan.indicators.map((ind, i) => (
+                              <div key={i} style={{ fontSize: '9px', color: '#222', marginTop: '4px', borderTop: '1px dashed #ccc', paddingTop: '2px' }}>
+                                <div style={{ fontStyle: 'italic' }}>• {ind.indikator}</div>
+                                <div style={{ marginTop: '2px', background: '#eef6ff', border: '1px solid #bfdbfe', borderRadius: '3px', padding: '2px 5px', display: 'inline-block', fontWeight: 'bold' }}>
+                                  Target {tahun}: {ind.target} {ind.satuan}
                                 </div>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </>
                         )}
                       </td>
