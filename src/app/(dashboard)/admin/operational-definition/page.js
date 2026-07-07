@@ -79,6 +79,7 @@ export default function OperationalDefinitionPage() {
             if (ind.variabelPembilang) all.push(ind.variabelPembilang.trim());
             if (ind.variabelPenyebut) all.push(ind.variabelPenyebut.trim());
           }
+          if (ind.outputVariableAlias) all.push(ind.outputVariableAlias.trim());
         });
       }
     });
