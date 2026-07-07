@@ -34,6 +34,7 @@ const RenaksiSchema = new mongoose.Schema({
   // ===== POLA SNAPSHOT (disalin dari Indikator saat pertama kali diisi) =====
   // Metode yang aktif saat bulan ini diisi (beku setelah simpan pertama)
   snapshotMetode: { type: String, default: null }, // Tunggal, Persentase, Rata-rata, Penjumlahan, Pembobotan
+  snapshotOutputVariableAlias: { type: String, default: null }, // Alias variabel untuk dibagikan secara global
   // Konfigurasi variabel (beku setelah simpan pertama)
   snapshotVariables: [
     {

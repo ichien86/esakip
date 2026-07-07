@@ -62,6 +62,10 @@ class RenaksiService {
       const recordId = `rx_${employeeId}_${item.indicatorId}_${item.bulan}`;
       const targetVal = parseFloat(item.targetBulanan) || 0;
 
+      // Ambil data untuk snapshot metadata
+      const node = await IndicatorAnnualRepository.findOne({ id: item.indicatorId, tahun: yearNum }) || 
+                   await CascadingAnnualRepository.findOne({ id: item.indicatorId, tahun: yearNum });
+
       let record = await RenaksiRepository.findOne({ id: recordId });
       if (record) {
         record.targetBulanan = targetVal;
@@ -76,7 +80,10 @@ class RenaksiService {
           indicatorId: item.indicatorId,
           bulan: parseInt(item.bulan),
           targetBulanan: targetVal,
-          status: 'Draft'
+          status: 'Draft',
+          snapshotMetode: node?.metodePenghitungan || 'Tunggal',
+          snapshotOutputVariableAlias: node?.outputVariableAlias || null,
+          snapshotVariables: node?.variables || []
         });
         await RenaksiRepository.saveDocument(record);
       }
@@ -364,6 +371,7 @@ class RenaksiService {
       const rawMetode = node ? (node.metodePenghitungan || 'Tunggal') : 'Tunggal';
       activeMetode = (rawMetode === 'Jumlah') ? 'Tunggal' : rawMetode;
       record.snapshotMetode = activeMetode;
+      record.snapshotOutputVariableAlias = node ? node.outputVariableAlias : null;
 
       // Salin konfigurasi variabel ke snapshot
       if (node && Array.isArray(node.variables) && node.variables.length > 0) {

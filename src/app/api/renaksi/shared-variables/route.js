@@ -22,6 +22,7 @@ export async function GET(request) {
     const sharedVariables = {};
 
     for (const record of filteredRecords) {
+      // 1. Ekspor variabel input riil (variablesRealization)
       if (record.variablesRealization && Array.isArray(record.variablesRealization)) {
         for (const v of record.variablesRealization) {
           if (v.name && v.value !== '' && v.value !== null) {
@@ -32,6 +33,19 @@ export async function GET(request) {
               indicatorId: record.indicatorId
             });
           }
+        }
+      }
+
+      // 2. Ekspor hasil akhir (realisasiBulanan) jika memiliki Output Variable Alias
+      if (record.snapshotOutputVariableAlias && record.realisasiBulanan !== null && record.realisasiBulanan !== undefined) {
+        const alias = record.snapshotOutputVariableAlias.trim();
+        if (alias) {
+          if (!sharedVariables[alias]) sharedVariables[alias] = [];
+          sharedVariables[alias].push({
+            value: record.realisasiBulanan,
+            buktiDukung: record.buktiDukung || '[]',
+            indicatorId: record.indicatorId
+          });
         }
       }
     }

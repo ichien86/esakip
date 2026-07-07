@@ -25,7 +25,8 @@ const CascadingAnnualSchema = new mongoose.Schema({
   // Operational definition and sub-activity targets
   sasaranSubkegiatan: { type: String, default: '' },
   definisiOperasional: { type: String, default: '' },
-  metodePenghitungan: { type: String, default: 'Jumlah' }, // Jumlah, Persentase, Lainnya
+  outputVariableAlias: { type: String, default: '' },
+  metodePenghitungan: { type: String, default: 'Tunggal' }, // Jumlah, Persentase, Lainnya
   variabelJumlah: { type: String, default: '' },
   variabelPembilang: { type: String, default: '' },
   variabelPenyebut: { type: String, default: '' }

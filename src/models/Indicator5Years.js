@@ -18,6 +18,7 @@ const Indicator5YearsSchema = new mongoose.Schema({
 
   // Definisi operasional
   definisiOperasional: { type: String, default: '' },
+  outputVariableAlias: { type: String, default: '' },
   metodePenghitungan: { type: String, default: 'Tunggal' }, // Tunggal, Persentase, Rata-rata, Penjumlahan, Pembobotan (legacy: Jumlah)
   variabelJumlah: { type: String, default: '' },       // Legacy: Metode Tunggal
   variabelPembilang: { type: String, default: '' },    // Legacy: Metode Persentase

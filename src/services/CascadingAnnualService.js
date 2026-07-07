@@ -125,7 +125,7 @@ class CascadingAnnualService {
       id, level, text, indikator, target, satuan, tipeTarget, parentId, bidangPengampu,
       crossCuttingType, selectedBidang, splitTargets, tahun,
       requesterRole, requesterBidang,
-      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
+      sasaranSubkegiatan, definisiOperasional, outputVariableAlias, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
       masterId, anggaran, anggaranDpa, sasaran, nomenklatur, indicators
     } = body;
 
@@ -192,6 +192,7 @@ class CascadingAnnualService {
       tahun: tahun || 2026,
       sasaranSubkegiatan: sasaranSubkegiatan || '',
       definisiOperasional: definisiOperasional || '',
+      outputVariableAlias: outputVariableAlias || '',
       metodePenghitungan: metodePenghitungan || 'Jumlah',
       variabelJumlah: variabelJumlah || '',
       variabelPembilang: variabelPembilang || '',
@@ -228,10 +229,14 @@ class CascadingAnnualService {
           tahun: yearNum,
           indikator: ind.indikator,
           target: ind.target || '0',
+          targetB10: ind.targetB10 || '0',
+          targetB11: ind.targetB11 || '0',
+          targetB12: ind.targetB12 || '0',
           satuan: ind.satuan || '-',
           tipeTarget: ind.tipeTarget || 'Kondisi Akhir Naik',
           penanggungJawab: ind.penanggungJawab || null,
           definisiOperasional: ind.definisiOperasional || '',
+          outputVariableAlias: ind.outputVariableAlias || '',
           metodePenghitungan: ind.metodePenghitungan || 'Tunggal',
           variabelJumlah: ind.variabelJumlah || '',
           variabelPembilang: ind.variabelPembilang || '',

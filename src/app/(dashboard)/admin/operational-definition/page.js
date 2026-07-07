@@ -35,6 +35,7 @@ export default function OperationalDefinitionPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [definisiOperasional, setDefinisiOperasional] = useState('');
   const [metodePenghitungan, setMetodePenghitungan] = useState('Tunggal');
+  const [outputVariableAlias, setOutputVariableAlias] = useState('');
   const [variables, setVariables] = useState([{ name: '', weight: 100 }]);
   const [activeSuggestionField, setActiveSuggestionField] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,6 +100,7 @@ export default function OperationalDefinitionPage() {
     setSelectedIndicator(ind);
     setSuccess(''); setError('');
     setDefinisiOperasional(ind.definisiOperasional || '');
+    setOutputVariableAlias(ind.outputVariableAlias || '');
     const normM = normalizeMetode(ind.metodePenghitungan);
     setMetodePenghitungan(normM);
     
@@ -177,6 +179,7 @@ export default function OperationalDefinitionPage() {
       variabelJumlah: metodePenghitungan === 'Tunggal' ? (variables[0]?.name || '') : '',
       variabelPembilang: metodePenghitungan === 'Persentase' ? (variables[0]?.name || '') : '',
       variabelPenyebut: metodePenghitungan === 'Persentase' ? (variables[1]?.name || '') : '',
+      outputVariableAlias: outputVariableAlias || '',
       variables: variables.map(v => ({ name: v.name.trim(), weight: parseFloat(v.weight) || 0 }))
     };
 
@@ -431,6 +434,21 @@ export default function OperationalDefinitionPage() {
                     {metodePenghitungan === 'Rata-rata' && 'Realisasi = (V1 + V2 + ... + Vn) / n'}
                     {metodePenghitungan === 'Penjumlahan' && 'Realisasi = V1 + V2 + ... + Vn'}
                     {metodePenghitungan === 'Pembobotan' && 'Realisasi = (V1xW1) + (V2xW2) + ... + (VnxWn)'}
+                  </div>
+                </div>
+
+                <div className="form-group mb-3">
+                  <label style={{ fontSize:'12.5px',fontWeight:600,marginBottom:'6px',display:'block' }}>Alias Variabel Hasil Capaian (Opsional)</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    value={outputVariableAlias} 
+                    onChange={(e) => setOutputVariableAlias(e.target.value)} 
+                    placeholder="Contoh: Variabel X (Biarkan kosong jika hasil akhir tidak ingin diekspor sbg variabel)" 
+                    style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                  />
+                  <div style={{ marginTop:'6px',fontSize:'11px',color:'rgba(255,255,255,0.4)' }}>
+                    Jika diisi, nilai capaian indikator ini dapat ditarik otomatis oleh indikator lain menggunakan nama alias tersebut.
                   </div>
                 </div>
 
