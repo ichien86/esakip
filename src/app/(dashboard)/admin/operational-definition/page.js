@@ -438,16 +438,28 @@ export default function OperationalDefinitionPage() {
                   </div>
                 </div>
 
-                <div className="form-group mb-3">
+                <div className="form-group mb-3" style={{ position: 'relative' }}>
                   <label style={{ fontSize:'12.5px',fontWeight:600,marginBottom:'6px',display:'block' }}>Alias Variabel Hasil Capaian (Opsional)</label>
                   <input 
                     type="text" 
                     className="form-control" 
                     value={outputVariableAlias} 
                     onChange={(e) => setOutputVariableAlias(e.target.value)} 
+                    onFocus={() => setActiveSuggestionField('alias')}
+                    onBlur={() => setTimeout(() => setActiveSuggestionField(null), 200)}
                     placeholder="Contoh: Variabel X (Biarkan kosong jika hasil akhir tidak ingin diekspor sbg variabel)" 
                     style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                    autoComplete="off"
                   />
+                  {activeSuggestionField === 'alias' && getSuggestions(outputVariableAlias).length > 0 && (
+                    <div className="suggestion-dropdown" style={{ top: '65px' }}>
+                      {getSuggestions(outputVariableAlias).map((s, sidx) => (
+                        <div key={sidx} className="suggestion-item" onMouseDown={() => { setOutputVariableAlias(s); setActiveSuggestionField(null); }}>
+                          <i className="fa-solid fa-clock-rotate-left" style={{ marginRight:'8px',opacity:0.5 }}></i>{s}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ marginTop:'6px',fontSize:'11px',color:'rgba(255,255,255,0.4)' }}>
                     Jika diisi, nilai capaian indikator ini dapat ditarik otomatis oleh indikator lain menggunakan nama alias tersebut.
                   </div>
