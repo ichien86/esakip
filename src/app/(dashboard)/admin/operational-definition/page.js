@@ -43,6 +43,7 @@ export default function OperationalDefinitionPage() {
   const [filterStatus, setFilterStatus] = useState('Semua');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const searchInputRef = useRef(null);
 
   const loadNodes = async () => {
@@ -186,6 +187,7 @@ export default function OperationalDefinitionPage() {
 
     const payload = { ...originalNode, indicators: updatedIndicators, requesterRole: activeRole };
 
+    setIsSaving(true);
     try {
       const res = await fetchWithAuth('/api/cascading5years', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -193,13 +195,15 @@ export default function OperationalDefinitionPage() {
       });
       if (res.ok) {
         setSuccess('Definisi operasional indikator berhasil diperbarui.');
-        await loadNodes();
+        // Optimistic UI update to avoid long wait
+        setNodes(prev => prev.map(n => n.id === originalNode.id ? { ...n, indicators: updatedIndicators } : n));
         setTimeout(() => handleCloseModal(), 1200);
       } else {
         const err = await res.json();
         setError(err.error || 'Gagal menyimpan perubahan.');
       }
     } catch (e) { setError('Kesalahan jaringan saat menyimpan.'); }
+    finally { setIsSaving(false); }
   };
 
   const getLevelLabel = (level) => {
@@ -532,9 +536,18 @@ export default function OperationalDefinitionPage() {
                   </div>
 
                 <div style={{ display:'flex',gap:'12px',marginTop:'24px',borderTop:'1px solid var(--glass-border)',paddingTop:'16px' }}>
-                  <button type="button" className="btn btn-secondary" onClick={handleAutoSuggest} style={{ flex:1 }}><i className="fa-solid fa-wand-magic-sparkles"></i> Rekomendasi</button>
-                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal} style={{ flex:0.8 }}>Batal</button>
-                  <button type="submit" className="btn btn-orange" style={{ flex:1.5 }}><i className="fa-solid fa-save"></i> Simpan Parameter</button>
+                  <button type="button" className="btn btn-secondary" onClick={handleAutoSuggest} disabled={isSaving} style={{ flex:1 }}><i className="fa-solid fa-wand-magic-sparkles"></i> Rekomendasi</button>
+                  <button type="button" className="btn btn-secondary" onClick={handleCloseModal} disabled={isSaving} style={{ flex:0.8 }}>Batal</button>
+                  <button type="submit" className="btn btn-orange" disabled={isSaving} style={{ flex:1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                    {isSaving ? (
+                      <>
+                        <img src="/logo.png" alt="Loading" className="fa-spin" style={{ width: '16px', height: '16px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <><i className="fa-solid fa-save"></i> Simpan Parameter</>
+                    )}
+                  </button>
                 </div>
               </form>
             </div>
