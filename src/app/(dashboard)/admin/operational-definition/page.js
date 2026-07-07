@@ -413,7 +413,15 @@ export default function OperationalDefinitionPage() {
 
                 <div className="form-group mb-3">
                   <label style={{ fontSize:'12.5px',fontWeight:600,marginBottom:'6px',display:'block' }}>Metode Penghitungan</label>
-                  <select className="select-sim" value={metodePenghitungan} onChange={(e) => { setMetodePenghitungan(e.target.value); setVariables([{ name:'',weight:1 }]); }}>
+                  <select className="select-sim" value={metodePenghitungan} onChange={(e) => { 
+                    const newMetode = e.target.value;
+                    setMetodePenghitungan(newMetode); 
+                    if (newMetode === 'Persentase') {
+                      setVariables([{ name:'',weight:0 }, { name:'',weight:0 }]);
+                    } else {
+                      setVariables([{ name:'',weight:100 }]);
+                    }
+                  }}>
                     {METODE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                   <div style={{ marginTop:'8px',fontSize:'11px',color:'rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.02)',padding:'6px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)' }}>
