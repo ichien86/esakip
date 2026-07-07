@@ -162,8 +162,8 @@ class Cascading5YearsService {
       target2025, target2026, target2027, target2028, target2029, target2030, targetAkhir,
       anggaran2025, anggaran2026, anggaran2027, anggaran2028, anggaran2029, anggaran2030, anggaranAkhir,
       requesterRole, requesterBidang,
-      sasaranSubkegiatan, definisiOperasional, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
-      sasaran, nomenklatur, indicators, masterId
+      masterId, sasaranSubkegiatan, definisiOperasional, outputVariableAlias, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
+      sasaran, nomenklatur, indicators
     } = body;
 
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
