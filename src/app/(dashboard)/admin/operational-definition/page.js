@@ -350,9 +350,10 @@ export default function OperationalDefinitionPage() {
                       <h4 style={{ fontSize:'14px',fontWeight:600,color: 'var(--text-primary)',lineHeight:'1.4' }}>{ind.indikator}</h4>
                       {ind.definisiOperasional && (
                         <div 
-                          style={{ fontSize:'12px',color:'rgba(255,255,255,0.4)',marginTop:'8px',display:'-webkit-box',WebkitLineClamp:'2',WebkitBoxOrient:'vertical',overflow:'hidden' }}
-                          dangerouslySetInnerHTML={{ __html: ind.definisiOperasional }}
-                        />
+                          style={{ fontSize:'12px',color:'var(--text-muted)',marginTop:'8px',display:'-webkit-box',WebkitLineClamp:'3',WebkitBoxOrient:'vertical',overflow:'hidden',lineHeight:'1.5' }}
+                        >
+                          {ind.definisiOperasional.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')}
+                        </div>
                       )}
                     </div>
                     <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)',paddingTop:'10px',marginTop:'14px',fontSize:'11px',color:'var(--text-muted)' }}>
