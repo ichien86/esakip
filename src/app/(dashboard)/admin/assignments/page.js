@@ -79,12 +79,30 @@ export default function AdminAssignmentsPage() {
         });
         setAnnualNodes(filtered);
 
+        const isSubUnitOf = (empBidangs, targetBidang) => {
+          if (!empBidangs) return false;
+          if (empBidangs.includes(targetBidang)) return true;
+          if (targetBidang === 'Sekretariat' && empBidangs.includes('Tata Usaha')) return true;
+          return false;
+        };
+
+        const unitLeaders = allEmployees.filter(e =>
+          e.isActive !== false &&
+          e.roles.includes('pemimpin') &&
+          isSubUnitOf(e.bidangs, activeBidang) &&
+          e.scopeLeader !== 'Badan' &&
+          !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
+          !e.jabatan.toLowerCase().includes('kalaksa')
+        );
+        const autoAssignValues = [...new Set(unitLeaders.map(l => `jabatan:${l.jabatan}`))];
+
         const initialAssignments = {};
         filtered.forEach(n => {
+          const isProgram = ['program', 'sasaran_program'].includes(n.level);
           if (n.indicators && n.indicators.length > 0) {
             n.indicators.forEach(ind => {
               initialAssignments[ind.id] = {
-                penanggungJawab: (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean),
+                penanggungJawab: isProgram ? autoAssignValues : (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean),
                 crossCuttingType: ind.crossCuttingType || 'shared',
                 splitTargets: ind.splitTargets || {}
               };
@@ -277,25 +295,32 @@ export default function AdminAssignmentsPage() {
                                   {/* PIC Assignment */}
                                   <div style={{ width: '360px', fontSize: '12px' }}>
                                     <div style={{ marginBottom: '6px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Penanggung Jawab:</div>
-                                    <Select
-                                      isMulti
-                                      options={picOptions}
-                                      value={picOptions.filter(opt => assign.penanggungJawab.includes(opt.value))}
-                                      onChange={(sel) => handleAssignmentChangeMulti(ind.id, sel ? sel.map(o => o.value) : [])}
-                                      placeholder="Pilih PIC..."
-                                      isDisabled={systemSettings?.renja_locked}
-                                      noOptionsMessage={() => "Tidak ada data"}
-                                      styles={{
-                                        control: (b) => ({ ...b, background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(255,255,255,0.3)', minHeight: '34px' }),
-                                        menu: (b) => ({ ...b, background: 'rgba(255,255,255,0.97)', zIndex: 100, border: '1px solid rgba(0,0,0,0.1)' }),
-                                        option: (b, s) => ({ ...b, background: s.isFocused ? 'rgba(255,107,0,0.12)' : 'transparent', color: '#1f2937', cursor: 'pointer' }),
-                                        multiValue: (b) => ({ ...b, background: 'rgba(255,107,0,0.15)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px' }),
-                                        multiValueLabel: (b) => ({ ...b, color: '#d97706', fontWeight: 'bold', fontSize: '11px' }),
-                                        multiValueRemove: (b) => ({ ...b, color: '#d97706', ':hover': { backgroundColor: 'rgba(255,107,0,0.8)', color: 'white' } }),
-                                        input: (b) => ({ ...b, color: '#1f2937' }),
-                                        placeholder: (b) => ({ ...b, color: '#6b7280' })
-                                      }}
-                                    />
+                                    {['program', 'sasaran_program'].includes(node.level) ? (
+                                      <div style={{ background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)', padding: '8px 12px', borderRadius: '6px', color: 'var(--primary-orange)' }}>
+                                        <i className="fa-solid fa-user-tie mr-2"></i>
+                                        <span style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(assign.penanggungJawab.join(','))}</span>
+                                      </div>
+                                    ) : (
+                                      <Select
+                                        isMulti
+                                        options={picOptions}
+                                        value={picOptions.filter(opt => assign.penanggungJawab.includes(opt.value))}
+                                        onChange={(sel) => handleAssignmentChangeMulti(ind.id, sel ? sel.map(o => o.value) : [])}
+                                        placeholder="Pilih PIC..."
+                                        isDisabled={systemSettings?.renja_locked}
+                                        noOptionsMessage={() => "Tidak ada data"}
+                                        styles={{
+                                          control: (b) => ({ ...b, background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(255,255,255,0.3)', minHeight: '34px' }),
+                                          menu: (b) => ({ ...b, background: 'rgba(255,255,255,0.97)', zIndex: 100, border: '1px solid rgba(0,0,0,0.1)' }),
+                                          option: (b, s) => ({ ...b, background: s.isFocused ? 'rgba(255,107,0,0.12)' : 'transparent', color: '#1f2937', cursor: 'pointer' }),
+                                          multiValue: (b) => ({ ...b, background: 'rgba(255,107,0,0.15)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px' }),
+                                          multiValueLabel: (b) => ({ ...b, color: '#d97706', fontWeight: 'bold', fontSize: '11px' }),
+                                          multiValueRemove: (b) => ({ ...b, color: '#d97706', ':hover': { backgroundColor: 'rgba(255,107,0,0.8)', color: 'white' } }),
+                                          input: (b) => ({ ...b, color: '#1f2937' }),
+                                          placeholder: (b) => ({ ...b, color: '#6b7280' })
+                                        }}
+                                      />
+                                    )}
 
                                     {/* Crosscutting options when multiple PIC */}
                                     {isMultiPIC && (
