@@ -403,7 +403,7 @@ export default function OperationalDefinitionPage() {
 
               <form onSubmit={handleSave}>
                 <div style={{ background:'rgba(15,23,42,0.4)',padding:'14px',borderRadius:'8px',border:'1px solid var(--glass-border)',marginBottom:'20px' }}>
-                  <span style={{ fontSize:'9px',color:'var(--primary-orange)',fontWeight:700,textTransform:'uppercase' }}>{getLevelLabel(selectedIndicator.nodeLevel)}</span>
+                  <span style={{ fontSize:'9px',color:'var(--primary-orange)',fontWeight:700,textTransform:'uppercase' }}>Indikator</span>
                   <h4 style={{ fontSize:'14px',fontWeight:600,margin:'4px 0 8px 0',color: 'var(--text-primary)' }}>{selectedIndicator.indikator}</h4>
                   <div style={{ fontSize:'11.5px',color:'var(--text-muted)',borderTop:'1px solid rgba(255,255,255,0.05)',paddingTop:'8px' }}><strong>{getLevelLabel(selectedIndicator.nodeLevel)}:</strong> {selectedIndicator.nodeText}</div>
                   <div style={{ fontSize:'11.5px',color:'var(--text-muted)',marginTop:'4px' }}><strong>Satuan:</strong> {selectedIndicator.satuan} | <strong>Tipe Target:</strong> {selectedIndicator.tipeTarget}</div>
