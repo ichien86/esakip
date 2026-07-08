@@ -1866,7 +1866,7 @@ export default function AdminCascading5YearsPage() {
                       </div>
                       
                       {actualNomenklatur && (
-                        <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+                        <div style={{ fontSize: '9px', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
                           {actualNomenklatur}
                         </div>
                       )}
@@ -2403,20 +2403,20 @@ export default function AdminCascading5YearsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Sasaran (Kinerja)</span>
-                        <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                           {selectedMaster.kinerja || selectedMaster.nama}
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                           <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Indikator</span>
-                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                             {selectedMaster.indikator || '-'}
                           </div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                           <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Satuan</span>
-                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                             {selectedMaster.satuan || '-'}
                           </div>
                         </div>
@@ -3284,7 +3284,7 @@ export default function AdminCascading5YearsPage() {
                       <div style={{ overflowX: 'auto', maxHeight: '200px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'left' }}>
                           <thead>
-                            <tr style={{ background: 'rgba(255,255,255,0.04)', color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <tr style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                               <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Baris</th>
                               <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Level</th>
                               <th style={{ padding: '8px 12px', fontWeight: 'semibold' }}>Nomenklatur</th>
@@ -3351,7 +3351,7 @@ export default function AdminCascading5YearsPage() {
             <p style={{ fontSize: '14px', lineHeight: '1.4', marginBottom: '20px', color: 'var(--text-muted)' }}>
               {alertMessage}
             </p>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
               Modal ini akan menutup otomatis dalam 10 detik...
             </div>
             <button type="button" className="btn btn-orange" style={{ width: '100%' }} onClick={() => setAlertMessage('')}>

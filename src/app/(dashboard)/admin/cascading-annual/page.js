@@ -1200,7 +1200,7 @@ export default function AdminCascadingAnnualPage() {
                       </div>
                       
                       {actualNomenklatur && (
-                        <div style={{ fontSize: '9px', fontStyle: 'italic', color: '#94a3b8', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+                        <div style={{ fontSize: '9px', fontStyle: 'italic', color: 'var(--text-muted)', marginTop: '4px', wordBreak: 'break-word', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '4px' }}>
                           {actualNomenklatur}
                         </div>
                       )}
@@ -1504,20 +1504,20 @@ export default function AdminCascadingAnnualPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Sasaran (Kinerja)</span>
-                        <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                           {selectedMaster.kinerja || selectedMaster.nama}
                         </div>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                           <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Indikator</span>
-                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                             {selectedMaster.indikator || '-'}
                           </div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)' }}>
                           <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.5px' }}>Satuan</span>
-                          <div style={{ fontSize: '13px', color: '#f3f4f6', fontWeight: 600, marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>
                             {selectedMaster.satuan || '-'}
                           </div>
                         </div>
@@ -2020,7 +2020,7 @@ export default function AdminCascadingAnnualPage() {
             <p style={{ fontSize: '14px', lineHeight: '1.4', marginBottom: '20px', color: 'var(--text-muted)' }}>
               {alertMessage}
             </p>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
               Modal ini akan menutup otomatis dalam 10 detik...
             </div>
             <button type="button" className="btn btn-orange" style={{ width: '100%' }} onClick={() => setAlertMessage('')}>

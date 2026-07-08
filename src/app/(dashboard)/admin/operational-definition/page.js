@@ -456,7 +456,7 @@ export default function OperationalDefinitionPage() {
                   }}>
                     {METODE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
-                  <div style={{ marginTop:'8px',fontSize:'11px',color:'rgba(255,255,255,0.4)',background:'rgba(255,255,255,0.02)',padding:'6px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)' }}>
+                  <div style={{ marginTop:'8px',fontSize:'11px',color: 'var(--text-muted)',background:'rgba(255,255,255,0.02)',padding:'6px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)' }}>
                     {metodePenghitungan === 'Tunggal' && 'Realisasi = V'}
                     {metodePenghitungan === 'Persentase' && 'Realisasi = (Pembilang / Penyebut) x 100'}
                     {metodePenghitungan === 'Rata-rata' && 'Realisasi = (V1 + V2 + ... + Vn) / n'}
@@ -493,13 +493,13 @@ export default function OperationalDefinitionPage() {
                       <div>
                         <strong style={{ color:'#eab308' }}>Alias sudah dipakai oleh {duplicateAliasInfo.length} indikator lain:</strong>
                         {duplicateAliasInfo.map((d, di) => (
-                          <div key={di} style={{ color:'rgba(255,255,255,0.6)',marginTop:'2px' }}>• {d.indikator} <span style={{ opacity:0.5 }}>({d.nodeText})</span></div>
+                          <div key={di} style={{ color: 'var(--text-muted)',marginTop:'2px' }}>• {d.indikator} <span style={{ opacity:0.5 }}>({d.nodeText})</span></div>
                         ))}
-                        <div style={{ marginTop:'4px',color:'rgba(255,255,255,0.5)' }}>Nilai semua indikator dengan alias ini akan <strong style={{ color:'#eab308' }}>dijumlahkan otomatis</strong> saat digunakan oleh indikator lain.</div>
+                        <div style={{ marginTop:'4px',color: 'var(--text-muted)' }}>Nilai semua indikator dengan alias ini akan <strong style={{ color:'#eab308' }}>dijumlahkan otomatis</strong> saat digunakan oleh indikator lain.</div>
                       </div>
                     </div>
                   )}
-                  <div style={{ marginTop:'6px',fontSize:'11px',color:'rgba(255,255,255,0.4)' }}>
+                  <div style={{ marginTop:'6px',fontSize:'11px',color: 'var(--text-muted)' }}>
                     Jika diisi, nilai capaian indikator ini dapat ditarik otomatis oleh indikator lain menggunakan nama alias tersebut.
                   </div>
                 </div>
@@ -562,7 +562,7 @@ export default function OperationalDefinitionPage() {
                     )}
 
                     {variables.some(v => v.name.trim()) && ['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan) && (
-                      <div style={{ marginTop:'12px',fontSize:'11px',color:'rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.02)',padding:'8px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)',fontFamily:'monospace',wordBreak:'break-word' }}>
+                      <div style={{ marginTop:'12px',fontSize:'11px',color: 'var(--text-muted)',background:'rgba(255,255,255,0.02)',padding:'8px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)',fontFamily:'monospace',wordBreak:'break-word' }}>
                         {metodePenghitungan === 'Rata-rata' && <>Realisasi = ({variables.filter(v => v.name.trim()).map(v => v.name.trim()).join(' + ')}) / {variables.filter(v => v.name.trim()).length}</>}
                         {metodePenghitungan === 'Penjumlahan' && <>Realisasi = {variables.filter(v => v.name.trim()).map(v => v.name.trim()).join(' + ')}</>}
                         {metodePenghitungan === 'Pembobotan' && <>Realisasi = {variables.filter(v => v.name.trim()).map(v => `(${v.name.trim()} x ${v.weight})`).join(' + ')} / 100</>}

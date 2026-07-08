@@ -162,7 +162,7 @@ export default function SupervisorApprovalsPage() {
         </div>
       ) : pendingDocs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1' }}>
-          <i className="fa-solid fa-mug-hot" style={{ fontSize: '48px', color: '#94a3b8', marginBottom: '16px' }}></i>
+          <i className="fa-solid fa-mug-hot" style={{ fontSize: '48px', color: 'var(--text-muted)', marginBottom: '16px' }}></i>
           <h5 style={{ fontWeight: 'bold', color: '#475569' }}>Semua Selesai!</h5>
           <p className="text-muted">Tidak ada dokumen yang perlu persetujuan Anda saat ini.</p>
         </div>
