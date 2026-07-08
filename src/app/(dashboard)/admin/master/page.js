@@ -748,7 +748,7 @@ export default function AdminMasterPage() {
                       style={{ cursor: 'pointer', padding: '12px 20px', background: 'rgba(255, 255, 255, 0.02)' }}
                       onClick={() => toggleNode(u.name)}
                     >
-                      <h3 style={{ margin: 0, fontSize: '14px', color: '#f3f4f6', display: 'flex', alignItems: 'center', gap: '10px', lineHeight: '1.4' }}>
+                      <h3 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', lineHeight: '1.4' }}>
                         <i className={`fa-solid ${isUExpanded ? 'fa-folder-open' : 'fa-folder'} text-orange`} style={{ fontSize: '14px' }}></i>
                         {u.name}
                       </h3>
@@ -770,7 +770,7 @@ export default function AdminMasterPage() {
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <i className={`fa-solid ${isPExpanded ? 'fa-folder-open' : 'fa-folder'} text-warning`} style={{ fontSize: '13px' }}></i>
-                                  <span style={{ fontWeight: 600, color: '#e5e7eb', fontSize: '13px' }}>
+                                  <span style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
                                     <span style={{ color: 'var(--primary-orange)', fontFamily: 'monospace', marginRight: '6px' }}>{p.id}</span>
                                     {p.nama}
                                   </span>
@@ -793,7 +793,7 @@ export default function AdminMasterPage() {
                                         >
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <i className="fa-solid fa-list-check text-info" style={{ fontSize: '12px' }}></i>
-                                            <span style={{ color: '#d1d5db', fontSize: '12.5px' }}>
+                                            <span style={{ color: 'var(--text-secondary, var(--text-muted))', fontSize: '12.5px' }}>
                                               <span style={{ color: '#3B82F6', fontFamily: 'monospace', marginRight: '6px' }}>{k.id}</span>
                                               {k.nama}
                                             </span>
@@ -823,11 +823,11 @@ export default function AdminMasterPage() {
                                                 <div style={{ flexGrow: 1 }}>
                                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                                     <span style={{ fontSize: '10.5px', background: 'rgba(255,107,0,0.12)', color: 'var(--primary-orange)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace', fontWeight: 'bold' }}>{s.id}</span>
-                                                    <strong style={{ color: '#f3f4f6', fontSize: '12.5px' }}>{s.nama}</strong>
+                                                    <strong style={{ color: 'var(--text-primary)', fontSize: '12.5px' }}>{s.nama}</strong>
                                                   </div>
                                                   <div style={{ display: 'flex', gap: '16px', marginTop: '6px', fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                                                    <span>Indikator Default: <strong style={{ color: '#9ca3af' }}>{s.indikator}</strong></span>
-                                                    <span>Satuan: <strong style={{ color: '#9ca3af' }}>{s.satuan}</strong></span>
+                                                    <span>Indikator Default: <strong style={{ color: 'var(--text-muted)' }}>{s.indikator}</strong></span>
+                                                    <span>Satuan: <strong style={{ color: 'var(--text-muted)' }}>{s.satuan}</strong></span>
                                                   </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -907,7 +907,7 @@ export default function AdminMasterPage() {
 
               <div>
                 <span className="text-muted" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nomenklatur Subkegiatan</span>
-                <div style={{ fontSize: '14px', color: '#f3f4f6', fontWeight: 600, marginTop: '3px', lineHeight: '1.4' }}>
+                <div style={{ fontSize: '14px', color: 'var(--text-primary)', fontWeight: 600, marginTop: '3px', lineHeight: '1.4' }}>
                   {selectedSubkegDetails.nama}
                 </div>
               </div>
