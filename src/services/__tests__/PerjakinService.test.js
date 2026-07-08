@@ -53,30 +53,40 @@ describe('PerjakinService', () => {
 
 
   describe('changeDocumentStatus', () => {
-    it('should throw error if subordinates targets are not fully approved when submitting', async () => {
+    it('should throw error if subordinates perjakin are not fully approved when submitting', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
       EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
-      const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
-      RenaksiRepository.find = vi.fn().mockResolvedValue([
-        { id: 'rx-1', status: 'Target_Diajukan' } // Unapproved target
+      const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([
+        { employeeId: 'sub-1', status: 'Menunggu Persetujuan Atasan' } // Unapproved document
       ]);
 
       await expect(
         PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor')
-      ).rejects.toThrow('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu seluruh indikator/target kinerja staf di unit kerja Anda.');
+      ).rejects.toThrow('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
     });
 
-    it('should succeed if all subordinates targets are approved', async () => {
+    it('should throw error if subordinate has no perjakin document', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
       EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
-      const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
-      RenaksiRepository.find = vi.fn().mockResolvedValue([
-        { id: 'rx-1', status: 'Target_Disetujui' } // Approved target
-      ]);
+      const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([]); // No document
+
+      await expect(
+        PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor')
+      ).rejects.toThrow('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
+    });
+
+    it('should succeed if all subordinates perjakin are approved', async () => {
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
       const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([
+        { employeeId: 'sub-1', status: 'Disetujui' } // Approved document
+      ]);
       PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);
       PerjakinDocumentRepository.create = vi.fn().mockResolvedValue({ id: 'doc-1' });
 

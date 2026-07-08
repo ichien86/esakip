@@ -176,16 +176,19 @@ class PerjakinService {
     }
 
     if (newStatus === 'Menunggu Persetujuan Atasan') {
-      const subordinates = await EmployeeRepository.find({ parentId: employeeId });
+      const subordinates = await EmployeeRepository.find({ parentId: employeeId, isActive: true });
       if (subordinates && subordinates.length > 0) {
         const subIds = subordinates.map(s => s.id);
-        const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
-        const subTargets = await RenaksiRepository.find({ employeeId: { $in: subIds }, tahun: Number(tahun) });
+        const subDocs = await PerjakinDocumentRepository.find({ employeeId: { $in: subIds }, tahun: Number(tahun) });
         
-        const unapprovedTargets = subTargets.filter(r => r.status !== 'Target_Disetujui' && r.status !== 'ACC_Admin');
+        // Cek jika ada bawahan yang belum punya dokumen atau dokumen belum "Disetujui"
+        const hasUnapproved = subordinates.some(sub => {
+          const doc = subDocs.find(d => d.employeeId === sub.id);
+          return !doc || doc.status !== 'Disetujui';
+        });
         
-        if (unapprovedTargets.length > 0) {
-          const err = new Error('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu seluruh indikator/target kinerja staf di unit kerja Anda.');
+        if (hasUnapproved) {
+          const err = new Error('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
           err.status = 403;
           throw err;
         }
