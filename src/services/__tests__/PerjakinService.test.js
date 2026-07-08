@@ -50,4 +50,50 @@ describe('PerjakinService', () => {
       expect(true).toBe(true);
     });
   });
+
+
+  describe('changeDocumentStatus', () => {
+    it('should throw error if subordinates targets are not fully approved when submitting', async () => {
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
+
+      const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+      RenaksiRepository.find = vi.fn().mockResolvedValue([
+        { id: 'rx-1', status: 'Target_Diajukan' } // Unapproved target
+      ]);
+
+      await expect(
+        PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor')
+      ).rejects.toThrow('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu seluruh indikator/target kinerja staf di unit kerja Anda.');
+    });
+
+    it('should succeed if all subordinates targets are approved', async () => {
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
+
+      const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+      RenaksiRepository.find = vi.fn().mockResolvedValue([
+        { id: 'rx-1', status: 'Target_Disetujui' } // Approved target
+      ]);
+
+      const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);
+      PerjakinDocumentRepository.create = vi.fn().mockResolvedValue({ id: 'doc-1' });
+
+      const result = await PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor');
+      expect(result).toBeDefined();
+    });
+
+    it('should succeed if employee has no subordinates', async () => {
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.find = vi.fn().mockResolvedValue([]); // No subordinates
+
+      const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);
+      PerjakinDocumentRepository.create = vi.fn().mockResolvedValue({ id: 'doc-1' });
+
+      const result = await PerjakinService.changeDocumentStatus('staff-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Staff');
+      expect(result).toBeDefined();
+    });
+  });
 });

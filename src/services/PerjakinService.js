@@ -175,6 +175,23 @@ class PerjakinService {
       throw new Error('Data tidak lengkap untuk mengubah status');
     }
 
+    if (newStatus === 'Menunggu Persetujuan Atasan') {
+      const subordinates = await EmployeeRepository.find({ parentId: employeeId });
+      if (subordinates && subordinates.length > 0) {
+        const subIds = subordinates.map(s => s.id);
+        const RenaksiRepository = (await import('@/repositories/RenaksiRepository')).default;
+        const subTargets = await RenaksiRepository.find({ employeeId: { $in: subIds }, tahun: Number(tahun) });
+        
+        const unapprovedTargets = subTargets.filter(r => r.status !== 'Target_Disetujui' && r.status !== 'ACC_Admin');
+        
+        if (unapprovedTargets.length > 0) {
+          const err = new Error('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu seluruh indikator/target kinerja staf di unit kerja Anda.');
+          err.status = 403;
+          throw err;
+        }
+      }
+    }
+
     let document = await PerjakinDocumentRepository.findOne({ employeeId, tahun: Number(tahun) });
     
     const historyEntry = {
