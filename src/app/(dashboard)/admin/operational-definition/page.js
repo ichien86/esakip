@@ -87,13 +87,19 @@ export default function OperationalDefinitionPage() {
     return [...new Set(all)].filter(Boolean);
   }, [nodes]);
 
+  // Kembalikan semua variabel saat fokus (inputVal kosong/pendek = tampilkan semua),
+  // filter berdasarkan kata kunci saat ada input
   const getSuggestions = (inputVal) => {
-    if (!inputVal || inputVal.trim().length < 2) return [];
-    const terms = inputVal.toLowerCase().split(/\s+/).filter(Boolean);
+    const trimmed = (inputVal || '').trim();
+    if (!trimmed) {
+      // Tampilkan semua variabel (maks 8) saat kolom baru difokus
+      return uniqueVariables.slice(0, 8);
+    }
+    const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
     return uniqueVariables.filter(v => {
-      if (v.toLowerCase() === inputVal.trim().toLowerCase()) return false;
+      if (v.toLowerCase() === trimmed.toLowerCase()) return false; // sembunyikan exact match
       return terms.every(t => v.toLowerCase().includes(t));
-    }).slice(0, 5);
+    }).slice(0, 8);
   };
 
   // Deteksi alias duplikat: cari indikator lain (bukan yang sedang diedit) yang pakai alias sama
@@ -467,7 +473,7 @@ export default function OperationalDefinitionPage() {
                     value={outputVariableAlias} 
                     onChange={(e) => setOutputVariableAlias(e.target.value)} 
                     onFocus={() => setActiveSuggestionField('alias')}
-                    onBlur={() => setTimeout(() => setActiveSuggestionField(null), 200)}
+                    onBlur={() => setTimeout(() => setActiveSuggestionField(null), 300)}
                     placeholder="Contoh: Variabel X (Biarkan kosong jika hasil akhir tidak ingin diekspor sbg variabel)" 
                     style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
                     autoComplete="off"
@@ -524,7 +530,7 @@ export default function OperationalDefinitionPage() {
                         if (metodePenghitungan === 'Persentase' && idx === 1) placeholderText = 'Variabel Penyebut (Denominator)';
                         return (
                           <div key={idx} className={`var-row ${metodePenghitungan === 'Pembobotan' ? 'var-row-3' : 'var-row-2'}`} style={{ position: 'relative' }}>
-                            <input type="text" className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.name} onChange={(e) => updateVariableName(idx, e.target.value)} onFocus={() => setActiveSuggestionField(`var_${idx}`)} onBlur={() => setTimeout(() => setActiveSuggestionField(null), 200)} placeholder={placeholderText} required autoComplete="off" />
+                            <input type="text" className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.name} onChange={(e) => updateVariableName(idx, e.target.value)} onFocus={() => setActiveSuggestionField(`var_${idx}`)} onBlur={() => setTimeout(() => setActiveSuggestionField(null), 300)} placeholder={placeholderText} required autoComplete="off" />
                             {activeSuggestionField === `var_${idx}` && getSuggestions(v.name).length > 0 && (
                               <div className="suggestion-dropdown" style={{ top: '100%' }}>
                                 {getSuggestions(v.name).map((s, sidx) => <div key={sidx} className="suggestion-item" onMouseDown={() => { updateVariableName(idx, s); setActiveSuggestionField(null); }}><i className="fa-solid fa-clock-rotate-left" style={{ marginRight:'8px',opacity:0.5 }}></i>{s}</div>)}
