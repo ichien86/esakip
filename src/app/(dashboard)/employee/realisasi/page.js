@@ -35,6 +35,7 @@ export default function EmployeeRealisasiPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
+  const [aliasWarnings, setAliasWarnings] = useState([]); // notifikasi alias duplikat
 
   const loadData = useCallback(async () => {
     if (!currentUser) return;
@@ -212,6 +213,7 @@ export default function EmployeeRealisasiPage() {
         }
 
         // Assistant Pre-fill logic (Variabel Konstan & Shared Variables)
+        const newAliasWarnings = [];
         varsToSet = templateVars.map(vTemplate => {
           let prefilledValue = '';
           let prefilledBuktiDukung = [{ name: '', url: '', verifyStatus: null, checking: false }];
@@ -247,16 +249,31 @@ export default function EmployeeRealisasiPage() {
           }
 
           // 2. Jika tidak ketemu, cari di GLOBAL SHARED VARIABLES (Lintas Pegawai di bulan yang sama)
-          // TAPI HANYA dari indikator yang BERBEDA. (Jika indikatornya sama, itu artinya crosscutting dan datanya harus milik masing-masing)
+          // TAPI HANYA dari indikator yang BERBEDA.
           if (!found && Array.isArray(sharedGlobalVariables[vTemplate.name])) {
             const validGlobalVars = sharedGlobalVariables[vTemplate.name].filter(gv => gv.indicatorId !== selectedId);
             if (validGlobalVars.length > 0) {
-              const globalVar = validGlobalVars[validGlobalVars.length - 1]; // ambil yang paling akhir (asumsi terbaru)
-              prefilledValue = formatNumberForDisplay(globalVar.value);
-              prefilledIsConstant = false;
-              const parsed = parseBuktiDukung(globalVar.buktiDukung || '');
-              if (parsed.length > 0) {
-                prefilledBuktiDukung = parsed.map(f => ({ ...f, verifyStatus: null, checking: false }));
+              if (validGlobalVars.length > 1) {
+                // DUPLIKASI ALIAS: jumlahkan semua nilainya
+                const total = validGlobalVars.reduce((sum, gv) => sum + (parseFloat(gv.value) || 0), 0);
+                prefilledValue = formatNumberForDisplay(total);
+                prefilledIsConstant = false;
+                // Catat peringatan untuk ditampilkan ke user
+                newAliasWarnings.push({
+                  varName: vTemplate.name,
+                  count: validGlobalVars.length,
+                  values: validGlobalVars.map(gv => gv.value),
+                  total
+                });
+              } else {
+                // Hanya satu sumber, ambil langsung
+                const globalVar = validGlobalVars[0];
+                prefilledValue = formatNumberForDisplay(globalVar.value);
+                prefilledIsConstant = false;
+                const parsed = parseBuktiDukung(globalVar.buktiDukung || '');
+                if (parsed.length > 0) {
+                  prefilledBuktiDukung = parsed.map(f => ({ ...f, verifyStatus: null, checking: false }));
+                }
               }
               found = true;
             }
@@ -282,6 +299,8 @@ export default function EmployeeRealisasiPage() {
         });
       }
       setVariablesRealizationVals(varsToSet);
+      if (newAliasWarnings.length > 0) setAliasWarnings(newAliasWarnings);
+      else setAliasWarnings([]);
     }, 0);
     return () => clearTimeout(timer);
   }, [selectedId, selectedBulan, renaksiRecords, activeRecord, activeNode]);
@@ -739,6 +758,16 @@ export default function EmployeeRealisasiPage() {
                     <div style={{ fontSize:'12px',color:'var(--danger)' }}>Variabel belum dikonfigurasi. Hubungi Admin.</div>
                   ) : (
                     <div style={{ display:'flex',flexDirection:'column',gap:'20px' }}>
+                      {/* Notifikasi Alias Duplikat */}
+                      {aliasWarnings.length > 0 && aliasWarnings.map((warn, wi) => (
+                        <div key={wi} style={{ background:'rgba(234,179,8,0.1)',border:'1px solid rgba(234,179,8,0.35)',borderRadius:'8px',padding:'12px 16px',display:'flex',gap:'12px',alignItems:'flex-start' }}>
+                          <i className="fa-solid fa-triangle-exclamation" style={{ color:'#eab308',marginTop:'2px',flexShrink:0 }}></i>
+                          <div style={{ fontSize:'12px',lineHeight:'1.6' }}>
+                            <strong style={{ color:'#eab308' }}>Duplikasi Alias Variabel: &ldquo;{warn.varName}&rdquo;</strong><br/>
+                            Ditemukan <strong>{warn.count} indikator</strong> dengan alias yang sama. Nilai masing-masing ({warn.values.map(v => v?.toLocaleString('id-ID')).join(' + ')}) <strong>telah dijumlahkan otomatis menjadi {warn.total?.toLocaleString('id-ID')}</strong>. Anda tetap bisa mengubah angka ini secara manual jika diperlukan.
+                          </div>
+                        </div>
+                      ))}
                       {variablesRealizationVals.map((vr, varIdx) => {
                         const effectiveMetode = (activeRecord && activeRecord.snapshotMetode) || activeNode?.metodePenghitungan || 'Tunggal';
                         const nm = (effectiveMetode === 'Jumlah') ? 'Tunggal' : effectiveMetode;

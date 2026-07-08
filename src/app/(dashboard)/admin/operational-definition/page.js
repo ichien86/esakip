@@ -96,6 +96,23 @@ export default function OperationalDefinitionPage() {
     }).slice(0, 5);
   };
 
+  // Deteksi alias duplikat: cari indikator lain (bukan yang sedang diedit) yang pakai alias sama
+  const duplicateAliasInfo = useMemo(() => {
+    const trimmed = (outputVariableAlias || '').trim().toLowerCase();
+    if (!trimmed || !selectedIndicator) return null;
+    const duplicates = [];
+    nodes.forEach(node => {
+      if (!node.indicators) return;
+      node.indicators.forEach((ind, idx) => {
+        if (node.id === selectedIndicator.nodeId && idx === selectedIndicator.indicatorIndex) return; // skip diri sendiri
+        if ((ind.outputVariableAlias || '').trim().toLowerCase() === trimmed) {
+          duplicates.push({ indikator: ind.indikator, nodeText: node.text, nodeLevel: node.level });
+        }
+      });
+    });
+    return duplicates.length > 0 ? duplicates : null;
+  }, [outputVariableAlias, nodes, selectedIndicator]);
+
   const normalizeMetode = (m) => (m === 'Jumlah' ? 'Tunggal' : (m || 'Tunggal'));
 
   const handleSelectIndicator = (ind) => {
@@ -462,6 +479,18 @@ export default function OperationalDefinitionPage() {
                           <i className="fa-solid fa-clock-rotate-left" style={{ marginRight:'8px',opacity:0.5 }}></i>{s}
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {duplicateAliasInfo && (
+                    <div style={{ marginTop:'8px',background:'rgba(234,179,8,0.1)',border:'1px solid rgba(234,179,8,0.35)',borderRadius:'6px',padding:'10px 12px',fontSize:'11px',lineHeight:'1.6',display:'flex',gap:'10px',alignItems:'flex-start' }}>
+                      <i className="fa-solid fa-triangle-exclamation" style={{ color:'#eab308',marginTop:'2px',flexShrink:0 }}></i>
+                      <div>
+                        <strong style={{ color:'#eab308' }}>Alias sudah dipakai oleh {duplicateAliasInfo.length} indikator lain:</strong>
+                        {duplicateAliasInfo.map((d, di) => (
+                          <div key={di} style={{ color:'rgba(255,255,255,0.6)',marginTop:'2px' }}>• {d.indikator} <span style={{ opacity:0.5 }}>({d.nodeText})</span></div>
+                        ))}
+                        <div style={{ marginTop:'4px',color:'rgba(255,255,255,0.5)' }}>Nilai semua indikator dengan alias ini akan <strong style={{ color:'#eab308' }}>dijumlahkan otomatis</strong> saat digunakan oleh indikator lain.</div>
+                      </div>
                     </div>
                   )}
                   <div style={{ marginTop:'6px',fontSize:'11px',color:'rgba(255,255,255,0.4)' }}>
