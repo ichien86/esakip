@@ -97,7 +97,6 @@ export default function OperationalDefinitionPage() {
     }
     const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
     return uniqueVariables.filter(v => {
-      if (v.toLowerCase() === trimmed.toLowerCase()) return false; // sembunyikan exact match
       return terms.every(t => v.toLowerCase().includes(t));
     }).slice(0, 8);
   };
@@ -473,7 +472,7 @@ export default function OperationalDefinitionPage() {
                     value={outputVariableAlias} 
                     onChange={(e) => setOutputVariableAlias(e.target.value)} 
                     onFocus={() => setActiveSuggestionField('alias')}
-                    onBlur={() => setTimeout(() => setActiveSuggestionField(null), 300)}
+                    onBlur={() => setTimeout(() => setActiveSuggestionField(prev => prev === 'alias' ? null : prev), 300)}
                     placeholder="Contoh: Variabel X (Biarkan kosong jika hasil akhir tidak ingin diekspor sbg variabel)" 
                     style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
                     autoComplete="off"
@@ -530,7 +529,7 @@ export default function OperationalDefinitionPage() {
                         if (metodePenghitungan === 'Persentase' && idx === 1) placeholderText = 'Variabel Penyebut (Denominator)';
                         return (
                           <div key={idx} className={`var-row ${metodePenghitungan === 'Pembobotan' ? 'var-row-3' : 'var-row-2'}`} style={{ position: 'relative' }}>
-                            <input type="text" className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.name} onChange={(e) => updateVariableName(idx, e.target.value)} onFocus={() => setActiveSuggestionField(`var_${idx}`)} onBlur={() => setTimeout(() => setActiveSuggestionField(null), 300)} placeholder={placeholderText} required autoComplete="off" />
+                            <input type="text" className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.name} onChange={(e) => updateVariableName(idx, e.target.value)} onFocus={() => setActiveSuggestionField(`var_${idx}`)} onBlur={() => setTimeout(() => setActiveSuggestionField(prev => prev === `var_${idx}` ? null : prev), 300)} placeholder={placeholderText} required autoComplete="off" />
                             {activeSuggestionField === `var_${idx}` && getSuggestions(v.name).length > 0 && (
                               <div className="suggestion-dropdown" style={{ top: '100%' }}>
                                 {getSuggestions(v.name).map((s, sidx) => <div key={sidx} className="suggestion-item" onMouseDown={() => { updateVariableName(idx, s); setActiveSuggestionField(null); }}><i className="fa-solid fa-clock-rotate-left" style={{ marginRight:'8px',opacity:0.5 }}></i>{s}</div>)}
