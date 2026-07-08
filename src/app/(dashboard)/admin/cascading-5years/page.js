@@ -1986,16 +1986,9 @@ export default function AdminCascading5YearsPage() {
         <button 
           className="btn btn-secondary" 
           style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)' }}
-          onClick={handlePrintTree}
-        >
-          <i className="fa-solid fa-print"></i> Cetak Pohon Kinerja
-        </button>
-        <button 
-          className="btn btn-secondary" 
-          style={{ width: 'auto', display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.08)' }}
           onClick={handlePrintOrgChart}
         >
-          <i className="fa-solid fa-sitemap"></i> Cetak Bagan Pohon
+          <i className="fa-solid fa-sitemap"></i> Cetak Pohon Kinerja
         </button>
         <button 
           className="btn btn-secondary" 
@@ -2441,24 +2434,8 @@ export default function AdminCascading5YearsPage() {
                 </div>
               )}
 
-              {/* Multi Bidang Pengampu */}
-              {['tujuan', 'sasaran_strategis'].includes(level) ? (
-                <div className="form-group mb-3">
-                  <label>Bidang Pengampu</label>
-                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px' }}>
-                    <i className="fa-solid fa-circle-info mr-2"></i>
-                    Otomatis dikelola oleh Pimpinan / Eselon II
-                  </div>
-                </div>
-              ) : ['sasaran_program', 'sasaran_kegiatan'].includes(level) ? (
-                <div className="form-group mb-3">
-                  <label>Bidang Pengampu</label>
-                  <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px' }}>
-                    <i className="fa-solid fa-diagram-project mr-2"></i>
-                    Otomatis dikalkulasi (gabungan) berdasarkan Subkegiatan / Aktivitas di bawahnya.
-                  </div>
-                </div>
-              ) : level === 'sasaran_subkegiatan' ? (
+              {/* Multi Bidang Pengampu - Hanya tampil untuk Subkegiatan atau Aktivitas */}
+              {level === 'sasaran_subkegiatan' ? (
                 <div className="form-group mb-3">
                   <label>Pengaturan Aktivitas & Pengampu</label>
                   <div style={{ background: 'rgba(15,23,42,0.4)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
