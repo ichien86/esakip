@@ -318,10 +318,21 @@ export default function EmployeeRealisasiPage() {
 
       } else if (normalizedMetode === 'Persentase') {
         if (variablesRealizationVals.length >= 2) {
-          const p = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
-          const y = parseFloat(parseToStandardNumber(variablesRealizationVals[1].value));
-          if (!isNaN(p) && !isNaN(y) && y !== 0) {
-            setRealisasiValue(formatNumberForDisplay(parseFloat(((p / y) * 100).toFixed(2))));
+          let sumP = 0; let sumY = 0; let valid = true;
+          const nodeVars = activeNode?.variables || [];
+          
+          variablesRealizationVals.forEach((vr, i) => {
+            const vType = nodeVars[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+            const val = parseFloat(parseToStandardNumber(vr.value));
+            if (isNaN(val)) valid = false;
+            else {
+              if (vType === 'pembilang') sumP += val;
+              else if (vType === 'penyebut') sumY += val;
+            }
+          });
+          
+          if (valid && sumY !== 0) {
+            setRealisasiValue(formatNumberForDisplay(parseFloat(((sumP / sumY) * 100).toFixed(2))));
           } else { setRealisasiValue(''); }
         }
 
@@ -501,8 +512,10 @@ export default function EmployeeRealisasiPage() {
         if (isNaN(val)) {
           setError(`Nilai variabel "${v.name}" wajib diisi angka valid.`); return;
         }
-        if (normalizedMetode === 'Persentase' && i === 1 && val === 0) {
-          setError('Variabel penyebut tidak boleh bernilai 0.'); return;
+        if (normalizedMetode === 'Persentase') {
+          const nodeVars = activeNode?.variables || [];
+          const vType = nodeVars[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+          // Validasi penyebut total 0 dilakukan setelah loop
         }
         
         // Validasi bukti dukung per variabel
@@ -513,9 +526,20 @@ export default function EmployeeRealisasiPage() {
       }
 
       if (normalizedMetode === 'Persentase') {
-        const p = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
-        const y = parseFloat(parseToStandardNumber(variablesRealizationVals[1].value));
-        realisasi = parseFloat(((p / y) * 100).toFixed(2));
+        let sumP = 0; let sumY = 0;
+        const nodeVars = activeNode?.variables || [];
+        variablesRealizationVals.forEach((vr, i) => {
+          const vType = nodeVars[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+          const val = parseFloat(parseToStandardNumber(vr.value));
+          if (!isNaN(val)) {
+            if (vType === 'pembilang') sumP += val;
+            else if (vType === 'penyebut') sumY += val;
+          }
+        });
+        if (sumY === 0) {
+          setError('Total nilai dari variabel penyebut tidak boleh 0.'); return;
+        }
+        realisasi = parseFloat(((sumP / sumY) * 100).toFixed(2));
       } else if (normalizedMetode === 'Tunggal') {
         realisasi = parseFloat(parseToStandardNumber(variablesRealizationVals[0].value));
       }

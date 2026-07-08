@@ -174,6 +174,8 @@ export default function SupervisorEvaluationPage() {
             variabelJumlahVal: r.variabelJumlahVal,
             variabelPembilangVal: r.variabelPembilangVal,
             variabelPenyebutVal: r.variabelPenyebutVal,
+            variablesRealization: r.variablesRealization || [],
+            snapshotVariables: r.snapshotVariables || [],
             catatanAdmin: r.catatanAdmin || '',
             status: r.status,
             isCrossCuttingSelected: r.isCrossCuttingSelected !== false
@@ -765,9 +767,29 @@ export default function SupervisorEvaluationPage() {
                             <div>
                               <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block' }}>Realisasi</span>
                               <strong style={{ fontSize: '13px', color: isUnderperform ? '#EF4444' : '#10B981' }}>
-                                {item.realisasiBulanan}{item.indicatorSatuan === '%' || item.indicatorSatuan?.toLowerCase() === 'persen' ? '%' : ''}
+                                {item.realisasiBulanan} {isPercentage ? '%' : (item.indicatorSatuan === '%' || item.indicatorSatuan?.toLowerCase() === 'persen' ? '%' : '')}
                               </strong>
-                              {isPercentage && <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>({item.variabelPembilangVal || 0} / {item.variabelPenyebutVal || 0})</span>}
+                              {isPercentage && (
+                                <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>
+                                  ({ (() => {
+                                      let displayP = item.variabelPembilangVal || 0;
+                                      let displayY = item.variabelPenyebutVal || 0;
+                                      if (item.variablesRealization && item.variablesRealization.length > 0) {
+                                        let sumP = 0; let sumY = 0;
+                                        item.variablesRealization.forEach((vr, i) => {
+                                          const vType = item.snapshotVariables?.[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+                                          const val = parseFloat(vr.value);
+                                          if (!isNaN(val)) {
+                                            if (vType === 'pembilang') sumP += val;
+                                            else if (vType === 'penyebut') sumY += val;
+                                          }
+                                        });
+                                        displayP = sumP; displayY = sumY;
+                                      }
+                                      return `${displayP} / ${displayY}`;
+                                  })() })
+                                </span>
+                              )}
                               {isJumlah && <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block' }}>(Q: {item.variabelJumlahVal || 0})</span>}
                             </div>
                             <div>
@@ -1059,6 +1081,26 @@ export default function SupervisorEvaluationPage() {
                           {subRenaksis.map(rx => {
                             const node = annualNodes.find(n => n.id === rx.indicatorId);
                             const isUnderperform = rx.realisasiBulanan < rx.targetBulanan;
+                            
+                            const normalizedMetode = node?.metodePenghitungan || 'Jumlah';
+                            const isPercentage = ['Persentase'].includes(normalizedMetode);
+                            
+                            let displayP = rx.variabelPembilangVal || 0;
+                            let displayY = rx.variabelPenyebutVal || 0;
+                            if (rx.variablesRealization && rx.variablesRealization.length > 0) {
+                              let sumP = 0; let sumY = 0;
+                              rx.variablesRealization.forEach((vr, i) => {
+                                const vType = rx.snapshotVariables?.[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+                                const val = parseFloat(vr.value);
+                                if (!isNaN(val)) {
+                                  if (vType === 'pembilang') sumP += val;
+                                  else if (vType === 'penyebut') sumY += val;
+                                }
+                              });
+                              displayP = sumP;
+                              displayY = sumY;
+                            }
+
                             return (
                               <tr key={rx.id}>
                                 <td><strong>Bulan {rx.bulan}</strong></td>
@@ -1068,15 +1110,15 @@ export default function SupervisorEvaluationPage() {
                                 </td>
                                 <td style={{ textAlign: 'center' }}>{rx.targetBulanan}</td>
                                 <td style={{ textAlign: 'center' }}>
-                                  <strong>{rx.realisasiBulanan}{node?.satuan === '%' || node?.satuan?.toLowerCase() === 'persen' ? '%' : ''}</strong>
-                                  {node?.metodePenghitungan === 'Persentase' && (
+                                  <strong>{rx.realisasiBulanan} {isPercentage ? '%' : (node?.satuan || '')}</strong>
+                                  {isPercentage && (
                                     <div className="text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                      ({rx.variabelPembilangVal || 0} / {rx.variabelPenyebutVal || 0})
+                                      ({displayP} / {displayY})
                                     </div>
                                   )}
-                                  {node?.metodePenghitungan === 'Jumlah' && (
+                                  {!isPercentage && normalizedMetode === 'Jumlah' && rx.variabelJumlahVal && (
                                     <div className="text-muted" style={{ fontSize: '10px', marginTop: '2px' }}>
-                                      (Q: {rx.variabelJumlahVal || 0})
+                                      (Q: {rx.variabelJumlahVal})
                                     </div>
                                   )}
                                 </td>

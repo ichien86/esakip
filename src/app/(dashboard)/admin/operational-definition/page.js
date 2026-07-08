@@ -128,20 +128,16 @@ export default function OperationalDefinitionPage() {
     const normM = normalizeMetode(ind.metodePenghitungan);
     setMetodePenghitungan(normM);
     
-    if (Array.isArray(ind.variables) && ind.variables.length > 0) {
-      setVariables(ind.variables.map(v => ({ name: v.name || '', weight: v.weight ?? (normM==='Pembobotan'?0:100) })));
-    } else {
-      if (normM === 'Tunggal') {
-        setVariables([{ name: ind.variabelJumlah || '', weight: 100 }]);
-      } else if (normM === 'Persentase') {
-        setVariables([
-          { name: ind.variabelPembilang || '', weight: 50 },
-          { name: ind.variabelPenyebut || '', weight: 50 }
-        ]);
-      } else {
-        setVariables([{ name: '', weight: 100 }]);
-      }
-    }
+    setVariables(
+        Array.isArray(ind.variables) && ind.variables.length > 0
+          ? ind.variables.map(v => ({ ...v, type: v.type || (normM === 'Persentase' ? 'pembilang' : '') }))
+          : normM === 'Persentase'
+            ? [
+                { name: ind.variabelPembilang || '', weight: 50, type: 'pembilang' },
+                { name: ind.variabelPenyebut || '', weight: 50, type: 'penyebut' }
+              ]
+            : [{ name: ind.variabelJumlah || '', weight: 100, type: '' }]
+    );
     setIsModalOpen(true);
   };
 
@@ -150,10 +146,15 @@ export default function OperationalDefinitionPage() {
     setSuccess(''); setError(''); setActiveSuggestionField(null);
   };
 
-  const addVariable = () => setVariables(prev => [...prev, { name: '', weight: 1 }]);
+  const addVariable = () => setVariables(prev => [...prev, { name: '', weight: 1, type: metodePenghitungan === 'Persentase' ? 'pembilang' : '' }]);
   const removeVariable = (idx) => { if (variables.length <= 1) return; setVariables(prev => prev.filter((_, i) => i !== idx)); };
   const updateVariableName = (idx, name) => setVariables(prev => prev.map((v, i) => i === idx ? { ...v, name } : v));
   const updateVariableWeight = (idx, weight) => { const w = parseFloat(weight); setVariables(prev => prev.map((v, i) => i === idx ? { ...v, weight: isNaN(w) ? 0 : w } : v)); };
+  const updateVariableType = (index, val) => {
+    const newVars = [...variables];
+    newVars[index].type = val;
+    setVariables(newVars);
+  };
 
   const totalWeight = variables.reduce((sum, v) => sum + (parseFloat(v.weight) || 0), 0);
 
@@ -167,12 +168,12 @@ export default function OperationalDefinitionPage() {
       const subject = textVal.replace(/persentase|persen|%/gi, '').trim() || 'Kegiatan';
       const cap = subject.charAt(0).toUpperCase() + subject.slice(1);
       setVariables([
-        { name: `Jumlah ${cap} yang terealisasi/selesai`, weight: 50 },
-        { name: `Jumlah total target ${cap} yang direncanakan`, weight: 50 }
+        { name: `Jumlah ${cap} yang terealisasi/selesai`, weight: 50, type: 'pembilang' },
+        { name: `Jumlah total target ${cap} yang direncanakan`, weight: 50, type: 'penyebut' }
       ]);
     } else {
       setMetodePenghitungan('Tunggal');
-      setVariables([{ name: textVal, weight: 100 }]);
+      setVariables([{ name: textVal, weight: 100, type: '' }]);
     }
     setSuccess('Rekomendasi variabel berhasil dibuat.');
   };
@@ -183,7 +184,16 @@ export default function OperationalDefinitionPage() {
     setSuccess(''); setError('');
 
     if (metodePenghitungan === 'Tunggal' && (!variables[0] || !variables[0].name.trim())) { setError('Nama variabel tunggal wajib diisi.'); return; }
-    if (metodePenghitungan === 'Persentase' && (variables.length < 2 || !variables[0].name.trim() || !variables[1].name.trim())) { setError('Variabel Pembilang dan Penyebut wajib diisi untuk metode Persentase.'); return; }
+
+    
+    if (metodePenghitungan === 'Persentase') {
+      const hasPembilang = variables.some(v => v.type === 'pembilang');
+      const hasPenyebut = variables.some(v => v.type === 'penyebut');
+      if (!hasPembilang || !hasPenyebut) {
+        setError('Untuk metode Persentase, Anda harus memiliki minimal satu Variabel Pembilang dan satu Variabel Penyebut.');
+        return;
+      }
+    }
     
     if (['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan)) {
       if (variables.length === 0 || variables.some(v => !v.name.trim())) { setError('Semua variabel harus memiliki nama.'); return; }
@@ -201,10 +211,10 @@ export default function OperationalDefinitionPage() {
       definisiOperasional,
       metodePenghitungan,
       variabelJumlah: metodePenghitungan === 'Tunggal' ? (variables[0]?.name || '') : '',
-      variabelPembilang: metodePenghitungan === 'Persentase' ? (variables[0]?.name || '') : '',
-      variabelPenyebut: metodePenghitungan === 'Persentase' ? (variables[1]?.name || '') : '',
+      variabelPembilang: metodePenghitungan === 'Persentase' ? (variables.filter(v => v.type === 'pembilang').map(v => v.name).join(', ') || '') : '',
+      variabelPenyebut: metodePenghitungan === 'Persentase' ? (variables.filter(v => v.type === 'penyebut').map(v => v.name).join(', ') || '') : '',
       outputVariableAlias: outputVariableAlias || '',
-      variables: variables.map(v => ({ name: v.name.trim(), weight: parseFloat(v.weight) || 0 }))
+      variables: variables.map(v => ({ name: v.name.trim(), weight: parseFloat(v.weight) || 0, type: v.type || '' }))
     };
 
     const payload = { ...originalNode, indicators: updatedIndicators, requesterRole: activeRole };
@@ -217,7 +227,6 @@ export default function OperationalDefinitionPage() {
       });
       if (res.ok) {
         setSuccess('Definisi operasional indikator berhasil diperbarui.');
-        // Optimistic UI update to avoid long wait
         setNodes(prev => prev.map(n => n.id === originalNode.id ? { ...n, indicators: updatedIndicators } : n));
         setTimeout(() => handleCloseModal(), 1200);
       } else {
@@ -252,7 +261,6 @@ export default function OperationalDefinitionPage() {
   
   rootNodes.forEach(root => traverse(root));
   
-  // Tangkap yatim piatu (orphan nodes) jika ada
   nodes.forEach(node => {
     if (!traversedNodeIds.has(node.id) && node.indicators && Array.isArray(node.indicators)) {
       node.indicators.forEach((ind, index) => {
@@ -289,10 +297,9 @@ export default function OperationalDefinitionPage() {
         if (found) return;
       }
     }
-  }, [nodes]); // Intentionally omitting handleSelectIndicator
+  }, [nodes]);
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
-  const isDynamic = ['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan);
 
   if (!hasAccess) {
     return (
@@ -315,7 +322,7 @@ export default function OperationalDefinitionPage() {
         .suggestion-item { padding:8px 12px;font-size:12px;color:rgba(255,255,255,0.8);cursor:pointer;transition:background 0.15s ease;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
         .suggestion-item:hover { background:rgba(255,107,0,0.15);color:white; }
         .var-row { display:grid;gap:8px;align-items:center; }
-        .var-row-3 { grid-template-columns:1fr 80px 32px; }
+        .var-row-3 { grid-template-columns:1fr 100px 32px; }
         .var-row-2 { grid-template-columns:1fr 32px; }
         .weight-bar { height:4px;background:var(--glass-border);border-radius:2px;margin-top:4px;overflow:hidden; }
         .weight-bar-fill { height:100%;border-radius:2px;transition:width 0.3s ease; }
@@ -394,9 +401,7 @@ export default function OperationalDefinitionPage() {
                             <i className={mc.icon}></i> {mc.label}
                           </span>
                           <span style={{ marginLeft:'6px',color:'rgba(255,255,255,0.3)',fontSize:'10px' }}>
-                            {normM === 'Tunggal' && Array.isArray(ind.variables) && ind.variables[0] && ind.variables[0].name}
-                            {normM === 'Persentase' && Array.isArray(ind.variables) && ind.variables.length >= 2 && `${ind.variables[0].name} / ${ind.variables[1].name}`}
-                            {['Rata-rata','Penjumlahan','Pembobotan'].includes(normM) && Array.isArray(ind.variables) && ind.variables.length > 0 && `${ind.variables.length} variabel`}
+                            {Array.isArray(ind.variables) && ind.variables.length > 0 && `${ind.variables.length} variabel`}
                           </span>
                         </div>
                       )}
@@ -437,7 +442,7 @@ export default function OperationalDefinitionPage() {
                     theme="snow"
                     value={definisiOperasional} 
                     onChange={setDefinisiOperasional} 
-                    placeholder="Jelaskan secara rinci apa arti indikator ini dan bagaimana cakupan pengukurannya... (Bisa copy-paste tabel/gambar/rumus dari Word)"
+                    placeholder="Jelaskan secara rinci apa arti indikator ini dan bagaimana cakupan pengukurannya..."
                     style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', borderRadius: '4px' }}
                   />
                 </div>
@@ -445,17 +450,18 @@ export default function OperationalDefinitionPage() {
                 <div className="form-group mb-3">
                   <label style={{ fontSize:'12.5px',fontWeight:600,marginBottom:'6px',display:'block' }}>Metode Penghitungan</label>
                   <select className="select-sim" value={metodePenghitungan} onChange={(e) => { 
-                    const newMetode = e.target.value;
-                    setMetodePenghitungan(newMetode); 
-                    if (newMetode === 'Persentase') {
-                      setVariables([{ name:'',weight:0 }, { name:'',weight:0 }]);
-                    } else {
-                      setVariables([{ name:'',weight:100 }]);
+                    const val = e.target.value;
+                    setMetodePenghitungan(val); 
+                    if (val === 'Persentase' && variables.length < 2) {
+                      setVariables([{ name: '', weight: 50, type: 'pembilang' }, { name: '', weight: 50, type: 'penyebut' }]);
+                    } else if (val === 'Persentase') {
+                      setVariables(variables.map((v, i) => ({ ...v, type: v.type || (i === 0 ? 'pembilang' : 'penyebut') })));
+                    } else if (val === 'Tunggal') {
+                      setVariables([{ name: '', weight: 100, type: '' }]);
                     }
                   }}>
                     {METODE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
-                  <div style={{ marginTop:'8px',fontSize:'11px',color: 'var(--text-muted)',background:'rgba(255,255,255,0.02)',padding:'6px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)' }}>
                     {metodePenghitungan === 'Tunggal' && 'Realisasi = V'}
                     {metodePenghitungan === 'Persentase' && 'Realisasi = (Pembilang / Penyebut) x 100'}
                     {metodePenghitungan === 'Rata-rata' && 'Realisasi = (V1 + V2 + ... + Vn) / n'}
@@ -503,21 +509,28 @@ export default function OperationalDefinitionPage() {
                   </div>
                 </div>
 
+  const updateVariableType = (index, val) => {
+    const newVars = [...variables];
+    newVars[index].type = val;
+    setVariables(newVars);
+  };
+
                   <div style={{ background:'rgba(255,255,255,0.01)',border:'1px solid var(--glass-border)',padding:'14px',borderRadius:'8px',marginBottom:'16px' }}>
                     <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px' }}>
                       <label style={{ fontSize:'12.5px',fontWeight:600 }}>
                         {metodePenghitungan === 'Tunggal' ? 'Definisi Variabel' : 'Daftar Variabel'} {metodePenghitungan === 'Pembobotan' && <span style={{ color:'var(--text-muted)',fontWeight:400,fontSize:'11px' }}>(Total bobot harus = 100)</span>}
                       </label>
-                      {['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan) && (
+                      {['Rata-rata', 'Penjumlahan', 'Pembobotan', 'Persentase'].includes(metodePenghitungan) && (
                         <button type="button" onClick={addVariable} style={{ background:'rgba(255,107,0,0.12)',border:'1px solid rgba(255,107,0,0.3)',color:'var(--primary-orange)',borderRadius:'6px',padding:'4px 10px',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px' }}>
                           <i className="fa-solid fa-plus"></i> Tambah
                         </button>
                       )}
                     </div>
 
-                    <div className={`var-row ${metodePenghitungan === 'Pembobotan' ? 'var-row-3' : 'var-row-2'}`} style={{ marginBottom:'6px' }}>
+                    <div className={`var-row ${metodePenghitungan === 'Pembobotan' || metodePenghitungan === 'Persentase' ? 'var-row-3' : 'var-row-2'}`} style={{ marginBottom:'6px' }}>
                       <span style={{ fontSize:'10px',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase' }}>Nama Variabel <span style={{ color:'red' }}>*</span></span>
                       {metodePenghitungan === 'Pembobotan' && <span style={{ fontSize:'10px',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase' }}>Bobot (0-100) <span style={{ color:'red' }}>*</span></span>}
+                      {metodePenghitungan === 'Persentase' && <span style={{ fontSize:'10px',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase' }}>Tipe Variabel <span style={{ color:'red' }}>*</span></span>}
                       <span></span>
                     </div>
 
@@ -528,7 +541,7 @@ export default function OperationalDefinitionPage() {
                         if (metodePenghitungan === 'Persentase' && idx === 0) placeholderText = 'Variabel Pembilang (Numerator)';
                         if (metodePenghitungan === 'Persentase' && idx === 1) placeholderText = 'Variabel Penyebut (Denominator)';
                         return (
-                          <div key={idx} className={`var-row ${metodePenghitungan === 'Pembobotan' ? 'var-row-3' : 'var-row-2'}`} style={{ position: 'relative' }}>
+                          <div key={idx} className={`var-row ${metodePenghitungan === 'Pembobotan' || metodePenghitungan === 'Persentase' ? 'var-row-3' : 'var-row-2'}`} style={{ position: 'relative' }}>
                             <input type="text" className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.name} onChange={(e) => updateVariableName(idx, e.target.value)} onFocus={() => setActiveSuggestionField(`var_${idx}`)} onBlur={() => setTimeout(() => setActiveSuggestionField(prev => prev === `var_${idx}` ? null : prev), 300)} placeholder={placeholderText} required autoComplete="off" />
                             {activeSuggestionField === `var_${idx}` && getSuggestions(v.name).length > 0 && (
                               <div className="suggestion-dropdown" style={{ top: '100%' }}>
@@ -538,8 +551,14 @@ export default function OperationalDefinitionPage() {
                             {metodePenghitungan === 'Pembobotan' && (
                               <input type="number" className="form-control" style={{ fontSize:'12px',padding:'7px 10px',textAlign:'center' }} value={v.weight} step="0.1" min="0" max="100" onChange={(e) => updateVariableWeight(idx, e.target.value)} required />
                             )}
-                            {['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan) ? (
-                              <button type="button" onClick={() => removeVariable(idx)} disabled={variables.length <= 1} style={{ background:'transparent',border:'none',color:variables.length <= 1 ? 'rgba(255,255,255,0.1)' : 'var(--danger)',cursor:variables.length <= 1 ? 'not-allowed' : 'pointer',fontSize:'14px',padding:'4px',display:'flex',alignItems:'center' }}>
+                            {metodePenghitungan === 'Persentase' && (
+                              <select className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.type || 'pembilang'} onChange={(e) => updateVariableType(idx, e.target.value)} required>
+                                <option value="pembilang">Pembilang (Numerator)</option>
+                                <option value="penyebut">Penyebut (Denominator)</option>
+                              </select>
+                            )}
+                            {['Rata-rata', 'Penjumlahan', 'Pembobotan', 'Persentase'].includes(metodePenghitungan) ? (
+                              <button type="button" onClick={() => removeVariable(idx)} disabled={variables.length <= (metodePenghitungan === 'Persentase' ? 2 : 1)} style={{ background:'transparent',border:'none',color:variables.length <= (metodePenghitungan === 'Persentase' ? 2 : 1) ? 'rgba(255,255,255,0.1)' : 'var(--danger)',cursor:variables.length <= (metodePenghitungan === 'Persentase' ? 2 : 1) ? 'not-allowed' : 'pointer',fontSize:'14px',padding:'4px',display:'flex',alignItems:'center' }}>
                                 <i className="fa-solid fa-trash-can"></i>
                               </button>
                             ) : <span></span>}
@@ -560,11 +579,12 @@ export default function OperationalDefinitionPage() {
                       </div>
                     )}
 
-                    {variables.some(v => v.name.trim()) && ['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan) && (
+                    {variables.some(v => v.name.trim()) && ['Rata-rata', 'Penjumlahan', 'Pembobotan', 'Persentase'].includes(metodePenghitungan) && (
                       <div style={{ marginTop:'12px',fontSize:'11px',color: 'var(--text-muted)',background:'rgba(255,255,255,0.02)',padding:'8px 10px',borderRadius:'4px',border:'1px solid var(--glass-border)',fontFamily:'monospace',wordBreak:'break-word' }}>
                         {metodePenghitungan === 'Rata-rata' && <>Realisasi = ({variables.filter(v => v.name.trim()).map(v => v.name.trim()).join(' + ')}) / {variables.filter(v => v.name.trim()).length}</>}
                         {metodePenghitungan === 'Penjumlahan' && <>Realisasi = {variables.filter(v => v.name.trim()).map(v => v.name.trim()).join(' + ')}</>}
                         {metodePenghitungan === 'Pembobotan' && <>Realisasi = {variables.filter(v => v.name.trim()).map(v => `(${v.name.trim()} x ${v.weight})`).join(' + ')} / 100</>}
+                        {metodePenghitungan === 'Persentase' && <>Realisasi = ( {variables.filter(v => v.name.trim() && v.type === 'pembilang').map(v => v.name.trim()).join(' + ')} ) / ( {variables.filter(v => v.name.trim() && v.type === 'penyebut').map(v => v.name.trim()).join(' + ')} ) × 100</>}
                       </div>
                     )}
                   </div>

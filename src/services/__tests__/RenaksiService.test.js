@@ -171,5 +171,52 @@ describe('RenaksiService Business Process Locks', () => {
       const result = await RenaksiService.saveRealisasi(body);
       expect(result).toBeDefined();
     });
+
+    it('should throw error if variables are missing', () => {
+      expect(() => {
+        RenaksiService.computeRealisasi('Penjumlahan', null, []);
+      }).toThrow('Variabel untuk metode Penjumlahan wajib diisi.');
+    });
+  });
+
+  describe('computeRealisasi Multi-Variable Percentage', () => {
+    it('should calculate percentage correctly with multiple pembilang and penyebut', () => {
+      const variablesRealization = [
+        { name: 'Pem 1', value: '10' },
+        { name: 'Pem 2', value: '20' },
+        { name: 'Pen 1', value: '40' },
+        { name: 'Pen 2', value: '20' }
+      ];
+      const snapshotVariables = [
+        { type: 'pembilang' },
+        { type: 'pembilang' },
+        { type: 'penyebut' },
+        { type: 'penyebut' }
+      ];
+
+      // Sum Pembilang = 10 + 20 = 30
+      // Sum Penyebut = 40 + 20 = 60
+      // Percentage = (30 / 60) * 100 = 50.00
+      
+      const result = RenaksiService.computeRealisasi('Persentase', variablesRealization, snapshotVariables);
+      expect(result).toBe(50);
+    });
+
+    it('should throw error if total penyebut is zero', () => {
+      const variablesRealization = [
+        { name: 'Pem 1', value: '10' },
+        { name: 'Pen 1', value: '0' },
+        { name: 'Pen 2', value: '0' }
+      ];
+      const snapshotVariables = [
+        { type: 'pembilang' },
+        { type: 'penyebut' },
+        { type: 'penyebut' }
+      ];
+
+      expect(() => {
+        RenaksiService.computeRealisasi('Persentase', variablesRealization, snapshotVariables);
+      }).toThrow('Total nilai penyebut tidak boleh nol.');
+    });
   });
 });

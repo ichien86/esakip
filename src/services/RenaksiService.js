@@ -230,11 +230,16 @@ class RenaksiService {
 
     } else if (normalizedMetode === 'Persentase') {
       if (variablesRealization.length < 2) throw Object.assign(new Error('Variabel Pembilang dan Penyebut wajib diisi.'), { status: 400 });
-      const pembilang = parseFloat(variablesRealization[0].value);
-      const penyebut = parseFloat(variablesRealization[1].value);
-      if (isNaN(pembilang) || isNaN(penyebut)) throw Object.assign(new Error('Nilai pembilang dan penyebut wajib diisi angka valid.'), { status: 400 });
-      if (penyebut === 0) throw Object.assign(new Error('Nilai penyebut tidak boleh nol.'), { status: 400 });
-      return parseFloat(((pembilang / penyebut) * 100).toFixed(2));
+      let sumP = 0; let sumY = 0;
+      variablesRealization.forEach((vr, i) => {
+        const vType = snapshotVariables?.[i]?.type || (i === 0 ? 'pembilang' : (i === 1 ? 'penyebut' : 'pembilang'));
+        const val = parseFloat(vr.value);
+        if (isNaN(val)) throw Object.assign(new Error(`Nilai variabel ${vr.name} wajib diisi angka valid.`), { status: 400 });
+        if (vType === 'pembilang') sumP += val;
+        else if (vType === 'penyebut') sumY += val;
+      });
+      if (sumY === 0) throw Object.assign(new Error('Total nilai penyebut tidak boleh nol.'), { status: 400 });
+      return parseFloat(((sumP / sumY) * 100).toFixed(2));
 
     } else if (normalizedMetode === 'Rata-rata') {
       const values = variablesRealization.map(v => parseFloat(v.value));
@@ -375,7 +380,7 @@ class RenaksiService {
 
       // Salin konfigurasi variabel ke snapshot
       if (node && Array.isArray(node.variables) && node.variables.length > 0) {
-        record.snapshotVariables = node.variables.map(v => ({ name: v.name, weight: v.weight }));
+        record.snapshotVariables = node.variables.map(v => ({ name: v.name, weight: v.weight, type: v.type }));
         activeVariables = record.snapshotVariables;
       } else {
         record.snapshotVariables = [];
