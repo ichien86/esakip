@@ -16,21 +16,63 @@ export async function GET(request) {
     const wb = XLSX.utils.book_new();
 
     if (type === 'master') {
-      // Template master paket pekerjaan (awal tahun)
+      await dbConnect();
+      // Template master paket pekerjaan (awal tahun) - Dinamis dari database
       const headers = [
         'Kode Subkegiatan / ID Subkegiatan',
         'Nama Subkegiatan',
         'Nama Paket Pekerjaan',
         'Pagu Anggaran (Rp)',
+        'Bidang Pengampu'
       ];
-      const example = [
-        'ID_SUBKEGIATAN_DISINI',
-        'Contoh: Pengelolaan Logistik Bencana',
-        'Pengadaan Gudang Logistik',
-        '150000000',
-      ];
-      const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-      ws['!cols'] = [{ wch: 35 }, { wch: 40 }, { wch: 40 }, { wch: 25 }];
+      
+      const pakets = await PaketPekerjaan.find({ tahun: parseInt(tahun) });
+      const subkegiatans = await CascadingAnnual.find({ 
+        tahun: parseInt(tahun), 
+        level: { $in: ['subkegiatan', 'sasaran_subkegiatan'] } 
+      });
+
+      const rows = [];
+      const usedSubkegIds = new Set();
+
+      // Masukkan paket yang sudah ada
+      pakets.forEach(p => {
+        rows.push([
+          p.subkegiatanId,
+          p.namaSubkegiatan,
+          p.namaPaket,
+          p.paguAnggaran || 0,
+          (p.bidangPengampu || []).join(', ')
+        ]);
+        usedSubkegIds.add(p.subkegiatanId);
+      });
+
+      // Masukkan subkegiatan yang belum punya paket
+      subkegiatans.forEach(sub => {
+        if (!usedSubkegIds.has(sub.id)) {
+          const namaSub = sub.level === 'sasaran_subkegiatan' ? (sub.sasaranSubkegiatan || sub.text) : sub.text;
+          rows.push([
+            sub.id,
+            namaSub,
+            '', // Nama paket kosong, untuk diisi admin
+            '', // Pagu kosong
+            (sub.bidangPengampu || []).join(', ')
+          ]);
+        }
+      });
+
+      if (rows.length === 0) {
+        rows.push([
+          'BELUM_ADA_SUBKEGIATAN_DI_RENJA',
+          'Mohon selesaikan penyusunan Renja terlebih dahulu',
+          '',
+          '',
+          ''
+        ]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      ws['!cols'] = [{ wch: 35 }, { wch: 40 }, { wch: 40 }, { wch: 20 }, { wch: 30 }];
       XLSX.utils.book_append_sheet(wb, ws, 'Master Paket Pekerjaan');
     } else {
       // Template realisasi anggaran bulanan
@@ -86,13 +128,14 @@ export async function POST(request) {
     // Skip header row
     const dataRows = rows.slice(1).filter(row => row.some(cell => cell !== ''));
 
-    if (type === 'master') {
-      // Parse: [ID Subkegiatan, Nama Subkegiatan, Nama Paket, Pagu]
+      if (type === 'master') {
+      // Parse: [ID Subkegiatan, Nama Subkegiatan, Nama Paket, Pagu, Bidang Pengampu]
       const items = dataRows.map(row => ({
         subkegiatanId: String(row[0] || '').trim(),
         namaSubkegiatan: String(row[1] || '').trim(),
         namaPaket: String(row[2] || '').trim(),
         paguAnggaran: parseFloat(String(row[3] || '0').replace(/[^0-9.]/g, '')) || 0,
+        bidangPengampu: String(row[4] || '').split(',').map(s => s.trim()).filter(Boolean),
       })).filter(r => r.subkegiatanId && r.namaPaket);
 
       const totalPagu = items.reduce((s, r) => s + r.paguAnggaran, 0);
@@ -114,7 +157,12 @@ export async function POST(request) {
         if (existing) {
           await PaketPekerjaan.updateOne(
             { id: existing.id },
-            { $set: { namaSubkegiatan: item.namaSubkegiatan, paguAnggaran: item.paguAnggaran } }
+            { $set: { 
+                namaSubkegiatan: item.namaSubkegiatan, 
+                paguAnggaran: item.paguAnggaran,
+                bidangPengampu: item.bidangPengampu
+              } 
+            }
           );
         } else {
           await PaketPekerjaan.create({ id: crypto.randomUUID(), tahun, ...item });

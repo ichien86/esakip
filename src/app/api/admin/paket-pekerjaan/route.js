@@ -14,6 +14,12 @@ export async function GET(request) {
 
     const query = { tahun };
     if (subkegiatanId) query.subkegiatanId = subkegiatanId;
+    
+    // Only filter by bidang if it's explicitly provided and role requires it
+    const role = searchParams.get('role');
+    if (role === 'admin_bidang' && bidang && bidang !== 'undefined') {
+      query.bidangPengampu = bidang;
+    }
 
     const pakets = await PaketPekerjaan.find(query).sort({ namaSubkegiatan: 1, namaPaket: 1 });
     

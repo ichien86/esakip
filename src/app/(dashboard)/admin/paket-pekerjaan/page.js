@@ -12,7 +12,7 @@ function formatRp(val) {
 
 export default function PaketPekerjaanPage() {
   const { fetchWithAuth } = useFetchWithAuth();
-  const { activeYear } = useUI();
+  const { activeYear, activeBidang, activeRole } = useUI();
   const [pakets, setPakets] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ export default function PaketPekerjaanPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}`);
+      const res = await fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}&bidang=${encodeURIComponent(activeBidang || '')}&role=${activeRole || ''}`);
       if (res.ok) {
         const data = await res.json();
         setPakets(data.pakets || []);

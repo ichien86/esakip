@@ -8,7 +8,7 @@ const BULAN_KEY   = ['jan','feb','mar','apr','mei','jun','jul','agu','sep','okt'
 
 export default function TargetFisikPage() {
   const { fetchWithAuth } = useFetchWithAuth();
-  const { activeYear, activeBidang } = useUI();
+  const { activeYear, activeBidang, activeRole } = useUI();
   const [pakets, setPakets] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -20,7 +20,7 @@ export default function TargetFisikPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}`);
+      const res = await fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}&bidang=${encodeURIComponent(activeBidang || '')}&role=${activeRole || ''}`);
       if (res.ok) {
         const data = await res.json();
         setPakets(data.pakets || []);

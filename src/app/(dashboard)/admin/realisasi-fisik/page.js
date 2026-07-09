@@ -17,7 +17,7 @@ function pct(real, target) {
 
 export default function RealisasiFisikPage() {
   const { fetchWithAuth } = useFetchWithAuth();
-  const { activeYear, activeRole } = useUI();
+  const { activeYear, activeRole, activeBidang } = useUI();
   const [pakets, setPakets] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ export default function RealisasiFisikPage() {
     setLoading(true);
     try {
       const [paketRes, schedRes] = await Promise.all([
-        fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}`),
+        fetchWithAuth(`/api/admin/paket-pekerjaan?tahun=${activeYear}&bidang=${encodeURIComponent(activeBidang || '')}&role=${activeRole || ''}`),
         fetchWithAuth(`/api/admin/settings/realisasi-schedule?tahun=${activeYear}`),
       ]);
       if (paketRes.ok) {

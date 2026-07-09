@@ -29,6 +29,7 @@ const PaketPekerjaanSchema = new mongoose.Schema({
   namaSubkegiatan: { type: String, default: '' },
   namaPaket: { type: String, required: true },
   paguAnggaran: { type: Number, default: 0 },
+  bidangPengampu: { type: [String], default: [] },
   
   // Target fisik bulanan (kumulatif, 0-100)
   targetFisik: { type: mongoose.Schema.Types.Mixed, default: {} }, // { jan: 0, feb: 0, ... }
