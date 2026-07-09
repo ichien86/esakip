@@ -86,14 +86,21 @@ export default function AdminAssignmentsPage() {
           return false;
         };
 
-        const unitLeaders = allEmployees.filter(e =>
-          e.isActive !== false &&
-          (e.jenisJabatan === 'Administrator' || (e.roles && e.roles.includes('pemimpin'))) &&
-          isSubUnitOf(e.bidangs, activeBidang) &&
-          e.scopeLeader !== 'Badan' &&
-          !(e.jabatan || '').toLowerCase().includes('kepala pelaksana') &&
-          !(e.jabatan || '').toLowerCase().includes('kalaksa')
-        );
+        const unitLeaders = allEmployees.filter(e => {
+          if (e.isActive === false) return false;
+          // Harus Administrator, atau bertindak sebagai Kepala Bidang/Sekretariat (Plt)
+          const isAdministrator = e.jenisJabatan === 'Administrator';
+          const isPltAdministrator = (e.pltBidangs && e.pltBidangs.includes(activeBidang));
+          
+          if (!isAdministrator && !isPltAdministrator) return false;
+          if (!isSubUnitOf(e.bidangs, activeBidang)) return false;
+          if (e.scopeLeader === 'Badan') return false;
+          
+          const jabatanLower = (e.jabatan || '').toLowerCase();
+          if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
+
+          return true;
+        });
         const autoAssignValues = [...new Set(unitLeaders.map(l => `jabatan:${l.jabatan}`))];
 
         const initialAssignments = {};
