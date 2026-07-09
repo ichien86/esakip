@@ -213,6 +213,14 @@ export default function EmployeeRealisasiPage() {
         }
 
         // Assistant Pre-fill logic (Variabel Konstan & Shared Variables)
+        // Tentukan apakah indikator TUJUAN (penerima) menggunakan Titik Akhir (YTD)
+        // → Jika metode Persentase ATAU tipeTarget bukan Akumulatif = butuh nilai YTD kumulatif
+        const destinationMetode = (activeRecord?.snapshotMetode || activeNode?.metodePenghitungan || 'Tunggal');
+        const destinationTipeTarget = (activeNode?.tipeTarget || activeNode?.parentNode?.tipeTarget || '');
+        const isDestinationTitikAkhir = 
+          destinationMetode === 'Persentase' || 
+          (destinationTipeTarget !== '' && destinationTipeTarget !== 'Akumulatif');
+
         const newAliasWarnings = [];
         varsToSet = templateVars.map(vTemplate => {
           let prefilledValue = '';
@@ -248,28 +256,38 @@ export default function EmployeeRealisasiPage() {
             }
           }
 
-          // 2. Jika tidak ketemu, cari di GLOBAL SHARED VARIABLES (Lintas Pegawai di bulan yang sama)
+          // 2. Jika tidak ketemu, cari di GLOBAL SHARED VARIABLES (Lintas Pegawai)
           // TAPI HANYA dari indikator yang BERBEDA.
           if (!found && Array.isArray(sharedGlobalVariables[vTemplate.name])) {
             const validGlobalVars = sharedGlobalVariables[vTemplate.name].filter(gv => gv.indicatorId !== selectedId);
             if (validGlobalVars.length > 0) {
+              // Pilih nilai: jika tujuan adalah Titik Akhir/Persentase → gunakan ytdValue (kumulatif)
+              //              jika tujuan adalah Akumulatif → gunakan currentMonthValue (delta bulan ini)
+              const extractValue = (gv) => {
+                if (isDestinationTitikAkhir) {
+                  return parseFloat(gv.ytdValue ?? gv.value) || 0;
+                }
+                return parseFloat(gv.currentMonthValue ?? gv.value) || 0;
+              };
+
               if (validGlobalVars.length > 1) {
-                // DUPLIKASI ALIAS: jumlahkan semua nilainya
-                const total = validGlobalVars.reduce((sum, gv) => sum + (parseFloat(gv.value) || 0), 0);
+                // DUPLIKASI ALIAS: jumlahkan seluruh sumber
+                const total = validGlobalVars.reduce((sum, gv) => sum + extractValue(gv), 0);
                 prefilledValue = formatNumberForDisplay(total);
                 prefilledIsConstant = false;
-                // Catat peringatan untuk ditampilkan ke user
                 newAliasWarnings.push({
                   varName: vTemplate.name,
                   count: validGlobalVars.length,
-                  values: validGlobalVars.map(gv => gv.value),
-                  total
+                  values: validGlobalVars.map(gv => extractValue(gv)),
+                  total,
+                  isYtd: isDestinationTitikAkhir
                 });
               } else {
-                // Hanya satu sumber, ambil langsung
+                // Hanya satu sumber
                 const globalVar = validGlobalVars[0];
-                prefilledValue = formatNumberForDisplay(globalVar.value);
+                prefilledValue = formatNumberForDisplay(extractValue(globalVar));
                 prefilledIsConstant = false;
+                // Bukti dukung tetap diambil dari bulan terbaru yang ada
                 const parsed = parseBuktiDukung(globalVar.buktiDukung || '');
                 if (parsed.length > 0) {
                   prefilledBuktiDukung = parsed.map(f => ({ ...f, verifyStatus: null, checking: false }));
@@ -783,13 +801,22 @@ export default function EmployeeRealisasiPage() {
                     <div style={{ fontSize:'12px',color:'var(--danger)' }}>Variabel belum dikonfigurasi. Hubungi Admin.</div>
                   ) : (
                     <div style={{ display:'flex',flexDirection:'column',gap:'20px' }}>
-                      {/* Notifikasi Alias Duplikat */}
+                      {/* Notifikasi Alias */}
                       {aliasWarnings.length > 0 && aliasWarnings.map((warn, wi) => (
-                        <div key={wi} style={{ background:'rgba(234,179,8,0.1)',border:'1px solid rgba(234,179,8,0.35)',borderRadius:'8px',padding:'12px 16px',display:'flex',gap:'12px',alignItems:'flex-start' }}>
-                          <i className="fa-solid fa-triangle-exclamation" style={{ color:'#eab308',marginTop:'2px',flexShrink:0 }}></i>
+                        <div key={wi} style={{ background: warn.isYtd ? 'rgba(59,130,246,0.08)' : 'rgba(234,179,8,0.1)', border: `1px solid ${warn.isYtd ? 'rgba(59,130,246,0.3)' : 'rgba(234,179,8,0.35)'}`, borderRadius:'8px',padding:'12px 16px',display:'flex',gap:'12px',alignItems:'flex-start' }}>
+                          <i className={`fa-solid ${warn.isYtd ? 'fa-calculator' : 'fa-triangle-exclamation'}`} style={{ color: warn.isYtd ? '#3b82f6' : '#eab308', marginTop:'2px',flexShrink:0 }}></i>
                           <div style={{ fontSize:'12px',lineHeight:'1.6' }}>
-                            <strong style={{ color:'#eab308' }}>Duplikasi Alias Variabel: &ldquo;{warn.varName}&rdquo;</strong><br/>
-                            Ditemukan <strong>{warn.count} indikator</strong> dengan alias yang sama. Nilai masing-masing ({warn.values.map(v => v?.toLocaleString('id-ID')).join(' + ')}) <strong>telah dijumlahkan otomatis menjadi {warn.total?.toLocaleString('id-ID')}</strong>. Anda tetap bisa mengubah angka ini secara manual jika diperlukan.
+                            {warn.isYtd ? (
+                              <>
+                                <strong style={{ color:'#3b82f6' }}>Auto-Konversi Akumulatif → Titik Akhir: &ldquo;{warn.varName}&rdquo;</strong><br/>
+                                Indikator ini bertipe <strong>Titik Akhir/Persentase</strong>. Ditemukan <strong>{warn.count} sumber</strong> dengan alias yang sama. Nilai kumulatif YTD dari masing-masing ({warn.values.map(v => v?.toLocaleString('id-ID')).join(' + ')}) <strong>dijumlahkan otomatis menjadi {warn.total?.toLocaleString('id-ID')}</strong>. Nilai ini adalah total dari seluruh bulan sebelumnya s.d. bulan ini.
+                              </>
+                            ) : (
+                              <>
+                                <strong style={{ color:'#eab308' }}>Duplikasi Alias Variabel: &ldquo;{warn.varName}&rdquo;</strong><br/>
+                                Ditemukan <strong>{warn.count} indikator</strong> dengan alias yang sama. Nilai masing-masing ({warn.values.map(v => v?.toLocaleString('id-ID')).join(' + ')}) <strong>setelah dijumlahkan otomatis menjadi {warn.total?.toLocaleString('id-ID')}</strong>. Anda tetap bisa mengubah angka ini secara manual jika diperlukan.
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}

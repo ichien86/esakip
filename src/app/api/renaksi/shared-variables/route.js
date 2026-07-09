@@ -11,27 +11,39 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Parameter tahun diperlukan' }, { status: 400 });
     }
 
-    // Ambil semua renaksi di tahun/bulan tersebut
+    // Ambil semua renaksi di tahun tersebut hingga bulan yang diminta
     const records = await RenaksiRepository.findAll();
-    let filteredRecords = records.filter(r => r.tahun === parseInt(tahun));
-    
-    if (bulan) {
-      filteredRecords = filteredRecords.filter(r => r.bulan === parseInt(bulan));
-    }
+    const targetBulan = parseInt(bulan || new Date().getMonth() + 1);
+    const filteredRecords = records.filter(r => r.tahun === parseInt(tahun) && r.bulan <= targetBulan);
 
-    const sharedVariables = {};
+    // tempVars structure: { [varName]: { [indicatorId]: { currentMonthValue, ytdValue, buktiDukung } } }
+    const tempVars = {};
 
     for (const record of filteredRecords) {
+      const isCurrentMonth = record.bulan === targetBulan;
+
       // 1. Ekspor variabel input riil (variablesRealization)
       if (record.variablesRealization && Array.isArray(record.variablesRealization)) {
         for (const v of record.variablesRealization) {
           if (v.name && v.value !== '' && v.value !== null) {
-            if (!sharedVariables[v.name]) sharedVariables[v.name] = [];
-            sharedVariables[v.name].push({
-              value: v.value,
-              buktiDukung: v.buktiDukung || '[]',
-              indicatorId: record.indicatorId
-            });
+            const val = parseFloat(v.value) || 0;
+            
+            if (!tempVars[v.name]) tempVars[v.name] = {};
+            if (!tempVars[v.name][record.indicatorId]) {
+              tempVars[v.name][record.indicatorId] = { currentMonthValue: 0, ytdValue: 0, buktiDukung: '[]' };
+            }
+            
+            // Add to YTD sum
+            tempVars[v.name][record.indicatorId].ytdValue += val;
+            
+            // Update current month value if it's the exact month requested
+            if (isCurrentMonth) {
+              tempVars[v.name][record.indicatorId].currentMonthValue = val;
+              tempVars[v.name][record.indicatorId].buktiDukung = v.buktiDukung || '[]';
+            } else if (tempVars[v.name][record.indicatorId].buktiDukung === '[]') {
+              // Fallback: carry over previous month's buktiDukung if current is empty
+              tempVars[v.name][record.indicatorId].buktiDukung = v.buktiDukung || '[]';
+            }
           }
         }
       }
@@ -40,14 +52,35 @@ export async function GET(request) {
       if (record.snapshotOutputVariableAlias && record.realisasiBulanan !== null && record.realisasiBulanan !== undefined) {
         const alias = record.snapshotOutputVariableAlias.trim();
         if (alias) {
-          if (!sharedVariables[alias]) sharedVariables[alias] = [];
-          sharedVariables[alias].push({
-            value: record.realisasiBulanan,
-            buktiDukung: record.buktiDukung || '[]',
-            indicatorId: record.indicatorId
-          });
+          const val = parseFloat(record.realisasiBulanan) || 0;
+          
+          if (!tempVars[alias]) tempVars[alias] = {};
+          if (!tempVars[alias][record.indicatorId]) {
+            tempVars[alias][record.indicatorId] = { currentMonthValue: 0, ytdValue: 0, buktiDukung: '[]' };
+          }
+          
+          tempVars[alias][record.indicatorId].ytdValue += val;
+          
+          if (isCurrentMonth) {
+            tempVars[alias][record.indicatorId].currentMonthValue = val;
+            tempVars[alias][record.indicatorId].buktiDukung = record.buktiDukung || '[]';
+          }
         }
       }
+    }
+
+    const sharedVariables = {};
+    for (const varName in tempVars) {
+      sharedVariables[varName] = Object.keys(tempVars[varName]).map(indId => {
+        const data = tempVars[varName][indId];
+        return {
+          indicatorId: indId,
+          currentMonthValue: data.currentMonthValue,
+          ytdValue: data.ytdValue,
+          value: data.currentMonthValue, // Fallback for backward compatibility
+          buktiDukung: data.buktiDukung
+        };
+      });
     }
 
     return NextResponse.json(sharedVariables);
