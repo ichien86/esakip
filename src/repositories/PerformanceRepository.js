@@ -17,4 +17,5 @@ class PerformanceRepository {
   }
 }
 
-export default new PerformanceRepository();
+const performanceRepository = new PerformanceRepository();
+export default performanceRepository;

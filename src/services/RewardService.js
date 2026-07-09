@@ -80,4 +80,5 @@ class RewardService {
   }
 }
 
-export default new RewardService();
+const rewardService = new RewardService();
+export default rewardService;

@@ -208,4 +208,5 @@ class SelectionService {
   }
 }
 
-export default new SelectionService();
+const selectionService = new SelectionService();
+export default selectionService;

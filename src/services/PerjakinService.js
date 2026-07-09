@@ -230,4 +230,5 @@ class PerjakinService {
   }
 }
 
-export default new PerjakinService();
+const perjakinService = new PerjakinService();
+export default perjakinService;

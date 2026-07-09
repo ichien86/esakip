@@ -17,4 +17,5 @@ class NotificationRepository {
   }
 }
 
-export default new NotificationRepository();
+const notificationRepository = new NotificationRepository();
+export default notificationRepository;

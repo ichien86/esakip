@@ -60,4 +60,5 @@ export class CascadingAnnualRepository {
   }
 }
 
-export default new CascadingAnnualRepository();
+const cascadingAnnualRepository = new CascadingAnnualRepository();
+export default cascadingAnnualRepository;

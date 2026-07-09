@@ -22,4 +22,5 @@ class EmployeeRepository {
   }
 }
 
-export default new EmployeeRepository();
+const employeeRepository = new EmployeeRepository();
+export default employeeRepository;

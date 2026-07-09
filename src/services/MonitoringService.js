@@ -133,4 +133,5 @@ class MonitoringService {
   }
 }
 
-export default new MonitoringService();
+const monitoringService = new MonitoringService();
+export default monitoringService;

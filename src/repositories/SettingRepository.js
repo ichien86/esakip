@@ -23,4 +23,5 @@ class SettingRepository {
   }
 }
 
-export default new SettingRepository();
+const settingRepository = new SettingRepository();
+export default settingRepository;

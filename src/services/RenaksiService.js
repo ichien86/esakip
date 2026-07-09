@@ -631,4 +631,5 @@ class RenaksiService {
   }
 }
 
-export default new RenaksiService();
+const renaksiService = new RenaksiService();
+export default renaksiService;

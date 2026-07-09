@@ -58,6 +58,7 @@ export default function RealisasiFisikPage() {
     }
   }, [fetchWithAuth, activeYear, selectedBulan]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   // Re-init edits when bulan changes
@@ -72,6 +73,7 @@ export default function RealisasiFisikPage() {
         alasanTidakTercapai: ev?.alasanTidakTercapai || '',
       };
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEdits(init);
   }, [selectedBulan, pakets]);
 

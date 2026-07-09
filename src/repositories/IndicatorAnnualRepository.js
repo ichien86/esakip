@@ -59,4 +59,5 @@ export class IndicatorAnnualRepository {
   }
 }
 
-export default new IndicatorAnnualRepository();
+const indicatorAnnualRepository = new IndicatorAnnualRepository();
+export default indicatorAnnualRepository;

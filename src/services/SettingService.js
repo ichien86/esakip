@@ -95,4 +95,5 @@ class SettingService {
   }
 }
 
-export default new SettingService();
+const settingService = new SettingService();
+export default settingService;

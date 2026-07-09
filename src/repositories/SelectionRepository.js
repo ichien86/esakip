@@ -18,4 +18,5 @@ class SelectionRepository {
   }
 }
 
-export default new SelectionRepository();
+const selectionRepository = new SelectionRepository();
+export default selectionRepository;

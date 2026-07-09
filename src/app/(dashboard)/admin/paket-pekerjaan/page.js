@@ -42,6 +42,7 @@ export default function PaketPekerjaanPage() {
     }
   }, [fetchWithAuth, activeYear]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   // Group pakets by subkegiatan

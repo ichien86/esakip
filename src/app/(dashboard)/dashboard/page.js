@@ -90,6 +90,7 @@ export default function DashboardPage() {
     handleResize();
     window.addEventListener('resize', handleResize);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAllDashboardData();
 
     return () => {

@@ -16,7 +16,9 @@ export default function LoginPage() {
     const savedNip = localStorage.getItem('remembered_nip');
     const savedRemember = localStorage.getItem('remember_me') === 'true';
     if (savedRemember && savedNip) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNip(savedNip);
+       
       setRememberMe(true);
     }
   }, []);

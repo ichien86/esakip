@@ -785,7 +785,6 @@ export default function AdminEmployeesPage() {
                     </div>
                   </div>
                 )}
-                </div>
 
                 {isEditing && (
                   <div className="form-group mb-3">

@@ -98,4 +98,5 @@ class LinkVerificationService {
   }
 }
 
-export default new LinkVerificationService();
+const linkVerificationService = new LinkVerificationService();
+export default linkVerificationService;

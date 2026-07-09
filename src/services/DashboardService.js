@@ -245,4 +245,5 @@ class DashboardService {
   }
 }
 
-export default new DashboardService();
+const dashboardService = new DashboardService();
+export default dashboardService;

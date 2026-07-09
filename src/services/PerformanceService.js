@@ -88,4 +88,5 @@ class PerformanceService {
   }
 }
 
-export default new PerformanceService();
+const performanceService = new PerformanceService();
+export default performanceService;

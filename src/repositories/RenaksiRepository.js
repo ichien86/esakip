@@ -43,4 +43,5 @@ export class RenaksiRepository {
   }
 }
 
-export default new RenaksiRepository();
+const renaksiRepository = new RenaksiRepository();
+export default renaksiRepository;

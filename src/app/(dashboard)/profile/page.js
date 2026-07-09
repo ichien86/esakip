@@ -19,10 +19,6 @@ export default function ProfilePage() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, [currentUser]);
-
   const fetchProfile = async () => {
     try {
       const res = await fetchWithAuth('/api/profile');
@@ -38,6 +34,9 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchProfile(); }, [currentUser]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -214,7 +213,7 @@ export default function ProfilePage() {
               {hasDigitalSignature && (
                 <div style={{ fontSize: '12px', color: '#10B981', background: 'rgba(16, 185, 129, 0.1)', padding: '10px 14px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                   <i className="fa-solid fa-certificate" style={{ marginRight: '8px' }}></i>
-                  Dengan memilih opsi ini, dokumen cetak akan diberi keterangan "Ditandatangani secara elektronik" dan tidak memerlukan gambar tanda tangan manual.
+                  Dengan memilih opsi ini, dokumen cetak akan diberi keterangan &quot;Ditandatangani secara elektronik&quot; dan tidak memerlukan gambar tanda tangan manual.
                 </div>
               )}
 

@@ -51,4 +51,5 @@ export class Cascading5YearsRepository {
   }
 }
 
-export default new Cascading5YearsRepository();
+const cascading5YearsRepository = new Cascading5YearsRepository();
+export default cascading5YearsRepository;

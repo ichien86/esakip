@@ -71,4 +71,5 @@ class MasterRepository {
   }
 }
 
-export default new MasterRepository();
+const masterRepository = new MasterRepository();
+export default masterRepository;

@@ -49,4 +49,5 @@ export class Indicator5YearsRepository {
   }
 }
 
-export default new Indicator5YearsRepository();
+const indicator5YearsRepository = new Indicator5YearsRepository();
+export default indicator5YearsRepository;

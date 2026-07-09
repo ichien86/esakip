@@ -312,4 +312,5 @@ class RenjaService {
   }
 }
 
-export default new RenjaService();
+const renjaService = new RenjaService();
+export default renjaService;

@@ -5,6 +5,8 @@ import Employee from '../../models/Employee';
 import CascadingAnnual from '../../models/CascadingAnnual';
 import PerjakinDocument from '../../models/PerjakinDocument';
 
+// Mock db to prevent MONGODB_URI error at module load time
+vi.mock('@/lib/db', () => ({ default: vi.fn() }));
 vi.mock('../../repositories/EmployeeRepository');
 vi.mock('../../models/Employee');
 vi.mock('../../models/CascadingAnnual');

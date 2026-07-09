@@ -20,10 +20,6 @@ export default function AdminRekapRealisasiPage() {
   const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
   const [selectedBulan, setSelectedBulan] = useState(''); // '' means All Months
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedTahun, selectedBulan]);
-
   const fetchData = async () => {
     setLoading(true);
     setError('');
@@ -46,6 +42,9 @@ export default function AdminRekapRealisasiPage() {
       setLoading(false);
     }
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+  useEffect(() => { fetchData(); }, [selectedTahun, selectedBulan]);
 
   const handleExportExcel = () => {
     const wsData = records.map((r, i) => ({

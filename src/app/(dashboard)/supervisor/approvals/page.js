@@ -17,14 +17,6 @@ export default function SupervisorApprovalsPage() {
   
   const [selectedTahun, setSelectedTahun] = useState(new Date().getFullYear());
 
-  useEffect(() => {
-    if (activeEmployeeId) {
-      fetchPendingApprovals();
-    } else {
-      setLoading(false);
-    }
-  }, [activeEmployeeId, selectedTahun, activeTab]);
-
   const fetchPendingApprovals = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -48,6 +40,16 @@ export default function SupervisorApprovalsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeEmployeeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchPendingApprovals();
+    } else {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEmployeeId, selectedTahun, activeTab]);
 
   const handleAction = async (employeeId, newStatus, actionName) => {
     let note = '';

@@ -37,6 +37,7 @@ export default function TargetFisikPage() {
     }
   }, [fetchWithAuth, activeYear]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleChange = (paketId, bulanKey, rawVal) => {

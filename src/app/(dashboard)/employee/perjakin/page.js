@@ -14,14 +14,6 @@ export default function EmployeePerjakinPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   
-  useEffect(() => {
-    if (activeEmployeeId) {
-      fetchPerjakin();
-    } else {
-      setLoading(false);
-    }
-  }, [activeEmployeeId, activeYear]);
-
   const fetchPerjakin = async () => {
     setLoading(true);
     setErrorMsg('');
@@ -38,6 +30,16 @@ export default function EmployeePerjakinPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (activeEmployeeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchPerjakin();
+    } else {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEmployeeId, activeYear]);
 
   const getStatusBadge = (status) => {
     switch (status) {

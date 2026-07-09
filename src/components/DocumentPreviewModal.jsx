@@ -6,6 +6,7 @@ export default function DocumentPreviewModal({ url, onClose }) {
 
   useEffect(() => {
     if (url) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmbedUrl(getEmbedUrl(url));
     }
   }, [url]);

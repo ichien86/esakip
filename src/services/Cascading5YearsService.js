@@ -324,4 +324,5 @@ class Cascading5YearsService {
   }
 }
 
-export default new Cascading5YearsService();
+const cascading5YearsService = new Cascading5YearsService();
+export default cascading5YearsService;

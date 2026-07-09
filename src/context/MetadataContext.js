@@ -42,10 +42,13 @@ export function MetadataProvider({ children }) {
   // Muat metadata hanya setelah user login
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       refreshMetadata();
     } else {
       // Reset saat logout
+       
       setAllEmployees([]);
+       
       setSystemSettings({ renstra_locked: false, renja_locked: false });
     }
   }, [user, refreshMetadata]);

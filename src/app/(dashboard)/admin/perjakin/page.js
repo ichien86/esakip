@@ -19,6 +19,7 @@ export default function AdminPerjakinPage() {
 
   useEffect(() => {
     if (allEmployees && allEmployees.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployees(allEmployees.filter(e => !e.roles?.includes('bupati')));
     }
   }, [allEmployees]);

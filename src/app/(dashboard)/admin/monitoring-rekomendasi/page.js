@@ -27,6 +27,7 @@ export default function AdminMonitoringRekomendasiPage() {
   }, [fetchWithAuth, filterTahun]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 

@@ -44,4 +44,5 @@ class PerjakinDocumentRepository {
   }
 }
 
-export default new PerjakinDocumentRepository();
+const perjakinDocumentRepository = new PerjakinDocumentRepository();
+export default perjakinDocumentRepository;

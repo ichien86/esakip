@@ -45,8 +45,10 @@ export default function DashboardLayout({ children }) {
   // Collapse sidebar on page/route changes
   useEffect(() => {
     if (isMobile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSidebarCollapsed(true);
     }
+     
     setIsHoverExpanded(false);
   }, [pathname, isMobile]);
   const { user, loading, logout } = useAuth();

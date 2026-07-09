@@ -26,9 +26,13 @@ export function UIProvider({ children }) {
     const savedRole   = localStorage.getItem('activeRole');
     const savedBidang = localStorage.getItem('activeBidang');
     const savedYear   = localStorage.getItem('activeYear');
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (savedRole)   setActiveRole(savedRole);
+     
     if (savedBidang) setActiveBidang(savedBidang);
+     
     if (savedYear)   setActiveYear(parseInt(savedYear));
+     
     setIsReady(true);
   }, []);
 
@@ -37,16 +41,19 @@ export function UIProvider({ children }) {
     if (isReady && user) {
       if (!localStorage.getItem('activeRole')) {
         const defaultRole = getDefaultActiveRole(user.roles);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveRole(defaultRole);
         localStorage.setItem('activeRole', defaultRole);
       }
       if (!localStorage.getItem('activeBidang')) {
         const defaultBidang = user.bidangs?.[0] || '';
+         
         setActiveBidang(defaultBidang);
         localStorage.setItem('activeBidang', defaultBidang);
       }
       if (!localStorage.getItem('activeYear')) {
         const currentYear = new Date().getFullYear();
+         
         setActiveYear(currentYear);
         localStorage.setItem('activeYear', currentYear.toString());
       }

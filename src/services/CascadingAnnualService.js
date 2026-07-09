@@ -314,4 +314,5 @@ class CascadingAnnualService {
   }
 }
 
-export default new CascadingAnnualService();
+const cascadingAnnualService = new CascadingAnnualService();
+export default cascadingAnnualService;
