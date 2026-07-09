@@ -86,32 +86,50 @@ export default function AdminAssignmentsPage() {
           return false;
         };
 
-        const unitLeaders = allEmployees.filter(e => {
-          if (e.isActive === false) return false;
-          // Harus Administrator, atau bertindak sebagai Kepala Bidang/Sekretariat (Plt)
-          const isAdministrator = e.jenisJabatan === 'Administrator';
-          const isPltAdministrator = (e.pltBidangs && e.pltBidangs.includes(activeBidang));
+        const getAdministratorsForBidangs = (targetBidangs) => {
+          if (!Array.isArray(targetBidangs) || targetBidangs.length === 0) return [];
           
-          if (!isAdministrator && !isPltAdministrator) return false;
-          if (!isSubUnitOf(e.bidangs, activeBidang)) return false;
-          if (e.scopeLeader === 'Badan') return false;
-          
-          const jabatanLower = (e.jabatan || '').toLowerCase();
-          if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
+          const leaders = allEmployees.filter(e => {
+            if (e.isActive === false) return false;
+            
+            const isAdministrator = e.jenisJabatan === 'Administrator';
+            
+            // Match against any of the target bidangs
+            const matchesBidang = targetBidangs.some(tb => {
+              const asDefinitive = isSubUnitOf(e.bidangs, tb);
+              const asPlt = (e.pltBidangs && e.pltBidangs.includes(tb));
+              return asDefinitive || asPlt;
+            });
 
-          return true;
-        });
-        const autoAssignValues = [...new Set(unitLeaders.map(l => `jabatan:${l.jabatan}`))];
+            if (!matchesBidang) return false;
+            
+            // Must be Administrator or acting Plt Administrator for one of the matched bidangs
+            const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && e.pltBidangs.includes(tb));
+            if (!isAdministrator && !actingAsPlt) return false;
+            
+            if (e.scopeLeader === 'Badan') return false;
+            
+            const jabatanLower = (e.jabatan || '').toLowerCase();
+            if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
+
+            return true;
+          });
+          
+          return [...new Set(leaders.map(l => `jabatan:${l.jabatan}`))];
+        };
 
         const initialAssignments = {};
         filtered.forEach(n => {
           const isProgram = ['program', 'sasaran_program'].includes(n.level);
+          const programPICs = isProgram ? getAdministratorsForBidangs(n.bidangPengampu || []) : [];
+          
           if (n.indicators && n.indicators.length > 0) {
             n.indicators.forEach(ind => {
               const existingPic = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
+              
               initialAssignments[ind.id] = {
                 penanggungJawab: isProgram 
-                  ? (autoAssignValues.length > 0 ? autoAssignValues : existingPic) 
+                  ? (programPICs.length > 0 ? programPICs : existingPic) 
                   : existingPic,
                 crossCuttingType: ind.crossCuttingType || 'shared',
                 splitTargets: ind.splitTargets || {}
