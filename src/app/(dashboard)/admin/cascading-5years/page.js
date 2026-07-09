@@ -218,6 +218,7 @@ export default function AdminCascading5YearsPage() {
       setLoading(false);
     };
     initLoad();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-close alert after 10 seconds

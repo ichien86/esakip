@@ -37,7 +37,7 @@ export function MetadataProvider({ children }) {
     } catch (e) {
       console.error('Failed to load metadata', e);
     }
-  }, []);
+  }, [logout]);
 
   // Muat metadata hanya setelah user login
   useEffect(() => {

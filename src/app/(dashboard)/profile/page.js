@@ -242,6 +242,7 @@ export default function ProfilePage() {
                         <div style={{ marginBottom: '16px' }}>
                           <span className="text-muted" style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>Tanda Tangan Saat Ini:</span>
                           <div style={{ background: 'white', padding: '10px', borderRadius: '8px', display: 'inline-block', border: '2px dashed var(--glass-border)' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={signatureUrl} alt="Signature" style={{ maxHeight: '100px', maxWidth: '300px', objectFit: 'contain' }} />
                           </div>
                           <div style={{ marginTop: '10px' }}>

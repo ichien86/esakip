@@ -85,6 +85,7 @@ export default function AdminMasterPage() {
     } catch (e) {
       console.error('Failed to load master data libraries', e);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

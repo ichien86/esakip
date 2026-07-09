@@ -118,6 +118,7 @@ const PrintLayout = React.forwardRef(({ data }, ref) => {
 
       {/* Kop Surat */}
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid #000', paddingBottom: '10px', marginBottom: '30px' }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="Logo Boyolali" style={{ width: '80px', height: 'auto', marginRight: '20px' }} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={{ fontSize: '14pt', fontWeight: 'bold' }}>PEMERINTAH KABUPATEN BOYOLALI</div>

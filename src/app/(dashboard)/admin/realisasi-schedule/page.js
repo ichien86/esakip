@@ -36,6 +36,7 @@ export default function AdminRealisasiSchedulePage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeYear]);
 
   useEffect(() => {

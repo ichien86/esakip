@@ -303,6 +303,7 @@ export default function EmployeeRealisasiPage() {
       else setAliasWarnings([]);
     }, 0);
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, selectedBulan, renaksiRecords, activeRecord, activeNode]);
 
   // Dynamic automatic calculation of Realisasi on the fly (supports all 5 methods)

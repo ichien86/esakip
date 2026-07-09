@@ -56,6 +56,7 @@ export default function OperationalDefinitionPage() {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadNodes(); }, []);
 
   useEffect(() => {
@@ -298,6 +299,7 @@ export default function OperationalDefinitionPage() {
         if (found) return;
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes]);
 
   const hasAccess = activeRole === 'admin' || activeRole === 'perencana';
@@ -605,6 +607,7 @@ export default function OperationalDefinitionPage() {
                   <button type="submit" className="btn btn-orange" disabled={isSaving} style={{ flex:1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                     {isSaving ? (
                       <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/logo.png" alt="Loading" style={{ width: '14px', height: '14px', objectFit: 'contain', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
                         <style dangerouslySetInnerHTML={{__html:`@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}} />
                         Menyimpan...

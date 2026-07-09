@@ -116,6 +116,7 @@ export default function AdminAssignmentsPage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBidang, activeYear, fetchWithAuth]);
 
   useEffect(() => {
