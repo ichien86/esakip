@@ -176,21 +176,24 @@ class PerjakinService {
     }
 
     if (newStatus === 'Menunggu Persetujuan Atasan') {
-      const subordinates = await EmployeeRepository.find({ parentId: employeeId, isActive: true });
-      if (subordinates && subordinates.length > 0) {
-        const subIds = subordinates.map(s => s.id);
-        const subDocs = await PerjakinDocumentRepository.find({ employeeId: { $in: subIds }, tahun: Number(tahun) });
-        
-        // Cek jika ada bawahan yang belum punya dokumen atau dokumen belum "Disetujui"
-        const hasUnapproved = subordinates.some(sub => {
-          const doc = subDocs.find(d => d.employeeId === sub.id);
-          return !doc || doc.status !== 'Disetujui';
-        });
-        
-        if (hasUnapproved) {
-          const err = new Error('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
-          err.status = 403;
-          throw err;
+      const pengaju = await EmployeeRepository.findOne({ id: employeeId });
+      if (pengaju && pengaju.jenisJabatan === 'Administrator') {
+        const subordinates = await EmployeeRepository.find({ parentId: employeeId, isActive: true });
+        if (subordinates && subordinates.length > 0) {
+          const subIds = subordinates.map(s => s.id);
+          const subDocs = await PerjakinDocumentRepository.find({ employeeId: { $in: subIds }, tahun: Number(tahun) });
+          
+          // Cek jika ada bawahan yang belum punya dokumen atau dokumen belum "Disetujui"
+          const hasUnapproved = subordinates.some(sub => {
+            const doc = subDocs.find(d => d.employeeId === sub.id);
+            return !doc || doc.status !== 'Disetujui';
+          });
+          
+          if (hasUnapproved) {
+            const err = new Error('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
+            err.status = 403;
+            throw err;
+          }
         }
       }
     }

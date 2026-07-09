@@ -17,6 +17,8 @@ export default function AdminEmployeesPage() {
   const [pangkatGolongan, setPangkatGolongan] = useState('');
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [selectedBidangs, setSelectedBidangs] = useState([]);
+  const [pltBidangs, setPltBidangs] = useState([]);
+  const [isPlt, setIsPlt] = useState(false);
   const [parentId, setParentId] = useState('');
   const [isActive, setIsActive] = useState(true);
   
@@ -130,6 +132,7 @@ export default function AdminEmployeesPage() {
       pangkatGolongan,
       roles: selectedRoles,
       bidangs: selectedBidangs,
+      pltBidangs: isPlt ? pltBidangs : [],
       parentId: parentId || null,
       isActive,
       requesterRole: 'admin'
@@ -207,6 +210,8 @@ export default function AdminEmployeesPage() {
     setPangkatGolongan(emp.pangkatGolongan || '');
     setSelectedRoles(emp.roles || []);
     setSelectedBidangs(emp.bidangs || []);
+    setPltBidangs(emp.pltBidangs || []);
+    setIsPlt((emp.pltBidangs || []).length > 0);
     setParentId(emp.parentId || '');
     setIsActive(emp.isActive !== false);
     setShowFormModal(true);
@@ -402,6 +407,8 @@ export default function AdminEmployeesPage() {
     setPangkatGolongan('');
     setSelectedRoles([]);
     setSelectedBidangs([]);
+    setPltBidangs([]);
+    setIsPlt(false);
     setParentId('');
     setIsActive(true);
   };
@@ -505,7 +512,7 @@ export default function AdminEmployeesPage() {
                           fontSize: '9px',
                           marginLeft: '6px'
                         }}>
-                          Pimpinan: {emp.bidangs.join(', ')}
+                          Pimpinan: {emp.bidangs[0] || 'Badan'}{emp.pltBidangs && emp.pltBidangs.length > 0 ? ' (+Plt)' : ''}
                         </span>
                       )}
                       <div className="text-muted" style={{ fontSize: '11px' }}>NIP. {emp.nip}</div>
@@ -519,9 +526,12 @@ export default function AdminEmployeesPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {emp.bidangs.map(b => (
-                          <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>
-                        ))}
+                        {emp.bidangs && emp.bidangs.map(b => {
+                            if (emp.pltBidangs && emp.pltBidangs.includes(b)) {
+                               return <span key={b} className="badge" style={{ fontSize: '9px', background: 'rgba(255,107,0,0.2)', color: 'var(--primary-orange)', border: '1px solid var(--primary-orange)' }}>{b} (Plt)</span>;
+                            }
+                            return <span key={b} className="badge badge-draft" style={{ fontSize: '9px' }}>{b}</span>;
+                          })}
                       </div>
                     </td>
                     <td style={{ textAlign: 'right' }}>

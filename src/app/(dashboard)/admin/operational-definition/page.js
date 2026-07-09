@@ -146,15 +146,16 @@ export default function OperationalDefinitionPage() {
     setSuccess(''); setError(''); setActiveSuggestionField(null);
   };
 
-  const addVariable = () => setVariables(prev => [...prev, { name: '', weight: 1, type: metodePenghitungan === 'Persentase' ? 'pembilang' : '' }]);
-  const removeVariable = (idx) => { if (variables.length <= 1) return; setVariables(prev => prev.filter((_, i) => i !== idx)); };
-  const updateVariableName = (idx, name) => setVariables(prev => prev.map((v, i) => i === idx ? { ...v, name } : v));
-  const updateVariableWeight = (idx, weight) => { const w = parseFloat(weight); setVariables(prev => prev.map((v, i) => i === idx ? { ...v, weight: isNaN(w) ? 0 : w } : v)); };
+  const addVariable = (type = '') => setVariables(prev => [...prev, { name: '', weight: 1, type: metodePenghitungan === 'Persentase' ? (type || 'pembilang') : '' }]);
   const updateVariableType = (index, val) => {
     const newVars = [...variables];
     newVars[index].type = val;
     setVariables(newVars);
   };
+  const removeVariable = (idx) => { if (variables.length <= 1) return; setVariables(prev => prev.filter((_, i) => i !== idx)); };
+  const updateVariableName = (idx, name) => setVariables(prev => prev.map((v, i) => i === idx ? { ...v, name } : v));
+  const updateVariableWeight = (idx, weight) => { const w = parseFloat(weight); setVariables(prev => prev.map((v, i) => i === idx ? { ...v, weight: isNaN(w) ? 0 : w } : v)); };
+
 
   const totalWeight = variables.reduce((sum, v) => sum + (parseFloat(v.weight) || 0), 0);
 
@@ -462,8 +463,9 @@ export default function OperationalDefinitionPage() {
                   }}>
                     {METODE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
+                  <div className="mt-2 text-muted" style={{ fontSize: '12px', fontStyle: 'italic' }}>
                     {metodePenghitungan === 'Tunggal' && 'Realisasi = V'}
-                    {metodePenghitungan === 'Persentase' && 'Realisasi = (Pembilang / Penyebut) x 100'}
+                    {metodePenghitungan === 'Persentase' && 'Realisasi = (Σ Pembilang / Σ Penyebut) x 100'}
                     {metodePenghitungan === 'Rata-rata' && 'Realisasi = (V1 + V2 + ... + Vn) / n'}
                     {metodePenghitungan === 'Penjumlahan' && 'Realisasi = V1 + V2 + ... + Vn'}
                     {metodePenghitungan === 'Pembobotan' && 'Realisasi = (V1xW1) + (V2xW2) + ... + (VnxWn)'}
@@ -509,11 +511,6 @@ export default function OperationalDefinitionPage() {
                   </div>
                 </div>
 
-  const updateVariableType = (index, val) => {
-    const newVars = [...variables];
-    newVars[index].type = val;
-    setVariables(newVars);
-  };
 
                   <div style={{ background:'rgba(255,255,255,0.01)',border:'1px solid var(--glass-border)',padding:'14px',borderRadius:'8px',marginBottom:'16px' }}>
                     <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px' }}>
@@ -521,9 +518,22 @@ export default function OperationalDefinitionPage() {
                         {metodePenghitungan === 'Tunggal' ? 'Definisi Variabel' : 'Daftar Variabel'} {metodePenghitungan === 'Pembobotan' && <span style={{ color:'var(--text-muted)',fontWeight:400,fontSize:'11px' }}>(Total bobot harus = 100)</span>}
                       </label>
                       {['Rata-rata', 'Penjumlahan', 'Pembobotan', 'Persentase'].includes(metodePenghitungan) && (
-                        <button type="button" onClick={addVariable} style={{ background:'rgba(255,107,0,0.12)',border:'1px solid rgba(255,107,0,0.3)',color:'var(--primary-orange)',borderRadius:'6px',padding:'4px 10px',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px' }}>
-                          <i className="fa-solid fa-plus"></i> Tambah
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {metodePenghitungan === 'Persentase' ? (
+                            <>
+                              <button type="button" onClick={() => addVariable('pembilang')} style={{ background:'rgba(255,107,0,0.12)',border:'1px solid rgba(255,107,0,0.3)',color:'var(--primary-orange)',borderRadius:'6px',padding:'4px 10px',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px' }}>
+                                <i className="fa-solid fa-plus"></i> Tambah Pembilang
+                              </button>
+                              <button type="button" onClick={() => addVariable('penyebut')} style={{ background:'rgba(255,107,0,0.12)',border:'1px solid rgba(255,107,0,0.3)',color:'var(--primary-orange)',borderRadius:'6px',padding:'4px 10px',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px' }}>
+                                <i className="fa-solid fa-plus"></i> Tambah Penyebut
+                              </button>
+                            </>
+                          ) : (
+                            <button type="button" onClick={() => addVariable('')} style={{ background:'rgba(255,107,0,0.12)',border:'1px solid rgba(255,107,0,0.3)',color:'var(--primary-orange)',borderRadius:'6px',padding:'4px 10px',cursor:'pointer',fontSize:'12px',display:'flex',alignItems:'center',gap:'4px' }}>
+                              <i className="fa-solid fa-plus"></i> Tambah
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
 

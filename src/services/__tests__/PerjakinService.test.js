@@ -53,13 +53,14 @@ describe('PerjakinService', () => {
 
 
   describe('changeDocumentStatus', () => {
-    it('should throw error if subordinates perjakin are not fully approved when submitting', async () => {
+    it('should throw error if subordinates perjakin are not fully approved when submitting as Administrator', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.findOne.mockResolvedValue({ id: 'supervisor-1', jenisJabatan: 'Administrator' });
       EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
       const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
       PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([
-        { employeeId: 'sub-1', status: 'Menunggu Persetujuan Atasan' } // Unapproved document
+        { employeeId: 'sub-1', status: 'Menunggu Persetujuan Atasan' }
       ]);
 
       await expect(
@@ -67,12 +68,29 @@ describe('PerjakinService', () => {
       ).rejects.toThrow('Anda belum dapat mengajukan Perjakin. Harap setujui terlebih dahulu Dokumen Perjakin seluruh staf di unit kerja Anda.');
     });
 
-    it('should throw error if subordinate has no perjakin document', async () => {
+    it('should succeed if submitting as Pengawas even if subordinates perjakin are not approved', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.findOne.mockResolvedValue({ id: 'supervisor-1', jenisJabatan: 'Pengawas' });
       EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
       const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
-      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([]); // No document
+      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([
+        { employeeId: 'sub-1', status: 'Menunggu Persetujuan Atasan' }
+      ]);
+      PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);
+      PerjakinDocumentRepository.create = vi.fn().mockResolvedValue({ id: 'doc-1' });
+
+      const result = await PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor');
+      expect(result).toBeDefined();
+    });
+
+    it('should throw error if subordinate has no perjakin document', async () => {
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.findOne.mockResolvedValue({ id: 'supervisor-1', jenisJabatan: 'Administrator' });
+      EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
+
+      const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
+      PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([]); 
 
       await expect(
         PerjakinService.changeDocumentStatus('supervisor-1', 2026, 'Menunggu Persetujuan Atasan', 'user', 'Supervisor')
@@ -81,11 +99,12 @@ describe('PerjakinService', () => {
 
     it('should succeed if all subordinates perjakin are approved', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      EmployeeRepository.findOne.mockResolvedValue({ id: 'supervisor-1', jenisJabatan: 'Administrator' });
       EmployeeRepository.find = vi.fn().mockResolvedValue([{ id: 'sub-1' }]);
 
       const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
       PerjakinDocumentRepository.find = vi.fn().mockResolvedValue([
-        { employeeId: 'sub-1', status: 'Disetujui' } // Approved document
+        { employeeId: 'sub-1', status: 'Disetujui' }
       ]);
       PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);
       PerjakinDocumentRepository.create = vi.fn().mockResolvedValue({ id: 'doc-1' });
@@ -96,7 +115,8 @@ describe('PerjakinService', () => {
 
     it('should succeed if employee has no subordinates', async () => {
       const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
-      EmployeeRepository.find = vi.fn().mockResolvedValue([]); // No subordinates
+      EmployeeRepository.findOne.mockResolvedValue({ id: 'staff-1', jenisJabatan: 'Administrator' });
+      EmployeeRepository.find = vi.fn().mockResolvedValue([]); 
 
       const PerjakinDocumentRepository = (await import('@/repositories/PerjakinDocumentRepository')).default;
       PerjakinDocumentRepository.findOne = vi.fn().mockResolvedValue(null);

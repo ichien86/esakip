@@ -11,6 +11,7 @@ const EmployeeSchema = new mongoose.Schema({
   roles: { type: [String], default: [] },
   parentId: { type: String, default: null },
   bidangs: { type: [String], default: [] },
+  pltBidangs: { type: [String], default: [] },
   scopeLeader: { type: String, enum: ['Badan', 'Bidang', 'Sekretariat', 'Tata Usaha', null], default: null },
   isActive: { type: Boolean, default: true },
   signatureUrl: { type: String, default: null },

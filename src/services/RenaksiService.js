@@ -467,6 +467,38 @@ class RenaksiService {
         err.status = 400;
         throw err;
       }
+
+      // Validasi Khusus Administrator
+      const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+      const pengaju = await EmployeeRepository.findOne({ id: employeeId });
+      
+      if (pengaju && pengaju.jenisJabatan === 'Administrator') {
+        const subordinates = await EmployeeRepository.find({ parentId: employeeId, isActive: true });
+        
+        if (subordinates && subordinates.length > 0) {
+          const subIds = subordinates.map(s => s.id);
+          const subRenaksi = await RenaksiRepository.find({ employeeId: { $in: subIds }, tahun: record.tahun || 2026, bulan: parseInt(bulan) });
+          
+          // Pastikan semua record Renaksi bawahan yang memiliki target > 0, 
+          // status realisasinya harus 'Disetujui' atau 'ACC_Admin'.
+          const hasUnfinished = subRenaksi.some(subR => {
+             if (subR.targetBulanan > 0) {
+               return subR.status !== 'Disetujui' && subR.status !== 'ACC_Admin';
+             }
+             // Untuk target menurun yang nilai targetnya 0, pastikan tidak ada yang menggantung 'Diajukan'
+             if (subR.targetBulanan === 0 && subR.status === 'Diajukan') {
+               return true;
+             }
+             return false;
+          });
+
+          if (hasUnfinished) {
+            const err = new Error('Anda belum dapat mengajukan Realisasi Kinerja. Harap pastikan seluruh target staf di unit kerja Anda telah disetujui realisasinya pada bulan ini.');
+            err.status = 403;
+            throw err;
+          }
+        }
+      }
     }
 
     if (isUnderperforming) {

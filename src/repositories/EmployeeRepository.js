@@ -12,6 +12,11 @@ class EmployeeRepository {
     return Employee.findOne(filter);
   }
 
+  async find(filter) {
+    await dbConnect();
+    return Employee.find(filter);
+  }
+
   async saveDocument(document) {
     return document.save();
   }

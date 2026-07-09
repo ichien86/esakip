@@ -113,25 +113,55 @@ class EmployeeService {
     return employee;
   }
 
-  async createEmployee({ body, requesterRole }) {
-    if (requesterRole !== 'admin') {
-      const err = new Error('Akses ditolak. Hanya Administrator Sistem yang dapat mengelola manajemen user.');
-      err.status = 403;
-      throw err;
-    }
-
-    const { nama, nip, jabatan, jenisJabatan, pangkatGolongan, roles, parentId, bidangs } = body;
-    const finalRoles = Array.isArray(roles) ? roles : (body.role ? [body.role] : []);
-    let finalBidangs = Array.isArray(bidangs) ? bidangs : (body.bidang ? [body.bidang] : []);
-
-    if (!nama || !nip || !jabatan || finalRoles.length === 0 || finalBidangs.length === 0) {
-      const err = new Error('Field nama, NIP, jabatan, role, dan unit kerja wajib diisi');
-      err.status = 400;
-      throw err;
-    }
-
+  
+  async _prepareEmployeePayload(body, isUpdate = false) {
+    const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+    
+    let { nama, nip, jabatan, jenisJabatan, pangkatGolongan, roles, parentId, bidangs, pltBidangs, isActive } = body;
+    jenisJabatan = jenisJabatan || 'JFU';
+    
+    let finalRoles = Array.isArray(roles) ? roles : (body.role ? [body.role] : []);
+    let finalPltBidangs = Array.isArray(pltBidangs) ? pltBidangs : [];
+    let finalParentId = parentId || null;
+    let finalBidangs = [];
     let finalScopeLeader = null;
-    if (finalRoles.includes('pemimpin')) {
+
+    if (jenisJabatan === 'Pimpinan Tinggi') {
+      finalRoles = ['pemimpin'];
+      finalBidangs = ['Badan', ...finalPltBidangs];
+      finalParentId = 'bupati';
+      finalScopeLeader = 'Badan';
+    } else if (jenisJabatan === 'Administrator') {
+      if (!finalRoles.includes('pemimpin')) finalRoles.push('pemimpin');
+      
+      const pimpinanTinggi = await EmployeeRepository.findOne({ jenisJabatan: 'Pimpinan Tinggi', isActive: true });
+      if (pimpinanTinggi) {
+        finalParentId = pimpinanTinggi.id;
+      } else {
+        finalParentId = 'bupati';
+      }
+      
+      const unitKerjaDipimpin = (Array.isArray(bidangs) && bidangs.length > 0) ? bidangs[0] : (body.bidang || '');
+      if (!unitKerjaDipimpin) {
+         const err = new Error('Administrator wajib memiliki Unit Kerja Definitif.');
+         err.status = 400; throw err;
+      }
+      finalBidangs = [unitKerjaDipimpin, ...finalPltBidangs];
+    } else {
+      if (!finalParentId) {
+        const err = new Error('Pengawas, JFT, atau JFU wajib memilih Atasan Langsung.');
+        err.status = 400; throw err;
+      }
+      const parent = await EmployeeRepository.findOne({ id: finalParentId });
+      if (!parent) {
+         const err = new Error('Atasan Langsung tidak ditemukan.');
+         err.status = 400; throw err;
+      }
+      const parentPrimaryBidang = (parent.bidangs && parent.bidangs.length > 0) ? parent.bidangs[0] : '';
+      finalBidangs = [parentPrimaryBidang, ...finalPltBidangs];
+    }
+
+    if (finalRoles.includes('pemimpin') && jenisJabatan !== 'Pimpinan Tinggi') {
       const leaderBidang = finalBidangs[0] || '';
       if (leaderBidang === 'Badan') {
         finalScopeLeader = 'Badan';
@@ -144,21 +174,86 @@ class EmployeeService {
       }
     }
 
+    if (!nama || !nip || !jabatan || finalRoles.length === 0 || finalBidangs.length === 0) {
+      const err = new Error('Field nama, NIP, jabatan, role, dan unit kerja wajib diisi');
+      err.status = 400;
+      throw err;
+    }
+
+    return {
+      nama, nip, jabatan, jenisJabatan, pangkatGolongan, 
+      roles: finalRoles, parentId: finalParentId, 
+      bidangs: finalBidangs, pltBidangs: finalPltBidangs, 
+      scopeLeader: finalScopeLeader,
+      isActive: isActive !== undefined ? isActive : true
+    };
+  }
+
+  async _processPltHandover(newEmpId, primaryBidang) {
+    const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
+    const CascadingAnnual = (await import('@/models/CascadingAnnual')).default;
+    const Renaksi = (await import('@/models/Renaksi')).default;
+    const PerjakinDocument = (await import('@/models/PerjakinDocument')).default;
     const Employee = (await import('@/models/Employee')).default;
+
+    const oldPlts = await Employee.find({ pltBidangs: primaryBidang, id: { $ne: newEmpId }, isActive: true });
+    
+    for (const oldPlt of oldPlts) {
+      oldPlt.pltBidangs = oldPlt.pltBidangs.filter(b => b !== primaryBidang);
+      oldPlt.bidangs = oldPlt.bidangs.filter(b => b !== primaryBidang);
+      await EmployeeRepository.saveDocument(oldPlt);
+
+      await Employee.updateMany(
+        { parentId: oldPlt.id, bidangs: primaryBidang },
+        { $set: { parentId: newEmpId } }
+      );
+
+      await CascadingAnnual.updateMany(
+        { penanggungJawab: oldPlt.id, bidangPengampu: primaryBidang },
+        { $set: { penanggungJawab: newEmpId } }
+      );
+
+      await PerjakinDocument.updateMany(
+        { employeeId: oldPlt.id, status: { $ne: 'Draft' } },
+        { $set: { status: 'Draft' } }
+      );
+    }
+    
+    if (oldPlts.length > 0) {
+      await PerjakinDocument.updateMany(
+        { employeeId: newEmpId, status: { $ne: 'Draft' } },
+        { $set: { status: 'Draft' } }
+      );
+    }
+  }
+
+
+  async createEmployee({ body, requesterRole }) {
+    if (requesterRole !== 'admin') {
+      const err = new Error('Akses ditolak. Hanya Administrator Sistem yang dapat mengelola manajemen user.');
+      err.status = 403;
+      throw err;
+    }
+
+    const payload = await this._prepareEmployeePayload(body, false);
+    
+    const Employee = (await import('@/models/Employee')).default;
+    const newEmpId = 'emp_' + Date.now();
     const newEmp = new Employee({
-      id: 'emp_' + Date.now(),
-      nama,
-      nip,
-      jabatan,
-      jenisJabatan: jenisJabatan || 'JFU',
-      pangkatGolongan: pangkatGolongan || '',
-      roles: finalRoles,
-      parentId: parentId || null,
-      bidangs: finalBidangs,
-      scopeLeader: finalScopeLeader
+      id: newEmpId,
+      ...payload
     });
 
+    const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
     await EmployeeRepository.saveDocument(newEmp);
+
+    if (payload.roles.includes('pemimpin') && payload.bidangs.length > 0) {
+      const primaryBidang = payload.bidangs[0];
+      if (primaryBidang && !payload.pltBidangs.includes(primaryBidang)) {
+        await this._processPltHandover(newEmp.id, primaryBidang);
+      }
+    }
+
     return newEmp;
   }
 
@@ -169,10 +264,7 @@ class EmployeeService {
       throw err;
     }
 
-    const { nama, nip, jabatan, jenisJabatan, pangkatGolongan, roles, parentId, bidangs, isActive } = body;
-    const finalRoles = Array.isArray(roles) ? roles : (body.role ? [body.role] : []);
-    let finalBidangs = Array.isArray(bidangs) ? bidangs : (body.bidang ? [body.bidang] : []);
-
+    const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
     const emp = await EmployeeRepository.findOne({ id });
     if (!emp) {
       const err = new Error('Pegawai tidak ditemukan');
@@ -180,9 +272,11 @@ class EmployeeService {
       throw err;
     }
 
-    // --- Role Modification Validations ---
-    const isRemovingAdmin = emp.roles.includes('admin') && (!finalRoles.includes('admin') || isActive === false);
-    const isRemovingPerencana = emp.roles.includes('perencana') && (!finalRoles.includes('perencana') || isActive === false);
+    const payload = await this._prepareEmployeePayload(body, true);
+    const { roles, bidangs, isActive } = payload;
+
+    const isRemovingAdmin = emp.roles.includes('admin') && (!roles.includes('admin') || isActive === false);
+    const isRemovingPerencana = emp.roles.includes('perencana') && (!roles.includes('perencana') || isActive === false);
     
     if (isRemovingAdmin) {
       const allAdmins = await EmployeeRepository.find({ roles: 'admin', isActive: true });
@@ -203,7 +297,7 @@ class EmployeeService {
     }
 
     const oldBidangs = emp.bidangs || [];
-    const isRemovingAdminBidang = emp.roles.includes('admin_bidang') && (!finalRoles.includes('admin_bidang') || isActive === false);
+    const isRemovingAdminBidang = emp.roles.includes('admin_bidang') && (!roles.includes('admin_bidang') || isActive === false);
     if (isRemovingAdminBidang && oldBidangs.length > 0) {
       const bidang = oldBidangs[0];
       const allAdminBidang = await EmployeeRepository.find({ roles: 'admin_bidang', bidangs: bidang, isActive: true });
@@ -213,26 +307,8 @@ class EmployeeService {
         throw err;
       }
     }
-    // -------------------------------------
 
-    let finalScopeLeader = null;
-    if (finalRoles.includes('pemimpin')) {
-      const leaderBidang = finalBidangs[0] || '';
-      if (leaderBidang === 'Badan') {
-        finalScopeLeader = 'Badan';
-      } else if (leaderBidang === 'Sekretariat') {
-        finalScopeLeader = 'Sekretariat';
-      } else if (leaderBidang === 'Tata Usaha') {
-        finalScopeLeader = 'Tata Usaha';
-      } else if (leaderBidang.startsWith('Bidang')) {
-        finalScopeLeader = 'Bidang';
-      }
-    }
-
-    const newBidangs = finalBidangs || [];
-
-    // Check if there is a unit kerja transfer
-    if (oldBidangs.length > 0 && oldBidangs[0] !== newBidangs[0]) {
+    if (oldBidangs.length > 0 && oldBidangs[0] !== bidangs[0]) {
       const Selection = (await import('@/models/Selection')).default;
       const CascadingAnnual = (await import('@/models/CascadingAnnual')).default;
       const Renaksi = (await import('@/models/Renaksi')).default;
@@ -241,7 +317,6 @@ class EmployeeService {
 
       const oldBidang = oldBidangs[0];
 
-      // Get the employee's selection for the selected year
       const oldUnitIndicators = await CascadingAnnual.find({
         penanggungJawab: id,
         bidangPengampu: oldBidang,
@@ -250,28 +325,21 @@ class EmployeeService {
       const oldUnitIndicatorIds = oldUnitIndicators.map(ind => ind.id);
 
       if (oldUnitIndicatorIds.length > 0) {
-        // Unset penanggungJawab for these indicators
         await CascadingAnnual.updateMany(
           { id: { $in: oldUnitIndicatorIds }, tahun: yearNum },
           { $set: { penanggungJawab: null } }
         );
 
-        // Delete Renaksi records
         await Renaksi.deleteMany({ employeeId: id, indicatorId: { $in: oldUnitIndicatorIds }, tahun: yearNum });
 
-        // Update legacy selection
         const selection = await Selection.findOne({ employeeId: id, tahun: yearNum });
         if (selection && selection.selectedIndicators) {
           selection.selectedIndicators = selection.selectedIndicators.filter(indId => !oldUnitIndicatorIds.includes(indId));
           await selection.save();
         }
 
-        // Check for active PICs and create notif
         for (const indicator of oldUnitIndicators) {
-          const activeEmployeesInOldBidang = await Employee.find({
-            bidangs: oldBidang,
-            isActive: true
-          });
+          const activeEmployeesInOldBidang = await Employee.find({ bidangs: oldBidang, isActive: true });
           const activePICIds = activeEmployeesInOldBidang.map(e => e.id);
           const activePICJabatans = activeEmployeesInOldBidang.filter(e => e.roles.includes('pemimpin')).map(e => `jabatan:${e.jabatan}`);
 
@@ -289,7 +357,7 @@ class EmployeeService {
             const newNotif = new Notification({
               id: notifId,
               bidang: oldBidang,
-              message: `Pegawai ${emp.nama} telah pindah unit kerja ke ${newBidangs[0]}. Indikator '${indicator.indikator}' (${indicator.text}) kini tidak memiliki penanggung jawab di bidang Anda.`
+              message: `Pegawai ${emp.nama} telah pindah unit kerja ke ${bidangs[0]}. Indikator '${indicator.indikator}' (${indicator.text}) kini tidak memiliki penanggung jawab di bidang Anda.`
             });
             await newNotif.save();
           }
@@ -297,20 +365,17 @@ class EmployeeService {
       }
     }
 
-    emp.nama = nama;
-    emp.nip = nip;
-    emp.jabatan = jabatan;
-    if (jenisJabatan !== undefined) emp.jenisJabatan = jenisJabatan;
-    emp.pangkatGolongan = pangkatGolongan || '';
-    emp.roles = finalRoles;
-    emp.parentId = parentId || null;
-    emp.bidangs = finalBidangs;
-    emp.scopeLeader = finalScopeLeader;
-    if (isActive !== undefined) {
-      emp.isActive = isActive;
-    }
+    Object.assign(emp, payload);
 
     await EmployeeRepository.saveDocument(emp);
+
+    if (payload.roles.includes('pemimpin') && payload.bidangs.length > 0) {
+      const primaryBidang = payload.bidangs[0];
+      if (primaryBidang && !payload.pltBidangs.includes(primaryBidang)) {
+        await this._processPltHandover(emp.id, primaryBidang);
+      }
+    }
+
     return emp;
   }
 
