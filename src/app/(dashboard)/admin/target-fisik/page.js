@@ -35,7 +35,7 @@ export default function TargetFisikPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth, activeYear]);
+  }, [fetchWithAuth, activeYear, activeBidang, activeRole]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);

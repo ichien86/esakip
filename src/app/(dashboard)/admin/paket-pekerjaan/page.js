@@ -40,7 +40,7 @@ export default function PaketPekerjaanPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth, activeYear]);
+  }, [fetchWithAuth, activeYear, activeBidang, activeRole]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);

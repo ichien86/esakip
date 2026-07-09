@@ -56,7 +56,7 @@ export default function RealisasiFisikPage() {
     } finally {
       setLoading(false);
     }
-  }, [fetchWithAuth, activeYear, selectedBulan]);
+  }, [fetchWithAuth, activeYear, selectedBulan, activeBidang, activeRole]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
