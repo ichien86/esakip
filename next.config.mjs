@@ -11,11 +11,6 @@ const nextConfig = {
     '10.0.*',
     '172.16.*',
   ],
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
-  },
 };
 
 export default nextConfig;
