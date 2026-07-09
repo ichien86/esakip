@@ -88,11 +88,11 @@ export default function AdminAssignmentsPage() {
 
         const unitLeaders = allEmployees.filter(e =>
           e.isActive !== false &&
-          e.roles.includes('pemimpin') &&
+          (e.jenisJabatan === 'Administrator' || (e.roles && e.roles.includes('pemimpin'))) &&
           isSubUnitOf(e.bidangs, activeBidang) &&
           e.scopeLeader !== 'Badan' &&
-          !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
-          !e.jabatan.toLowerCase().includes('kalaksa')
+          !(e.jabatan || '').toLowerCase().includes('kepala pelaksana') &&
+          !(e.jabatan || '').toLowerCase().includes('kalaksa')
         );
         const autoAssignValues = [...new Set(unitLeaders.map(l => `jabatan:${l.jabatan}`))];
 
@@ -101,8 +101,11 @@ export default function AdminAssignmentsPage() {
           const isProgram = ['program', 'sasaran_program'].includes(n.level);
           if (n.indicators && n.indicators.length > 0) {
             n.indicators.forEach(ind => {
+              const existingPic = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
               initialAssignments[ind.id] = {
-                penanggungJawab: isProgram ? autoAssignValues : (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean),
+                penanggungJawab: isProgram 
+                  ? (autoAssignValues.length > 0 ? autoAssignValues : existingPic) 
+                  : existingPic,
                 crossCuttingType: ind.crossCuttingType || 'shared',
                 splitTargets: ind.splitTargets || {}
               };
