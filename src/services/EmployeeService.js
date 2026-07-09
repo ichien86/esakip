@@ -195,6 +195,28 @@ class EmployeeService {
     };
   }
 
+  async _validatePltAssignments(pltBidangs, excludeEmpId) {
+    if (!pltBidangs || pltBidangs.length === 0) return;
+    const Employee = (await import('@/models/Employee')).default;
+    for (const pltUnit of pltBidangs) {
+      const query = {
+        roles: 'pemimpin',
+        bidangs: pltUnit,
+        isActive: true
+      };
+      if (excludeEmpId) query.id = { $ne: excludeEmpId };
+
+      const existingLeaders = await Employee.find(query);
+      const definitiveLeader = existingLeaders.find(e => !(e.pltBidangs || []).includes(pltUnit));
+      
+      if (definitiveLeader) {
+        const err = new Error(`Unit Kerja "${pltUnit}" masih memiliki Pejabat Definitif yang aktif (${definitiveLeader.nama}). Tidak dapat menunjuk Plt kecuali Pejabat Definitif dinonaktifkan atau dimutasi terlebih dahulu.`);
+        err.status = 400;
+        throw err;
+      }
+    }
+  }
+
   async _processPltHandover(newEmpId, primaryBidang) {
     const EmployeeRepository = (await import('@/repositories/EmployeeRepository')).default;
     const CascadingAnnual = (await import('@/models/CascadingAnnual')).default;
@@ -242,6 +264,7 @@ class EmployeeService {
     }
 
     const payload = await this._prepareEmployeePayload(body, false);
+    await this._validatePltAssignments(payload.pltBidangs, null);
     
     const Employee = (await import('@/models/Employee')).default;
     const newEmpId = 'emp_' + Date.now();
@@ -279,6 +302,7 @@ class EmployeeService {
     }
 
     const payload = await this._prepareEmployeePayload(body, true);
+    await this._validatePltAssignments(payload.pltBidangs, id);
     const { roles, bidangs, isActive } = payload;
 
     const isRemovingAdmin = emp.roles.includes('admin') && (!roles.includes('admin') || isActive === false);
