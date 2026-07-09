@@ -130,8 +130,13 @@ export default function OrganogramPage() {
   const buildFullTree = (treeParentId) => {
     const children = virtualNodes.filter(e => e.treeParentId === treeParentId);
     if (children.length === 0) return null;
+    
+    // Gunakan vertical layout khusus jika anak-anaknya adalah JFT/JFU dan jumlahnya banyak
+    const isJFTGroup = children.every(c => ['JFT', 'JFU', 'Pelaksana'].includes(c.jenisJabatan || 'JFU'));
+    const useVertical = children.length > 2 && isJFTGroup;
+
     return (
-      <ul>
+      <ul className={useVertical ? 'vertical-layout' : ''}>
         {children.map(node => (
           <li key={node.treeNodeId}>
             {renderNode(node, node.isPltNode, node.isPltNode ? node.nodeUnit : null)}
