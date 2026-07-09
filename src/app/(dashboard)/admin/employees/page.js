@@ -737,7 +737,9 @@ export default function AdminEmployeesPage() {
                     <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)} required>
                       <option value="">-- Pilih Atasan Langsung --</option>
                       {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false && emp.roles.includes('pemimpin')).map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
+                        <option key={emp.id} value={emp.id}>
+                          {emp.nama} ({emp.jabatan}){emp.pltBidangs && emp.pltBidangs.length > 0 ? ` [Plt: ${emp.pltBidangs.join(', ')}]` : ''}
+                        </option>
                       ))}
                     </select>
                   </div>
