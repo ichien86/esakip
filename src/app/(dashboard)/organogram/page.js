@@ -70,7 +70,7 @@ export default function OrganogramPage() {
         {!isPlt && emp.pltBidangs && emp.pltBidangs.length > 0 && (
           <div style={{ marginTop: '3px' }}>
             <span style={{ background: 'rgba(255,107,0,0.15)', color: 'var(--primary-orange)', fontSize: '9px', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px', padding: '1px 5px' }}>
-              Plt: {emp.pltBidangs.join(', ')}
+              Juga menjabat Plt: {emp.pltBidangs.join(', ')}
             </span>
           </div>
         )}
@@ -79,103 +79,115 @@ export default function OrganogramPage() {
     );
   };
 
+  // ── PREPARE VIRTUAL NODES ──────────────────────────────────────
+  const virtualNodes = useMemo(() => {
+    const nodes = [];
+    activeEmployees.forEach(emp => {
+      // Definitive node
+      const defUnit = (emp.bidangs || []).find(b => !(emp.pltBidangs || []).includes(b)) || emp.bidangs?.[0];
+      if (defUnit || !emp.pltBidangs || emp.pltBidangs.length === 0) {
+        nodes.push({
+          ...emp,
+          treeNodeId: `${emp.id}_${defUnit || 'none'}`,
+          treeParentId: emp.parentId ? `${emp.parentId}_${defUnit || 'none'}` : null,
+          isPltNode: false,
+          nodeUnit: defUnit || 'none'
+        });
+      }
+
+      // Plt nodes
+      if (emp.pltBidangs && emp.pltBidangs.length > 0) {
+        emp.pltBidangs.forEach(pltUnit => {
+          nodes.push({
+            ...emp,
+            treeNodeId: `${emp.id}_${pltUnit}`,
+            // We initially point Plt to the same parent as definitive, we will fix it in the next loop
+            treeParentId: emp.parentId ? `${emp.parentId}_${emp.bidangs?.[0] || 'none'}` : null,
+            isPltNode: true,
+            nodeUnit: pltUnit
+          });
+        });
+      }
+    });
+
+    // Fix treeParentId: link subordinate to the parent node matching their unit
+    nodes.forEach(node => {
+      if (node.parentId) {
+        const parentNodes = nodes.filter(n => n.id === node.parentId);
+        const exactParentNode = parentNodes.find(n => n.nodeUnit === node.nodeUnit);
+        if (exactParentNode) {
+          node.treeParentId = exactParentNode.treeNodeId;
+        } else {
+          // Fallback to definitive parent
+          const defParentNode = parentNodes.find(n => !n.isPltNode);
+          node.treeParentId = defParentNode ? defParentNode.treeNodeId : null;
+        }
+      }
+    });
+
+    return nodes;
+  }, [activeEmployees]);
+
   // ── MODE: Semua (hierarki penuh) ──────────────────────────────────────
-  const buildFullTree = (parentId) => {
-    const children = activeEmployees.filter(e => e.parentId === parentId);
+  const buildFullTree = (treeParentId) => {
+    const children = virtualNodes.filter(e => e.treeParentId === treeParentId);
     if (children.length === 0) return null;
     return (
       <ul className={children.length > 3 ? 'vertical-layout' : ''}>
-        {children.map(emp => (
-          <li key={emp.id}>
-            {renderNode(emp)}
-            {buildFullTree(emp.id)}
+        {children.map(node => (
+          <li key={node.treeNodeId}>
+            {renderNode(node, node.isPltNode, node.isPltNode ? node.nodeUnit : null)}
+            {buildFullTree(node.treeNodeId)}
           </li>
         ))}
       </ul>
     );
   };
 
+  const rootNodes = virtualNodes.filter(e => e.treeParentId === null);
+
   const rootEmployee = activeEmployees.find(e => e.parentId === null);
 
   // ── MODE: Per Unit Kerja ──────────────────────────────────────────────
   const buildUnitTree = (unitName) => {
-    // Kepala unit = Administrator dengan scopeLeader === unitName atau bidangs[0] === unitName
-    const unitHead = activeEmployees.find(
-      e => e.scopeLeader === unitName || (e.bidangs?.includes(unitName) && e.jenisJabatan === 'Administrator')
-    );
+    const unitNodes = virtualNodes.filter(n => n.nodeUnit === unitName);
+    const unitRoots = unitNodes.filter(n => !unitNodes.some(p => p.treeNodeId === n.treeParentId));
 
-    // Pegawai definitif yang bertugas di unit ini (bawahan langsung kepala unit)
-    const definitifMembers = unitHead
-      ? activeEmployees.filter(e => e.parentId === unitHead.id)
-      : [];
-
-    // Pegawai PLT di unit ini (yang punya pltBidangs termasuk unitName, bukan kepala unit)
-    const pltMembers = activeEmployees.filter(
-      e => (e.pltBidangs || []).includes(unitName) && e.id !== unitHead?.id
-    );
-
-    // Bawahan JFT/JFU di bawah kepala unit (level 2)
-    const buildSubTree = (parentId) => {
-      const subs = activeEmployees.filter(e => e.parentId === parentId);
-      if (subs.length === 0) return null;
+    const buildSub = (parentId) => {
+      const children = unitNodes.filter(n => n.treeParentId === parentId);
+      if (children.length === 0) return null;
       return (
-        <ul className={subs.length > 3 ? 'vertical-layout' : ''}>
-          {subs.map(emp => (
-            <li key={emp.id}>
-              {renderNode(emp)}
-              {buildSubTree(emp.id)}
+        <ul className={children.length > 3 ? 'vertical-layout' : ''}>
+          {children.map(node => (
+            <li key={node.treeNodeId}>
+              {renderNode(node, node.isPltNode, node.isPltNode ? node.nodeUnit : null)}
+              {buildSub(node.treeNodeId)}
             </li>
           ))}
         </ul>
       );
     };
 
-    const allMembers = [...definitifMembers, ...pltMembers];
+    if (unitRoots.length === 0) {
+      return (
+        <ul>
+          <li>
+            <div className="org-node" style={{ opacity: 0.5, fontStyle: 'italic' }}>
+              <p>Belum ada data pegawai untuk unit ini.</p>
+            </div>
+          </li>
+        </ul>
+      );
+    }
 
     return (
       <ul>
-        {unitHead ? (
-          <li>
-            {renderNode(unitHead)}
-            {allMembers.length > 0 && (
-              <ul className={allMembers.length > 3 ? 'vertical-layout' : ''}>
-                {/* Bawahan definitif + sub-bawahan mereka */}
-                {definitifMembers.map(emp => (
-                  <li key={emp.id}>
-                    {renderNode(emp)}
-                    {buildSubTree(emp.id)}
-                  </li>
-                ))}
-                {/* PLT di unit ini */}
-                {pltMembers.map(emp => (
-                  <li key={`plt-${emp.id}`}>
-                    {renderNode(emp, true, unitName)}
-                  </li>
-                ))}
-              </ul>
-            )}
+        {unitRoots.map(rootNode => (
+          <li key={rootNode.treeNodeId}>
+             {renderNode(rootNode, rootNode.isPltNode, rootNode.isPltNode ? rootNode.nodeUnit : null)}
+             {buildSub(rootNode.treeNodeId)}
           </li>
-        ) : (
-          <li>
-            <div className="org-node" style={{ opacity: 0.5, fontStyle: 'italic' }}>
-              <p>Belum ada Kepala {unitName}</p>
-              {pltMembers.length > 0 && (
-                <p style={{ fontSize: '11px', color: 'var(--primary-orange)' }}>
-                  Dirangkap Plt
-                </p>
-              )}
-            </div>
-            {pltMembers.length > 0 && (
-              <ul>
-                {pltMembers.map(emp => (
-                  <li key={`plt-${emp.id}`}>
-                    {renderNode(emp, true, unitName)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        )}
+        ))}
       </ul>
     );
   };
@@ -231,12 +243,14 @@ export default function OrganogramPage() {
         <div className="org-tree">
           {selectedUnit === '__all__' ? (
             // Tampilan hierarki penuh
-            rootEmployee ? (
+            rootNodes.length > 0 ? (
               <ul>
-                <li>
-                  {renderNode(rootEmployee)}
-                  {buildFullTree(rootEmployee.id)}
-                </li>
+                {rootNodes.map(rootNode => (
+                  <li key={rootNode.treeNodeId}>
+                    {renderNode(rootNode, rootNode.isPltNode, rootNode.isPltNode ? rootNode.nodeUnit : null)}
+                    {buildFullTree(rootNode.treeNodeId)}
+                  </li>
+                ))}
               </ul>
             ) : (
               <p style={{ color: 'var(--text-muted)' }}>Memuat bagan organisasi...</p>
