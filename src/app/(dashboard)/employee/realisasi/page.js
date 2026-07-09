@@ -214,12 +214,9 @@ export default function EmployeeRealisasiPage() {
 
         // Assistant Pre-fill logic (Variabel Konstan & Shared Variables)
         // Tentukan apakah indikator TUJUAN (penerima) menggunakan Titik Akhir (YTD)
-        // → Jika metode Persentase ATAU tipeTarget bukan Akumulatif = butuh nilai YTD kumulatif
-        const destinationMetode = (activeRecord?.snapshotMetode || activeNode?.metodePenghitungan || 'Tunggal');
+        // → Jika tipeTarget bukan Akumulatif = butuh nilai YTD kumulatif
         const destinationTipeTarget = (activeNode?.tipeTarget || activeNode?.parentNode?.tipeTarget || '');
-        const isDestinationTitikAkhir = 
-          destinationMetode === 'Persentase' || 
-          (destinationTipeTarget !== '' && destinationTipeTarget !== 'Akumulatif');
+        const isDestinationTitikAkhir = destinationTipeTarget !== '' && destinationTipeTarget !== 'Akumulatif';
 
         const newAliasWarnings = [];
         varsToSet = templateVars.map(vTemplate => {
