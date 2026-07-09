@@ -7,10 +7,10 @@ import { useSimulationInternal } from '@/context/SimulationInternalContext';
 import { useUI } from '@/context/UIContext';
 import { useMetadata } from '@/context/MetadataContext';
 
-export default function AdminAssignmentsPage() {
+export default function AdminProgramAssignmentsPage() {
   const { fetchWithAuth } = useFetchWithAuth();
   const { currentUser } = useSimulationInternal();
-  const { activeBidang, activeYear } = useUI();
+  const { activeYear } = useUI();
   const { systemSettings, allEmployees } = useMetadata();
   const [annualNodes, setAnnualNodes] = useState([]);
   const [assignments, setAssignments] = useState({});
@@ -20,35 +20,22 @@ export default function AdminAssignmentsPage() {
 
   const getPenanggungJawabOptions = () => {
     const options = [];
-    const isSubUnitOf = (empBidangs, targetBidang) => {
-      if (!empBidangs) return false;
-      if (empBidangs.includes(targetBidang)) return true;
-      if (targetBidang === 'Sekretariat' && empBidangs.includes('Tata Usaha')) return true;
-      return false;
-    };
-
-    const unitLeaders = allEmployees.filter(e =>
-      e.isActive !== false &&
-      e.roles.includes('pemimpin') &&
-      isSubUnitOf(e.bidangs, activeBidang) &&
-      e.scopeLeader !== 'Badan' &&
-      !e.jabatan.toLowerCase().includes('kepala pelaksana') &&
-      !e.jabatan.toLowerCase().includes('kalaksa')
-    );
-
-    const uniqueLeaderJabatans = [...new Set(unitLeaders.map(l => l.jabatan))];
-    uniqueLeaderJabatans.forEach(jab => {
-      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+    
+    // Hanya memuat Administrator (Eselon 3) untuk program
+    const administrators = allEmployees.filter(e => {
+      if (e.isActive === false) return false;
+      const isAdministrator = e.jenisJabatan === 'Administrator';
+      const isPltAdministrator = Array.isArray(e.pltBidangs) && e.pltBidangs.length > 0;
+      if (!isAdministrator && !isPltAdministrator) return false;
+      if (e.scopeLeader === 'Badan') return false;
+      const jabatanLower = (e.jabatan || '').toLowerCase();
+      if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
+      return true;
     });
 
-    const staffInUnit = allEmployees.filter(e =>
-      e.isActive !== false &&
-      e.id !== 'admin' &&
-      !e.roles.includes('pemimpin') &&
-      isSubUnitOf(e.bidangs, activeBidang)
-    );
-    staffInUnit.forEach(s => {
-      options.push({ value: s.id, label: `${s.nama} (${s.jabatan})`, type: 'staff' });
+    const uniqueLeaderJabatans = [...new Set(administrators.map(l => l.jabatan))];
+    uniqueLeaderJabatans.forEach(jab => {
+      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
     });
 
     return options;
@@ -69,14 +56,9 @@ export default function AdminAssignmentsPage() {
       const res = await fetchWithAuth(`/api/renja/${activeYear}`);
       if (res.ok) {
         const nodes = await res.json();
-        const filtered = nodes.filter(n => {
-          const belongsToBidang = n.bidangPengampu.includes(activeBidang) || activeBidang === 'Pimpinan';
-          if (!belongsToBidang) return false;
-          if (n.crossCuttingType === 'bersama' && n.selectedBidang && activeBidang !== 'Pimpinan') {
-            return n.selectedBidang === activeBidang;
-          }
-          return true;
-        });
+        
+        // Filter strictly for program levels ONLY, across the entire BPBD
+        const filtered = nodes.filter(n => ['program', 'sasaran_program'].includes(n.level));
         setAnnualNodes(filtered);
 
         const isSubUnitOf = (empBidangs, targetBidang) => {
@@ -86,14 +68,46 @@ export default function AdminAssignmentsPage() {
           return false;
         };
 
+        const getAdministratorsForBidangs = (targetBidangs) => {
+          if (!Array.isArray(targetBidangs) || targetBidangs.length === 0) return [];
+          
+          const leaders = allEmployees.filter(e => {
+            if (e.isActive === false) return false;
+            
+            const isAdministrator = e.jenisJabatan === 'Administrator';
+            
+            const matchesBidang = targetBidangs.some(tb => {
+              const asDefinitive = isSubUnitOf(e.bidangs, tb);
+              const asPlt = (e.pltBidangs && e.pltBidangs.includes(tb));
+              return asDefinitive || asPlt;
+            });
+
+            if (!matchesBidang) return false;
+            
+            const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && e.pltBidangs.includes(tb));
+            if (!isAdministrator && !actingAsPlt) return false;
+            
+            if (e.scopeLeader === 'Badan') return false;
+            
+            const jabatanLower = (e.jabatan || '').toLowerCase();
+            if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
+
+            return true;
+          });
+          
+          return [...new Set(leaders.map(l => `jabatan:${l.jabatan}`))];
+        };
+
         const initialAssignments = {};
         filtered.forEach(n => {
+          const programPICs = getAdministratorsForBidangs(n.bidangPengampu || []);
+          
           if (n.indicators && n.indicators.length > 0) {
             n.indicators.forEach(ind => {
               const existingPic = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
               
               initialAssignments[ind.id] = {
-                penanggungJawab: existingPic,
+                penanggungJawab: programPICs.length > 0 ? programPICs : existingPic,
                 crossCuttingType: ind.crossCuttingType || 'shared',
                 splitTargets: ind.splitTargets || {}
               };
@@ -108,7 +122,7 @@ export default function AdminAssignmentsPage() {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBidang, activeYear, fetchWithAuth]);
+  }, [activeYear, fetchWithAuth]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -192,27 +206,21 @@ export default function AdminAssignmentsPage() {
     });
   };
 
-  const validLevels = ['kegiatan', 'sasaran_kegiatan', 'subkegiatan', 'sasaran_subkegiatan', 'aktivitas', 'sasaran_aktivitas'];
   const picOptions = getPenanggungJawabOptions();
 
   const getLevelColor = (level) => {
     if (['program', 'sasaran_program'].includes(level)) return { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', badge: '#10b981', label: 'Program' };
-    if (['kegiatan', 'sasaran_kegiatan'].includes(level)) return { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.3)', badge: '#3b82f6', label: 'Kegiatan' };
-    if (['subkegiatan', 'sasaran_subkegiatan'].includes(level)) return { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.3)', badge: '#f59e0b', label: 'Subkegiatan' };
-    if (['aktivitas', 'sasaran_aktivitas'].includes(level)) return { bg: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.3)', badge: '#8b5cf6', label: 'Aktivitas' };
     return { bg: 'rgba(15,23,42,0.3)', border: 'var(--glass-border)', badge: 'gray', label: level };
   };
-
-  const displayNodes = annualNodes.filter(n => validLevels.includes(n.level));
 
   return (
     <div className="glass-panel">
       <div className="panel-header">
         <h3>
-          <i className="fa-solid fa-people-arrows text-orange"></i> Pembagian Indikator
+          <i className="fa-solid fa-people-arrows text-orange"></i> Pembagian Indikator Program
         </h3>
         <p className="text-muted">
-          Tentukan penanggung jawab (PIC) untuk setiap indikator kinerja di unit kerja <strong>{activeBidang}</strong> tahun <strong>{activeYear}</strong>.
+          Tentukan penanggung jawab (PIC) untuk setiap indikator tingkat <strong>Program</strong> lintas bidang untuk tahun <strong>{activeYear}</strong>.
         </p>
         {systemSettings?.renja_locked && (
           <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#EF4444', padding: '12px', borderRadius: '8px', fontSize: '13px', marginTop: '12px' }}>
@@ -233,16 +241,15 @@ export default function AdminAssignmentsPage() {
             {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
             {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
 
-            {displayNodes.length === 0 ? (
+            {annualNodes.length === 0 ? (
               <div style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', padding: '40px' }}>
                 <i className="fa-solid fa-inbox" style={{ fontSize: '32px', marginBottom: '12px', display: 'block', opacity: 0.4 }}></i>
-                Tidak ada indikator yang tersedia untuk unit kerja ini.
+                Tidak ada indikator program yang tersedia.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {displayNodes.map(node => {
+                {annualNodes.map(node => {
                   const styleObj = getLevelColor(node.level);
-                  const isHeaderLevel = ['tujuan', 'sasaran', 'program', 'sasaran_program'].includes(node.level);
                   return (
                     <div key={node.id} style={{ padding: '16px', borderRadius: '10px', background: styleObj.bg, border: `1px solid ${styleObj.border}` }}>
                       {/* Node Header */}
@@ -254,18 +261,12 @@ export default function AdminAssignmentsPage() {
                           {(node.sasaran || node.text) && <div><span style={{ color: 'var(--text-primary)' }}>Sasaran:</span> <strong style={{ color: 'var(--primary-orange)' }}>{node.sasaran || node.text}</strong></div>}
                           {node.nomenklatur && <div><span style={{ color: 'var(--text-primary)' }}>Nomenklatur:</span> {node.nomenklatur}</div>}
                         </div>
-                        {isHeaderLevel && (
-                          <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--glass-border)', fontSize: '12px' }}>
-                            <i className="fa-solid fa-user-tie text-orange"></i>
-                            <strong style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(node.penanggungJawab)}</strong>
-                          </div>
-                        )}
                       </div>
 
                       {/* Indicators */}
                       {node.indicators && node.indicators.length > 0 && (
                         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px' }}>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>Daftar Indikator & Penugasan:</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: 'bold', textTransform: 'uppercase' }}>Daftar Indikator & Penugasan Lintas Bidang:</div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             {node.indicators.map(ind => {
                               const assign = assignments[ind.id] || { penanggungJawab: [], crossCuttingType: 'shared', splitTargets: {} };
@@ -288,32 +289,25 @@ export default function AdminAssignmentsPage() {
                                   {/* PIC Assignment */}
                                   <div style={{ width: '360px', fontSize: '12px' }}>
                                     <div style={{ marginBottom: '6px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Penanggung Jawab:</div>
-                                    {['program', 'sasaran_program'].includes(node.level) ? (
-                                      <div style={{ background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)', padding: '8px 12px', borderRadius: '6px', color: 'var(--primary-orange)' }}>
-                                        <i className="fa-solid fa-user-tie mr-2"></i>
-                                        <span style={{ color: 'var(--text-primary)' }}>{resolvePenanggungJawabLabel(assign.penanggungJawab.join(','))}</span>
-                                      </div>
-                                    ) : (
-                                      <Select
-                                        isMulti
-                                        options={picOptions}
-                                        value={picOptions.filter(opt => assign.penanggungJawab.includes(opt.value))}
-                                        onChange={(sel) => handleAssignmentChangeMulti(ind.id, sel ? sel.map(o => o.value) : [])}
-                                        placeholder="Pilih PIC..."
-                                        isDisabled={systemSettings?.renja_locked}
-                                        noOptionsMessage={() => "Tidak ada data"}
-                                        styles={{
-                                          control: (b) => ({ ...b, background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(255,255,255,0.3)', minHeight: '34px' }),
-                                          menu: (b) => ({ ...b, background: 'rgba(255,255,255,0.97)', zIndex: 100, border: '1px solid rgba(0,0,0,0.1)' }),
-                                          option: (b, s) => ({ ...b, background: s.isFocused ? 'rgba(255,107,0,0.12)' : 'transparent', color: '#1f2937', cursor: 'pointer' }),
-                                          multiValue: (b) => ({ ...b, background: 'rgba(255,107,0,0.15)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px' }),
-                                          multiValueLabel: (b) => ({ ...b, color: '#d97706', fontWeight: 'bold', fontSize: '11px' }),
-                                          multiValueRemove: (b) => ({ ...b, color: '#d97706', ':hover': { backgroundColor: 'rgba(255,107,0,0.8)', color: 'white' } }),
-                                          input: (b) => ({ ...b, color: '#1f2937' }),
-                                          placeholder: (b) => ({ ...b, color: '#6b7280' })
-                                        }}
-                                      />
-                                    )}
+                                    <Select
+                                      isMulti
+                                      options={picOptions}
+                                      value={picOptions.filter(opt => assign.penanggungJawab.includes(opt.value))}
+                                      onChange={(sel) => handleAssignmentChangeMulti(ind.id, sel ? sel.map(o => o.value) : [])}
+                                      placeholder="Pilih PIC..."
+                                      isDisabled={systemSettings?.renja_locked}
+                                      noOptionsMessage={() => "Tidak ada data"}
+                                      styles={{
+                                        control: (b) => ({ ...b, background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(255,255,255,0.3)', minHeight: '34px' }),
+                                        menu: (b) => ({ ...b, background: 'rgba(255,255,255,0.97)', zIndex: 100, border: '1px solid rgba(0,0,0,0.1)' }),
+                                        option: (b, s) => ({ ...b, background: s.isFocused ? 'rgba(255,107,0,0.12)' : 'transparent', color: '#1f2937', cursor: 'pointer' }),
+                                        multiValue: (b) => ({ ...b, background: 'rgba(255,107,0,0.15)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px' }),
+                                        multiValueLabel: (b) => ({ ...b, color: '#d97706', fontWeight: 'bold', fontSize: '11px' }),
+                                        multiValueRemove: (b) => ({ ...b, color: '#d97706', ':hover': { backgroundColor: 'rgba(255,107,0,0.8)', color: 'white' } }),
+                                        input: (b) => ({ ...b, color: '#1f2937' }),
+                                        placeholder: (b) => ({ ...b, color: '#6b7280' })
+                                      }}
+                                    />
 
                                     {/* Crosscutting options when multiple PIC */}
                                     {isMultiPIC && (

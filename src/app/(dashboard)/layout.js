@@ -193,6 +193,9 @@ export default function DashboardLayout({ children }) {
               <Link href="/admin/cascading-annual" className={`nav-item ${isLinkActive('/admin/cascading-annual') ? 'active' : ''}`}>
                 <i className="fa-solid fa-network-wired"></i> Indikator Renja
               </Link>
+              <Link href="/admin/program-assignments" className={`nav-item ${isLinkActive('/admin/program-assignments') ? 'active' : ''}`}>
+                <i className="fa-solid fa-people-arrows"></i> Pembagian Indikator Program
+              </Link>
               <Link href="/admin/perjakin" className={`nav-item ${isLinkActive('/admin/perjakin') ? 'active' : ''}`}>
                 <i className="fa-solid fa-print"></i> Cetak Perjakin
               </Link>
