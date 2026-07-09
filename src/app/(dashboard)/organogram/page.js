@@ -100,6 +100,9 @@ export default function OrganogramPage() {
       }
     });
 
+    // Find Pimpinan Tinggi node to serve as ultimate root for floating Administrators
+    const pimpinanTinggiNode = nodes.find(n => n.jenisJabatan === 'Pimpinan Tinggi' && !n.isPltNode);
+
     // Fix treeParentId: link subordinate to the parent node matching their unit
     nodes.forEach(node => {
       if (node.parentId) {
@@ -112,6 +115,11 @@ export default function OrganogramPage() {
           const defParentNode = parentNodes.find(n => !n.isPltNode);
           node.treeParentId = defParentNode ? defParentNode.treeNodeId : null;
         }
+      } else {
+        // If no parentId, but it's an Administrator or Plt, force it under Pimpinan Tinggi!
+        if (pimpinanTinggiNode && node.id !== pimpinanTinggiNode.id && (node.jenisJabatan === 'Administrator' || node.isPltNode)) {
+          node.treeParentId = pimpinanTinggiNode.treeNodeId;
+        }
       }
     });
 
@@ -123,7 +131,7 @@ export default function OrganogramPage() {
     const children = virtualNodes.filter(e => e.treeParentId === treeParentId);
     if (children.length === 0) return null;
     return (
-      <ul className={children.length > 3 ? 'vertical-layout' : ''}>
+      <ul>
         {children.map(node => (
           <li key={node.treeNodeId}>
             {renderNode(node, node.isPltNode, node.isPltNode ? node.nodeUnit : null)}
