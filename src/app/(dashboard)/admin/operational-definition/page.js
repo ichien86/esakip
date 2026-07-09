@@ -381,11 +381,18 @@ export default function OperationalDefinitionPage() {
                     <div>
                       <div style={{ display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'8px',marginBottom:'10px' }}>
                         <span style={{ fontSize:'9px',background:'rgba(255,255,255,0.06)',padding:'3px 8px',borderRadius:'4px',fontWeight:600,textTransform:'uppercase',color:'var(--text-muted)' }}>{getLevelLabel(ind.nodeLevel)}</span>
-                        {ind.definisiOperasional ? (
-                          <span className="badge badge-finished" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-check" style={{ marginRight:'4px' }}></i>Terdefinisi</span>
-                        ) : (
-                          <span className="badge badge-none" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-pen-nib" style={{ marginRight:'4px' }}></i>Belum Diisi</span>
-                        )}
+                        {(() => {
+                          const hasDefOps = !!ind.definisiOperasional;
+                          const hasVars = ind.variables && ind.variables.length > 0 && ind.variables.some(v => v.name && v.name.trim() !== '');
+                          
+                          if (hasDefOps && hasVars) {
+                            return <span className="badge badge-finished" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-check" style={{ marginRight:'4px' }}></i>Terdefinisi</span>;
+                          } else if (hasDefOps && !hasVars) {
+                            return <span className="badge badge-warning" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-triangle-exclamation" style={{ marginRight:'4px' }}></i>Variabel Belum Disetting</span>;
+                          } else {
+                            return <span className="badge badge-none" style={{ fontSize:'9px',padding:'3px 8px' }}><i className="fa-solid fa-pen-nib" style={{ marginRight:'4px' }}></i>Belum Terdefinisi</span>;
+                          }
+                        })()}
                       </div>
                       <h4 style={{ fontSize:'14px',fontWeight:600,color: 'var(--text-primary)',lineHeight:'1.4' }}>{ind.indikator}</h4>
                       {ind.definisiOperasional && (
