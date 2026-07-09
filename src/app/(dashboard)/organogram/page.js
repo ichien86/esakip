@@ -1,27 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useMetadata } from '@/context/MetadataContext';
 import { useSimulationInternal } from '@/context/SimulationInternalContext';
 
 export default function OrganogramPage() {
   const { allEmployees } = useMetadata();
   const { currentUser } = useSimulationInternal();
-  const [selectedUnit, setSelectedUnit] = useState('__all__');
 
   const activeEmployees = useMemo(
     () => allEmployees.filter(e => e.id !== 'admin' && e.isActive !== false),
     [allEmployees]
   );
-
-  // Kumpulkan semua unit kerja unik dari bidangs semua pegawai
-  const allUnits = useMemo(() => {
-    const unitSet = new Set();
-    activeEmployees.forEach(emp => {
-      (emp.bidangs || []).forEach(b => unitSet.add(b));
-    });
-    return Array.from(unitSet).sort();
-  }, [activeEmployees]);
 
   // Render satu node pegawai
   const renderNode = (emp, isPlt = false, pltForUnit = null) => {
@@ -199,77 +189,19 @@ export default function OrganogramPage() {
         <p className="text-muted">Diagram struktur organisasi BPBD Kabupaten Boyolali.</p>
       </div>
 
-      {/* Tab navigasi unit kerja */}
-      <div style={{ padding: '0 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setSelectedUnit('__all__')}
-          style={{
-            padding: '8px 16px',
-            border: 'none',
-            borderBottom: selectedUnit === '__all__' ? '2px solid var(--primary-orange)' : '2px solid transparent',
-            background: 'none',
-            color: selectedUnit === '__all__' ? 'var(--primary-orange)' : 'var(--text-muted)',
-            fontWeight: selectedUnit === '__all__' ? 700 : 400,
-            cursor: 'pointer',
-            fontSize: '13px',
-            transition: 'all 0.2s',
-          }}
-        >
-          <i className="fa-solid fa-network-wired mr-1" /> Semua
-        </button>
-        {allUnits.map(unit => (
-          <button
-            key={unit}
-            onClick={() => setSelectedUnit(unit)}
-            style={{
-              padding: '8px 14px',
-              border: 'none',
-              borderBottom: selectedUnit === unit ? '2px solid var(--primary-orange)' : '2px solid transparent',
-              background: 'none',
-              color: selectedUnit === unit ? 'var(--primary-orange)' : 'var(--text-muted)',
-              fontWeight: selectedUnit === unit ? 700 : 400,
-              cursor: 'pointer',
-              fontSize: '13px',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {unit}
-          </button>
-        ))}
-      </div>
-
       <div className="panel-body org-chart-container">
         <div className="org-tree">
-          {selectedUnit === '__all__' ? (
-            // Tampilan hierarki penuh
-            rootNodes.length > 0 ? (
-              <ul>
-                {rootNodes.map(rootNode => (
-                  <li key={rootNode.treeNodeId}>
-                    {renderNode(rootNode, rootNode.isPltNode, rootNode.isPltNode ? rootNode.nodeUnit : null)}
-                    {buildFullTree(rootNode.treeNodeId)}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p style={{ color: 'var(--text-muted)' }}>Memuat bagan organisasi...</p>
-            )
+          {rootNodes.length > 0 ? (
+            <ul>
+              {rootNodes.map(rootNode => (
+                <li key={rootNode.treeNodeId}>
+                  {renderNode(rootNode, rootNode.isPltNode, rootNode.isPltNode ? rootNode.nodeUnit : null)}
+                  {buildFullTree(rootNode.treeNodeId)}
+                </li>
+              ))}
+            </ul>
           ) : (
-            // Tampilan per unit
-            <div>
-              <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>
-                  <i className="fa-solid fa-building text-orange mr-2" />
-                  {selectedUnit}
-                </h4>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '20px', height: '2px', background: 'var(--glass-border)', display: 'inline-block' }} /> Definitif
-                  <span style={{ width: '20px', height: '2px', borderTop: '2px dashed rgba(255,107,0,0.6)', display: 'inline-block' }} /> Plt
-                </span>
-              </div>
-              {buildUnitTree(selectedUnit)}
-            </div>
+            <p style={{ color: 'var(--text-muted)' }}>Memuat bagan organisasi...</p>
           )}
         </div>
       </div>
