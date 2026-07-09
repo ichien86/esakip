@@ -694,38 +694,80 @@ export default function AdminEmployeesPage() {
                   </select>
                 </div>
 
-                {/* Roles Multi-select Checkboxes */}
-                <div className="form-group mb-3">
-                  <label>Role Aplikasi (Multi-role)</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                    {roleOptions.map(opt => (
-                      <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedRoles.includes(opt.value)}
-                          onChange={() => handleRoleChange(opt.value)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                        {opt.label}
-                      </label>
-                    ))}
+                {/* Smart Form based on jenisJabatan */}
+                {jenisJabatan !== 'Pimpinan Tinggi' && jenisJabatan !== 'Administrator' && (
+                  <div className="form-group mb-3">
+                    <label>Role Aplikasi (Multi-role)</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                      {roleOptions.map(opt => (
+                        <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedRoles.includes(opt.value)}
+                            onChange={() => handleRoleChange(opt.value)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          {opt.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
+                )}
+
+                {jenisJabatan === 'Administrator' && (
+                  <div className="form-group mb-3">
+                    <label>Unit Kerja yang Dipimpin Definitif</label>
+                    <select
+                      className="select-sim"
+                      value={selectedBidangs[0] || ''}
+                      onChange={(e) => setSelectedBidangs(e.target.value ? [e.target.value] : [])}
+                      required
+                    >
+                      <option value="">-- Pilih Unit Kerja Definitif --</option>
+                      {bidangOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {jenisJabatan !== 'Pimpinan Tinggi' && jenisJabatan !== 'Administrator' && (
+                  <div className="form-group mb-3">
+                    <label>Atasan Langsung</label>
+                    <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)} required>
+                      <option value="">-- Pilih Atasan Langsung --</option>
+                      {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false && emp.roles.includes('pemimpin')).map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group mb-3">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={isPlt}
+                      onChange={(e) => setIsPlt(e.target.checked)}
+                      style={{ cursor: 'pointer', width: 'auto' }}
+                    />
+                    <strong>Jabat sebagai Pelaksana Tugas (Plt) di Unit Lain?</strong>
+                  </label>
                 </div>
 
-                {/* Unit Kerja Selector */}
-                {selectedRoles.includes('pemimpin') ? (
+                {isPlt && (
                   <div className="form-group mb-3">
                     <label style={{ fontWeight: 'bold', color: 'var(--primary-orange)' }}>
-                      Unit Kerja yang Dipimpin (Bisa pilih lebih dari satu jika merangkap Plt)
+                      Pilih Unit Kerja Plt
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(15, 23, 42, 0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                      {bidangOptions.map(opt => {
-                        const isChecked = selectedBidangs.includes(opt.value);
+                      {bidangOptions.filter(opt => opt.value !== (selectedBidangs[0] || '')).map(opt => {
+                        const isChecked = pltBidangs.includes(opt.value);
                         const handleCheckboxChange = () => {
                           if (isChecked) {
-                            setSelectedBidangs(selectedBidangs.filter(b => b !== opt.value));
+                            setPltBidangs(pltBidangs.filter(b => b !== opt.value));
                           } else {
-                            setSelectedBidangs([...selectedBidangs, opt.value]);
+                            setPltBidangs([...pltBidangs, opt.value]);
                           }
                         };
                         return (
@@ -742,31 +784,7 @@ export default function AdminEmployeesPage() {
                       })}
                     </div>
                   </div>
-                ) : (
-                  <div className="form-group mb-3">
-                    <label>Unit Kerja</label>
-                    <select
-                      className="select-sim"
-                      value={selectedBidangs[0] || ''}
-                      onChange={(e) => setSelectedBidangs(e.target.value ? [e.target.value] : [])}
-                      required
-                    >
-                      <option value="">-- Pilih Unit Kerja --</option>
-                      {bidangOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
                 )}
-
-                <div className="form-group mb-3">
-                  <label>Atasan Langsung</label>
-                  <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)}>
-                    <option value="">-- Tidak ada (Root) --</option>
-                    {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false).map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.nama} ({emp.jabatan})</option>
-                    ))}
-                  </select>
                 </div>
 
                 {isEditing && (
