@@ -1724,11 +1724,23 @@ export default function AdminCascading5YearsPage() {
                             </div>
                             <button 
                               type="button" 
-                              className={`btn btn-sm ${ind.definisiOperasional ? 'btn-success' : 'btn-danger'}`} 
-                              style={{ width: 'auto', padding: '1px 6px', fontSize: '9px', height: '18px', display: 'flex', alignItems: 'center' }}
+                              className={`btn btn-sm ${(() => {
+                                const hasDefOps = !!ind.definisiOperasional;
+                                const hasVars = ind.variables && ind.variables.length > 0 && ind.variables.some(v => v.name && v.name.trim() !== '');
+                                if (hasDefOps && hasVars) return 'btn-success';
+                                if (hasDefOps && !hasVars) return 'btn-warning text-dark';
+                                return 'btn-danger';
+                              })()}`} 
+                              style={{ width: 'auto', padding: '1px 6px', fontSize: '9px', height: '18px', display: 'flex', alignItems: 'center', border: 'none' }}
                               onClick={() => openIndicatorOpDefDetail(ind)}
                             >
-                              {ind.definisiOperasional ? 'Detail DefOp' : 'Isi DefOp'}
+                              {(() => {
+                                const hasDefOps = !!ind.definisiOperasional;
+                                const hasVars = ind.variables && ind.variables.length > 0 && ind.variables.some(v => v.name && v.name.trim() !== '');
+                                if (hasDefOps && hasVars) return 'Detail DefOp';
+                                if (hasDefOps && !hasVars) return 'Cek Variabel';
+                                return 'Isi DefOp';
+                              })()}
                             </button>
                           </div>
                           
