@@ -106,8 +106,19 @@ export default function AdminEmployeesPage() {
     }
   };
 
-  const handleParentChange = (newParentId) => {
-    setParentId(newParentId);
+  const handleParentChange = (val) => {
+    if (!val) {
+      setParentId('');
+      return;
+    }
+    // Handle composite value from dropdown
+    if (val.includes('|')) {
+      const [pId, unit] = val.split('|');
+      setParentId(pId);
+      setSelectedBidangs(unit ? [unit] : []);
+    } else {
+      setParentId(val);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -734,13 +745,43 @@ export default function AdminEmployeesPage() {
                 {jenisJabatan !== 'Pimpinan Tinggi' && jenisJabatan !== 'Administrator' && (
                   <div className="form-group mb-3">
                     <label>Atasan Langsung</label>
-                    <select className="select-sim" value={parentId} onChange={(e) => handleParentChange(e.target.value)} required>
+                    <select className="select-sim" value={parentId ? `${parentId}|${selectedBidangs[0] || ''}` : ''} onChange={(e) => handleParentChange(e.target.value)} required>
                       <option value="">-- Pilih Atasan Langsung --</option>
-                      {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false && emp.roles.includes('pemimpin')).map(emp => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.nama} ({emp.jabatan}){emp.pltBidangs && emp.pltBidangs.length > 0 ? ` [Plt: ${emp.pltBidangs.join(', ')}]` : ''}
-                        </option>
-                      ))}
+                      {allEmployeesWithSystem.filter(emp => emp.id !== formId && emp.id !== 'admin' && emp.isActive !== false && emp.roles.includes('pemimpin')).flatMap(emp => {
+                        const options = [];
+                        
+                        // Definitif option
+                        const defUnit = (emp.bidangs || []).find(b => !(emp.pltBidangs || []).includes(b)) || emp.bidangs?.[0];
+                        if (defUnit) {
+                          options.push(
+                            <option key={`${emp.id}|${defUnit}`} value={`${emp.id}|${defUnit}`}>
+                              {emp.nama} ({emp.jabatan}) - {defUnit}
+                            </option>
+                          );
+                        }
+                      
+                        // Plt options
+                        if (emp.pltBidangs && emp.pltBidangs.length > 0) {
+                          emp.pltBidangs.forEach(pltUnit => {
+                            options.push(
+                              <option key={`${emp.id}|${pltUnit}`} value={`${emp.id}|${pltUnit}`}>
+                                {emp.nama} (Plt. {pltUnit}) - {pltUnit}
+                              </option>
+                            );
+                          });
+                        }
+                      
+                        // Fallback option if somehow they have no units but are pemimpin
+                        if (options.length === 0) {
+                          options.push(
+                            <option key={emp.id} value={emp.id}>
+                              {emp.nama} ({emp.jabatan})
+                            </option>
+                          );
+                        }
+                        
+                        return options;
+                      })}
                     </select>
                   </div>
                 )}

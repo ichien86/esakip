@@ -157,7 +157,13 @@ class EmployeeService {
          const err = new Error('Atasan Langsung tidak ditemukan.');
          err.status = 400; throw err;
       }
-      const parentPrimaryBidang = (parent.bidangs && parent.bidangs.length > 0) ? parent.bidangs[0] : '';
+      let parentPrimaryBidang = '';
+      const requestedBidang = (Array.isArray(bidangs) && bidangs.length > 0) ? bidangs[0] : '';
+      if (requestedBidang && parent.bidangs && parent.bidangs.includes(requestedBidang)) {
+        parentPrimaryBidang = requestedBidang;
+      } else {
+        parentPrimaryBidang = (parent.bidangs && parent.bidangs.length > 0) ? parent.bidangs[0] : '';
+      }
       finalBidangs = [parentPrimaryBidang, ...finalPltBidangs];
     }
 
