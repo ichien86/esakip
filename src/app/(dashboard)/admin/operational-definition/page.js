@@ -196,7 +196,7 @@ export default function OperationalDefinitionPage() {
       }
     }
     
-    if (['Rata-rata', 'Penjumlahan', 'Pembobotan'].includes(metodePenghitungan)) {
+    if (['Rata-rata', 'Penjumlahan', 'Pembobotan', 'Persentase'].includes(metodePenghitungan)) {
       if (variables.length === 0 || variables.some(v => !v.name.trim())) { setError('Semua variabel harus memiliki nama.'); return; }
       if (metodePenghitungan === 'Pembobotan') {
         if (Math.abs(totalWeight - 100) > 0.001) { setError(`Total bobot harus 100. Saat ini: ${totalWeight.toFixed(1)}`); return; }
@@ -562,7 +562,7 @@ export default function OperationalDefinitionPage() {
                               <input type="number" className="form-control" style={{ fontSize:'12px',padding:'7px 10px',textAlign:'center' }} value={v.weight} step="0.1" min="0" max="100" onChange={(e) => updateVariableWeight(idx, e.target.value)} required />
                             )}
                             {metodePenghitungan === 'Persentase' && (
-                              <select className="form-control" style={{ fontSize:'12px',padding:'7px 10px' }} value={v.type || 'pembilang'} onChange={(e) => updateVariableType(idx, e.target.value)} required>
+                              <select className="form-control" style={{ fontSize:'12px',padding:'7px 10px', backgroundColor: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }} value={v.type || 'pembilang'} onChange={(e) => updateVariableType(idx, e.target.value)} required disabled>
                                 <option value="pembilang">Pembilang (Numerator)</option>
                                 <option value="penyebut">Penyebut (Denominator)</option>
                               </select>
