@@ -98,6 +98,13 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
 
     if (isAktivitas) {
       const pics = new Set();
+      
+      // Auto-assign sub-unit pengampu (Pengawas Eselon 4) if available
+      if (node.subUnitPengampu && node.subUnitPengampu.length > 0) {
+        node.subUnitPengampu.forEach(sub => {
+          pics.add(`subunit:${sub}`);
+        });
+      }
       const nodeInds = indicatorsByNodeId[nodeId] || [];
       nodeInds.forEach(ind => {
         if (ind.penanggungJawab) {
@@ -113,6 +120,14 @@ export function resolveTreePICs(annualNodes, annualIndicators = []) {
 
     if (isSubkegiatan) {
       const pics = new Set();
+      
+      // Auto-assign sub-unit pengampu (Pengawas Eselon 4) if available
+      if (node.subUnitPengampu && node.subUnitPengampu.length > 0) {
+        node.subUnitPengampu.forEach(sub => {
+          pics.add(`subunit:${sub}`);
+        });
+      }
+
       // Look for aktivitas children
       const childAktivitasIds = childrenIds.filter(cid => {
         const c = nodesById[cid];

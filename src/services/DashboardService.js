@@ -56,7 +56,9 @@ class DashboardService {
       inds.forEach(ind => {
         if (ind.penanggungJawab) {
           const pics = ind.penanggungJawab.split(',').map(s => s.trim());
-          const isMatch = pics.includes(employeeId) || (jabatan && pics.includes(`jabatan:${jabatan}`));
+          const isMatch = pics.includes(employeeId) || 
+                          (jabatan && pics.includes(`jabatan:${jabatan}`)) || 
+                          (emp && emp.subUnit && pics.includes(`subunit:${emp.subUnit}`));
           if (isMatch) {
             assignedIndicators.push(ind);
           }

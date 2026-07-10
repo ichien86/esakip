@@ -64,8 +64,9 @@ class PerjakinService {
       const pics = ind.penanggungJawab.split(',').map(s => s.trim());
       // Check exact match for employeeId
       if (pics.includes(pihakPertama.id)) return true;
-      // Check role based (e.g. jabatan:Kepala Bidang)
+      // Check role based (e.g. jabatan:Kepala Bidang, subunit:Tata Usaha)
       if (pics.includes(`jabatan:${pihakPertama.jabatan}`)) return true;
+      if (pihakPertama.subUnit && pics.includes(`subunit:${pihakPertama.subUnit}`)) return true;
       return false;
     });
 
@@ -95,7 +96,11 @@ class PerjakinService {
         let portion = parseFloat(splitMap[pihakPertama.id]);
         // Fallback: cari berdasarkan jabatan
         if (isNaN(portion) && pihakPertama.jabatan) {
-          portion = parseFloat(splitMap[`jabatan:${pihakPertama.jabatan}`]);
+          if (splitMap[`jabatan:${pihakPertama.jabatan}`] !== undefined) {
+            portion = parseFloat(splitMap[`jabatan:${pihakPertama.jabatan}`]);
+          } else if (pihakPertama.subUnit && splitMap[`subunit:${pihakPertama.subUnit}`] !== undefined) {
+            portion = parseFloat(splitMap[`subunit:${pihakPertama.subUnit}`]);
+          }
         }
         if (!isNaN(portion)) {
           effectiveTarget = portion.toString();

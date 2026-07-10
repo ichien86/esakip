@@ -1,0 +1,1 @@
+import mongoose from 'mongoose'; mongoose.connect('mongodb://127.0.0.1:27017/akip'); import Employee from './src/models/Employee.js'; const emps = await Employee.find({ jenisJabatan: 'Pengawas' }).select('nama jabatan bidangs subUnit -_id'); console.log(JSON.stringify(emps, null, 2)); process.exit(0);

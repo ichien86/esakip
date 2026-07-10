@@ -97,6 +97,9 @@ class SelectionService {
               if (pic.startsWith('jabatan:')) {
                 const position = pic.replace('jabatan:', '');
                 belongsToRequesterBidang = isJabatanInBidang(position, requesterBidang);
+              } else if (pic.startsWith('subunit:')) {
+                // If it's a subunit assignment, it inherently belongs to the parent bidang
+                belongsToRequesterBidang = true; // Assuming the user is modifying their own unit's subunit
               } else {
                 const emp = allEmployees.find(e => e.id === pic);
                 if (emp && emp.bidangs) {

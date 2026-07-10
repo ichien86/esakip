@@ -151,7 +151,11 @@ class RenaksiService {
           const splitTargets = typeof node.splitTargets.toObject === 'function' ? node.splitTargets.toObject() : node.splitTargets;
           let portion = parseFloat(splitTargets[employeeId]);
           if (isNaN(portion) && emp?.jabatan) {
-            portion = parseFloat(splitTargets[`jabatan:${emp.jabatan}`]);
+            if (splitTargets[`jabatan:${emp.jabatan}`] !== undefined) {
+              portion = parseFloat(splitTargets[`jabatan:${emp.jabatan}`]);
+            } else if (emp.subUnit && splitTargets[`subunit:${emp.subUnit}`] !== undefined) {
+              portion = parseFloat(splitTargets[`subunit:${emp.subUnit}`]);
+            }
           }
           if (!isNaN(portion)) {
             annualTarget = portion;

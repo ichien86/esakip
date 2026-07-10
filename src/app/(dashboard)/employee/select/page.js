@@ -137,6 +137,9 @@ export default function EmployeeIndicatorsPage() {
                   if (p.startsWith('jabatan:')) {
                     return currentUser.jabatan === p.replace('jabatan:', '');
                   }
+                  if (p.startsWith('subunit:')) {
+                    return currentUser.subUnit === p.replace('subunit:', '');
+                  }
                   return false;
                 });
               });

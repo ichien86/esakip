@@ -52,6 +52,10 @@ export async function GET(request, { params }) {
               if (matchedPlt) return true;
             }
           }
+          if (pic.startsWith('subunit:')) {
+            const targetSub = pic.replace('subunit:', '');
+            if (emp.subUnit === targetSub) return true;
+          }
         }
       }
       return false;
