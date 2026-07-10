@@ -41,10 +41,21 @@ export default function AdminAssignmentsPage() {
       options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
     });
 
+    const pengawas = allEmployees.filter(e =>
+      e.isActive !== false &&
+      e.jenisJabatan === 'Pengawas' &&
+      isSubUnitOf(e.bidangs, activeBidang)
+    );
+    const uniqueSubUnits = [...new Set(pengawas.map(l => l.subUnit).filter(Boolean))];
+    uniqueSubUnits.forEach(sub => {
+      options.push({ value: `subunit:${sub}`, label: `Kepala Sub-Unit: ${sub}`, type: 'jabatan' });
+    });
+
     const staffInUnit = allEmployees.filter(e =>
       e.isActive !== false &&
       e.id !== 'admin' &&
       !e.roles.includes('pemimpin') &&
+      e.jenisJabatan !== 'Pengawas' &&
       isSubUnitOf(e.bidangs, activeBidang)
     );
     staffInUnit.forEach(s => {
