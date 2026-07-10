@@ -99,15 +99,22 @@ export default function AdminProgramAssignmentsPage() {
         };
 
         const initialAssignments = {};
+        let hasAutoAssignedChanges = false;
+
         filtered.forEach(n => {
           const programPICs = getAdministratorsForBidangs(n.bidangPengampu || []);
           
           if (n.indicators && n.indicators.length > 0) {
             n.indicators.forEach(ind => {
               const existingPic = (ind.penanggungJawab || '').split(',').map(s => s.trim()).filter(Boolean);
+              const autoPic = programPICs.length > 0 ? programPICs : existingPic;
               
+              if (autoPic.join(',') !== existingPic.join(',')) {
+                hasAutoAssignedChanges = true;
+              }
+
               initialAssignments[ind.id] = {
-                penanggungJawab: programPICs.length > 0 ? programPICs : existingPic,
+                penanggungJawab: autoPic,
                 crossCuttingType: ind.crossCuttingType || 'shared',
                 splitTargets: ind.splitTargets || {}
               };
@@ -115,6 +122,11 @@ export default function AdminProgramAssignmentsPage() {
           }
         });
         setAssignments(initialAssignments);
+        
+        // Jika ada perubahan otomatis dari Bidang Pengampu, langsung sinkronisasi ke DB
+        if (hasAutoAssignedChanges && !systemSettings?.renja_locked) {
+          autoSave(initialAssignments);
+        }
       }
     } catch (e) {
       console.error('Failed to load data', e);
@@ -293,21 +305,24 @@ export default function AdminProgramAssignmentsPage() {
                                       isMulti
                                       options={picOptions}
                                       value={picOptions.filter(opt => assign.penanggungJawab.includes(opt.value))}
-                                      onChange={(sel) => handleAssignmentChangeMulti(ind.id, sel ? sel.map(o => o.value) : [])}
-                                      placeholder="Pilih PIC..."
-                                      isDisabled={systemSettings?.renja_locked}
+                                      onChange={() => {}}
+                                      placeholder="PIC kosong. Atur Bidang Pengampu di menu Renja."
+                                      isDisabled={true}
                                       noOptionsMessage={() => "Tidak ada data"}
                                       styles={{
-                                        control: (b) => ({ ...b, background: 'rgba(255,255,255,0.85)', borderColor: 'rgba(255,255,255,0.3)', minHeight: '34px' }),
+                                        control: (b) => ({ ...b, background: 'rgba(255,255,255,0.4)', borderColor: 'rgba(255,255,255,0.1)', minHeight: '34px', cursor: 'not-allowed' }),
                                         menu: (b) => ({ ...b, background: 'rgba(255,255,255,0.97)', zIndex: 100, border: '1px solid rgba(0,0,0,0.1)' }),
                                         option: (b, s) => ({ ...b, background: s.isFocused ? 'rgba(255,107,0,0.12)' : 'transparent', color: '#1f2937', cursor: 'pointer' }),
                                         multiValue: (b) => ({ ...b, background: 'rgba(255,107,0,0.15)', border: '1px solid rgba(255,107,0,0.3)', borderRadius: '4px' }),
                                         multiValueLabel: (b) => ({ ...b, color: '#d97706', fontWeight: 'bold', fontSize: '11px' }),
-                                        multiValueRemove: (b) => ({ ...b, color: '#d97706', ':hover': { backgroundColor: 'rgba(255,107,0,0.8)', color: 'white' } }),
+                                        multiValueRemove: (b) => ({ ...b, display: 'none' }), // Sembunyikan tombol 'x' pada chip
                                         input: (b) => ({ ...b, color: '#1f2937' }),
                                         placeholder: (b) => ({ ...b, color: '#6b7280' })
                                       }}
                                     />
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '6px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <i className="fa-solid fa-robot" style={{ color: 'var(--primary-orange)' }}></i> PIC ditarik otomatis dari Bidang Pengampu Renja.
+                                    </div>
 
                                     {/* Crosscutting options when multiple PIC */}
                                     {isMultiPIC && (
