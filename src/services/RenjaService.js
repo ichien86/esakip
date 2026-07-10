@@ -27,6 +27,20 @@ class RenjaService {
 
       const nodeObj = node.toObject ? node.toObject() : node;
 
+      // Migrate legacy top-level indicator to indicators array dynamically if empty
+      if ((!nodeObj.indicators || nodeObj.indicators.length === 0) && nodeObj.indikator) {
+        nodeObj.indicators = [{
+          id: nodeObj.id + '_ind1',
+          indikator: nodeObj.indikator,
+          target: nodeObj.target,
+          satuan: nodeObj.satuan,
+          tipeTarget: nodeObj.tipeTarget,
+          penanggungJawab: nodeObj.penanggungJawab,
+          crossCuttingType: nodeObj.crossCuttingType || 'shared',
+          splitTargets: nodeObj.splitTargets || {}
+        }];
+      }
+
       // Merge operational definitions from 5-Year Master to Annual Indicators
       if (fiveYearMatch && nodeObj.indicators && Array.isArray(nodeObj.indicators)) {
         nodeObj.indicators = nodeObj.indicators.map(ind => {

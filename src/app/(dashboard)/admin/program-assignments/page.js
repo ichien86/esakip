@@ -127,7 +127,7 @@ export default function AdminProgramAssignmentsPage() {
           const leaders = allEmployees.filter(e => {
             if (e.isActive === false) return false;
             
-            const isAdministrator = e.jenisJabatan === 'Administrator';
+            const isPemimpin = e.roles && e.roles.includes('pemimpin');
             
             const matchesBidang = targetBidangs.some(tb => {
               const asDefinitive = isSubUnitOf(e.bidangs, tb);
@@ -138,7 +138,7 @@ export default function AdminProgramAssignmentsPage() {
             if (!matchesBidang) return false;
             
             const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && isSubUnitOf(e.pltBidangs, tb));
-            if (!isAdministrator && !actingAsPlt) return false;
+            if (!isPemimpin && !actingAsPlt) return false;
             
             if (e.scopeLeader === 'Badan') return false;
             
