@@ -21,7 +21,7 @@ export default function AdminProgramAssignmentsPage() {
   const getPenanggungJawabOptions = () => {
     const options = [];
     
-    // Selalu masukkan opsi standar dari adminMap agar tetap muncul meskipun tidak ada pegawai definitif
+    // Selalu masukkan opsi standar dari adminMap (termasuk versi Plt.) agar tetap muncul
     const standardJabatans = [
       'Sekretaris',
       'Kepala Bidang Pencegahan dan Kesiapsiagaan',
@@ -31,6 +31,7 @@ export default function AdminProgramAssignmentsPage() {
     ];
     standardJabatans.forEach(jab => {
       options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+      options.push({ value: `jabatan:Plt. ${jab}`, label: `Jabatan: Plt. ${jab}`, type: 'jabatan' });
     });
 
     // Hanya memuat Administrator (Eselon 3) untuk program
@@ -47,7 +48,7 @@ export default function AdminProgramAssignmentsPage() {
 
     const uniqueLeaderJabatans = [...new Set(administrators.map(l => l.jabatan))];
     uniqueLeaderJabatans.forEach(jab => {
-      if (!standardJabatans.includes(jab)) {
+      if (!standardJabatans.includes(jab) && !standardJabatans.includes(jab.replace('Plt. ', ''))) {
         options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
       }
     });
@@ -146,7 +147,30 @@ export default function AdminProgramAssignmentsPage() {
             'Pimpinan': 'Kepala Pelaksana'
           };
 
-          return [...new Set(targetBidangs.map(b => `jabatan:${adminMap[b] || 'Kepala ' + b}`))];
+          const results = [];
+
+          targetBidangs.forEach(tb => {
+            const baseJabatan = adminMap[tb] || 'Kepala ' + tb;
+            
+            // Cek apakah ada pegawai definitif untuk bidang ini
+            const hasDefinitive = allEmployees.some(e => e.isActive !== false && isSubUnitOf(e.bidangs, tb));
+            if (hasDefinitive) {
+              results.push(`jabatan:${baseJabatan}`);
+              return;
+            }
+
+            // Jika tidak ada definitif, cek apakah ada PLT
+            const hasPlt = allEmployees.some(e => e.isActive !== false && isSubUnitOf(e.pltBidangs, tb));
+            if (hasPlt) {
+              results.push(`jabatan:Plt. ${baseJabatan}`);
+              return;
+            }
+            
+            // Fallback (jika kosong sepenuhnya)
+            results.push(`jabatan:${baseJabatan}`);
+          });
+
+          return [...new Set(results)];
         };
 
         const initialAssignments = {};
