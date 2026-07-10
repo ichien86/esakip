@@ -21,6 +21,18 @@ export default function AdminProgramAssignmentsPage() {
   const getPenanggungJawabOptions = () => {
     const options = [];
     
+    // Selalu masukkan opsi standar dari adminMap agar tetap muncul meskipun tidak ada pegawai definitif
+    const standardJabatans = [
+      'Sekretaris',
+      'Kepala Bidang Pencegahan dan Kesiapsiagaan',
+      'Kepala Bidang Kedaruratan dan Logistik',
+      'Kepala Bidang Rehabilitasi dan Rekonstruksi',
+      'Kepala Pelaksana'
+    ];
+    standardJabatans.forEach(jab => {
+      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+    });
+
     // Hanya memuat Administrator (Eselon 3) untuk program
     const administrators = allEmployees.filter(e => {
       if (e.isActive === false) return false;
@@ -35,7 +47,9 @@ export default function AdminProgramAssignmentsPage() {
 
     const uniqueLeaderJabatans = [...new Set(administrators.map(l => l.jabatan))];
     uniqueLeaderJabatans.forEach(jab => {
-      options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+      if (!standardJabatans.includes(jab)) {
+        options.push({ value: `jabatan:${jab}`, label: `Jabatan: ${jab}`, type: 'jabatan' });
+      }
     });
 
     return options;
