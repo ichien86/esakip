@@ -61,11 +61,19 @@ export default function AdminProgramAssignmentsPage() {
         const filtered = nodes.filter(n => ['program', 'sasaran_program'].includes(n.level));
         setAnnualNodes(filtered);
 
+        const normalizeBidangName = (name) => {
+          if (!name) return '';
+          return name.toLowerCase()
+            .replace(/^bidang\s+/g, '')
+            .replace(/\s+/g, '')
+            .replace(/&/g, 'dan');
+        };
+
         const isSubUnitOf = (empBidangs, targetBidang) => {
-          if (!empBidangs) return false;
-          if (empBidangs.includes(targetBidang)) return true;
-          if (targetBidang === 'Sekretariat' && empBidangs.includes('Tata Usaha')) return true;
-          return false;
+          if (!empBidangs || !targetBidang) return false;
+          const normTarget = normalizeBidangName(targetBidang);
+          if (normTarget === 'sekretariat' && empBidangs.some(b => normalizeBidangName(b) === 'tatausaha')) return true;
+          return empBidangs.some(b => normalizeBidangName(b) === normTarget);
         };
 
         const getAdministratorsForBidangs = (targetBidangs) => {
@@ -78,13 +86,13 @@ export default function AdminProgramAssignmentsPage() {
             
             const matchesBidang = targetBidangs.some(tb => {
               const asDefinitive = isSubUnitOf(e.bidangs, tb);
-              const asPlt = (e.pltBidangs && e.pltBidangs.includes(tb));
+              const asPlt = (e.pltBidangs && isSubUnitOf(e.pltBidangs, tb));
               return asDefinitive || asPlt;
             });
 
             if (!matchesBidang) return false;
             
-            const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && e.pltBidangs.includes(tb));
+            const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && isSubUnitOf(e.pltBidangs, tb));
             if (!isAdministrator && !actingAsPlt) return false;
             
             if (e.scopeLeader === 'Badan') return false;
