@@ -1,0 +1,12 @@
+const { MongoClient } = require('mongodb');
+async function run() {
+  const client = new MongoClient('mongodb://127.0.0.1:27017');
+  await client.connect();
+  const db = client.db('akip');
+  const kegs = await db.collection('cascadingannuals').find({ parentId: '5y_prog_14_2026' }).toArray();
+  const kegIds = kegs.map(k => k.id);
+  const subs = await db.collection('cascadingannuals').find({ parentId: { $in: kegIds } }).toArray();
+  console.log(JSON.stringify(subs.filter(s => s.bidangPengampu.includes('Sekretariat')).map(x=>({level:x.level, text:x.text, id:x.id, parentId:x.parentId, bidangPengampu:x.bidangPengampu})), null, 2));
+  process.exit(0);
+}
+run();
