@@ -124,31 +124,15 @@ export default function AdminProgramAssignmentsPage() {
         const getAdministratorsForBidangs = (targetBidangs) => {
           if (!Array.isArray(targetBidangs) || targetBidangs.length === 0) return [];
           
-          const leaders = allEmployees.filter(e => {
-            if (e.isActive === false) return false;
-            
-            const isPemimpin = e.roles && e.roles.includes('pemimpin');
-            
-            const matchesBidang = targetBidangs.some(tb => {
-              const asDefinitive = isSubUnitOf(e.bidangs, tb);
-              const asPlt = (e.pltBidangs && isSubUnitOf(e.pltBidangs, tb));
-              return asDefinitive || asPlt;
-            });
+          const adminMap = {
+            'Sekretariat': 'Sekretaris',
+            'Pencegahan & Kesiapsiagaan': 'Kepala Bidang Pencegahan dan Kesiapsiagaan',
+            'Kedaruratan & Logistik': 'Kepala Bidang Kedaruratan dan Logistik',
+            'Rehabilitasi & Rekonstruksi': 'Kepala Bidang Rehabilitasi dan Rekonstruksi',
+            'Pimpinan': 'Kepala Pelaksana'
+          };
 
-            if (!matchesBidang) return false;
-            
-            const actingAsPlt = targetBidangs.some(tb => e.pltBidangs && isSubUnitOf(e.pltBidangs, tb));
-            if (!isPemimpin && !actingAsPlt) return false;
-            
-            if (e.scopeLeader === 'Badan') return false;
-            
-            const jabatanLower = (e.jabatan || '').toLowerCase();
-            if (jabatanLower.includes('kepala pelaksana') || jabatanLower.includes('kalaksa')) return false;
-
-            return true;
-          });
-          
-          return [...new Set(leaders.map(l => `jabatan:${l.jabatan}`))];
+          return [...new Set(targetBidangs.map(b => `jabatan:${adminMap[b] || 'Kepala ' + b}`))];
         };
 
         const initialAssignments = {};
