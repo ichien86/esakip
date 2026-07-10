@@ -58,6 +58,7 @@ export default function AdminAssignmentsPage() {
     if (!val) return 'Belum ditentukan';
     return val.split(',').map(v => {
       if (v.startsWith('jabatan:')) return `Jabatan: ${v.replace('jabatan:', '')}`;
+      if (v.startsWith('subunit:')) return `Kepala Sub-Unit: ${v.replace('subunit:', '')}`;
       const emp = allEmployees.find(e => e.id === v);
       return emp ? `${emp.nama} (${emp.jabatan})` : v;
     }).join(', ');
