@@ -9,6 +9,7 @@ const Cascading5YearsSchema = new mongoose.Schema({
   tipeTarget: { type: String, required: true }, // Akumulatif, Kondisi Akhir Menurun, Kondisi Akhir Naik
   parentId: { type: String, default: null },
   bidangPengampu: { type: [String], default: [] }, // Array of bidang names (multi-bidang / cross-cutting)
+  subUnitPengampu: { type: [String], default: [] }, // Array of sub-unit names
   crossCuttingType: { type: String, default: 'bersama' }, // bersama, digabung
   selectedBidang: { type: String, default: null },
   splitTargets: { type: mongoose.Schema.Types.Mixed, default: {} }, // { "Bidang A": 40, "Bidang B": 60 }

@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useFetchWithAuth } from '@/context/useFetchWithAuth';
 import { useUI } from '@/context/UIContext';
-import { useMetadata } from '@/context/MetadataContext';
+import MasterUnitKerjaManager from '@/components/admin/MasterUnitKerjaManager';
 
 export default function AdminSettingsPage() {
   const { fetchWithAuth } = useFetchWithAuth();
   const { activeRole } = useUI();
   const { systemSettings, refreshMetadata } = useMetadata();
+  const [activeTab, setActiveTab] = useState('umum');
   const [renstraLocked, setRenstraLocked] = useState(false);
   const [renjaLocked, setRenjaLocked] = useState(false);
   const [fisikLocked, setFisikLocked] = useState(false);
@@ -144,10 +145,30 @@ export default function AdminSettingsPage() {
   return (
     <section>
       <div className="glass-panel" style={{ border: '1px solid rgba(245,158,11,0.2)' }}>
-        <div className="panel-header">
-          <h3>
-            <i className="fa-solid fa-gears text-orange"></i>
-            Pengaturan Sistem & Kunci Data
+        <div className="panel-header" style={{ display: 'flex', gap: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0' }}>
+          <h3 
+            onClick={() => setActiveTab('umum')}
+            style={{ 
+              cursor: 'pointer', 
+              paddingBottom: '16px',
+              borderBottom: activeTab === 'umum' ? '2px solid #f59e0b' : '2px solid transparent',
+              color: activeTab === 'umum' ? '#fff' : '#a1a1aa'
+            }}
+          >
+            <i className="fa-solid fa-gears text-orange mr-2"></i>
+            Pengaturan Sistem
+          </h3>
+          <h3 
+            onClick={() => setActiveTab('master')}
+            style={{ 
+              cursor: 'pointer', 
+              paddingBottom: '16px',
+              borderBottom: activeTab === 'master' ? '2px solid #f59e0b' : '2px solid transparent',
+              color: activeTab === 'master' ? '#fff' : '#a1a1aa'
+            }}
+          >
+            <i className="fa-solid fa-sitemap text-orange mr-2"></i>
+            Master Unit Kerja
           </h3>
         </div>
         
@@ -155,207 +176,213 @@ export default function AdminSettingsPage() {
           {error && <div style={{ color: 'var(--danger)', background: 'rgba(239,68,68,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{error}</div>}
           {success && <div style={{ color: 'var(--success)', background: 'rgba(16,185,129,0.1)', padding: '10px', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>{success}</div>}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Konfigurasi Nama Bupati */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              padding: '20px',
-              borderRadius: '12px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '60%' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className="fa-solid fa-user-tie text-orange"></i>
-                  Pengaturan Nama Bupati (Perjakin)
-                </h4>
-                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Nama ini akan dicetak otomatis sebagai Pihak Kedua (Atasan Langsung) pada dokumen Perjanjian Kinerja milik Pimpinan Tinggi (Kepala BPBD).
-                </p>
+          {activeTab === 'umum' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Konfigurasi Nama Bupati */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--glass-border)',
+                padding: '20px',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '60%' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <i className="fa-solid fa-user-tie text-orange"></i>
+                    Pengaturan Nama Bupati (Perjakin)
+                  </h4>
+                  <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                    Nama ini akan dicetak otomatis sebagai Pihak Kedua (Atasan Langsung) pada dokumen Perjanjian Kinerja milik Pimpinan Tinggi (Kepala BPBD).
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    value={bupatiName} 
+                    onChange={(e) => setBupatiName(e.target.value)} 
+                    placeholder="Nama Bupati" 
+                    style={{ width: '250px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveBupati}
+                    disabled={isSaving || !bupatiName.trim()}
+                    className="btn btn-primary"
+                    style={{ fontWeight: 600 }}
+                  >
+                    {isSaving ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-save"></i>} Simpan
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={bupatiName} 
-                  onChange={(e) => setBupatiName(e.target.value)} 
-                  placeholder="Nama Bupati" 
-                  style={{ width: '250px' }}
-                />
-                <button
-                  type="button"
-                  onClick={handleSaveBupati}
-                  disabled={isSaving || !bupatiName.trim()}
-                  className="btn btn-primary"
-                  style={{ fontWeight: 600 }}
-                >
-                  {isSaving ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-save"></i>} Simpan
-                </button>
-              </div>
-            </div>
 
-            {/* Renstra Lock Option */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              padding: '20px',
-              borderRadius: '12px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className={`fa-solid ${renstraLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
-                  Kunci Renstra (5 Tahunan & Definisi Operasional)
-                </h4>
-                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Jika diaktifkan, Admin Perencana diblokir dari memodifikasi struktur pohon Cascading 5 Tahunan, Indikator Renstra, dan Definisi Operasionalnya.
-                </p>
+              {/* Renstra Lock Option */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--glass-border)',
+                padding: '20px',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <i className={`fa-solid ${renstraLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                    Kunci Renstra (5 Tahunan & Definisi Operasional)
+                  </h4>
+                  <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                    Jika diaktifkan, Admin Perencana diblokir dari memodifikasi struktur pohon Cascading 5 Tahunan, Indikator Renstra, dan Definisi Operasionalnya.
+                  </p>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLock('renstra')}
+                    disabled={isSaving}
+                    className={`btn ${renstraLocked ? 'btn-danger' : 'btn-orange'}`}
+                    style={{
+                      width: '140px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {isSaving ? (
+                      <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
+                    ) : renstraLocked ? (
+                      <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
+                    ) : (
+                      <><i className="fa-solid fa-lock mr-2"></i> Kunci Renstra</>
+                    )}
+                  </button>
+                </div>
               </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => handleToggleLock('renstra')}
-                  disabled={isSaving}
-                  className={`btn ${renstraLocked ? 'btn-danger' : 'btn-orange'}`}
-                  style={{
-                    width: '140px',
-                    fontWeight: 600
-                  }}
-                >
-                  {isSaving ? (
-                    <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
-                  ) : renstraLocked ? (
-                    <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
-                  ) : (
-                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Renstra</>
-                  )}
-                </button>
-              </div>
-            </div>
 
-            {/* Renja Lock Option */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              padding: '20px',
-              borderRadius: '12px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className={`fa-solid ${renjaLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
-                  Kunci Renja, PK & Renaksi
-                </h4>
-                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Jika diaktifkan, Admin Perencana diblokir dari modifikasi Cascading Tahunan (Renja). 
-                  Selain itu, Pegawai <strong>tidak dapat memilih indikator IKU</strong> maupun <strong>menyusun matriks target Renaksi</strong>.
-                </p>
+              {/* Renja Lock Option */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--glass-border)',
+                padding: '20px',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <i className={`fa-solid ${renjaLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                    Kunci Renja, PK & Renaksi
+                  </h4>
+                  <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                    Jika diaktifkan, Admin Perencana diblokir dari modifikasi Cascading Tahunan (Renja). 
+                    Selain itu, Pegawai <strong>tidak dapat memilih indikator IKU</strong> maupun <strong>menyusun matriks target Renaksi</strong>.
+                  </p>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleLock('renja')}
+                    disabled={isSaving}
+                    className={`btn ${renjaLocked ? 'btn-danger' : 'btn-orange'}`}
+                    style={{
+                      width: '140px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {isSaving ? (
+                      <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
+                    ) : renjaLocked ? (
+                      <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
+                    ) : (
+                      <><i className="fa-solid fa-lock mr-2"></i> Kunci Renja</>
+                    )}
+                  </button>
+                </div>
               </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={() => handleToggleLock('renja')}
-                  disabled={isSaving}
-                  className={`btn ${renjaLocked ? 'btn-danger' : 'btn-orange'}`}
-                  style={{
-                    width: '140px',
-                    fontWeight: 600
-                  }}
-                >
-                  {isSaving ? (
-                    <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
-                  ) : renjaLocked ? (
-                    <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
-                  ) : (
-                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Renja</>
-                  )}
-                </button>
-              </div>
-            </div>
 
-            {/* Quick Link to Realisation Lock Option */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              padding: '20px',
-              borderRadius: '12px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className="fa-solid fa-calendar-check text-muted"></i>
-                  Kunci Realisasi Bulanan (Jadwal Pengisian)
-                </h4>
-                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Kelola jadwal pengisian realisasi bulanan dan deadline bagi pegawai. 
-                  Anda dapat mengunci pengisian realisasi per bulan secara spesifik.
-                </p>
+              {/* Quick Link to Realisation Lock Option */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--glass-border)',
+                padding: '20px',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <i className="fa-solid fa-calendar-check text-muted"></i>
+                    Kunci Realisasi Bulanan (Jadwal Pengisian)
+                  </h4>
+                  <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                    Kelola jadwal pengisian realisasi bulanan dan deadline bagi pegawai. 
+                    Anda dapat mengunci pengisian realisasi per bulan secara spesifik.
+                  </p>
+                </div>
+                <div>
+                  <a
+                    href="/admin/realisasi-schedule"
+                    className="btn btn-secondary"
+                    style={{
+                      width: '140px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 600,
+                      textDecoration: 'none'
+                    }}
+                  >
+                    <i className="fa-solid fa-calendar-days mr-2"></i> Kelola Jadwal
+                  </a>
+                </div>
               </div>
-              <div>
-                <a
-                  href="/admin/realisasi-schedule"
-                  className="btn btn-secondary"
-                  style={{
-                    width: '140px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 600,
-                    textDecoration: 'none'
-                  }}
-                >
-                  <i className="fa-solid fa-calendar-days mr-2"></i> Kelola Jadwal
-                </a>
-              </div>
-            </div>
-            {/* Target Fisik Lock */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--glass-border)',
-              padding: '20px',
-              borderRadius: '12px'
-            }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
-                <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <i className={`fa-solid ${fisikLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
-                  Kunci Target Fisik (Capaian Fisik Paket Pekerjaan)
-                </h4>
-                <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
-                  Jika diaktifkan, Admin Unit Kerja tidak dapat mengubah penyusunan target capaian fisik bulanan yang sudah disusun.
-                  Realisasi fisik bulanan tetap bisa diisi mengikuti jadwal pengisian kinerja.
-                </p>
-              </div>
-              <div>
-                <button
-                  type="button"
-                  onClick={handleToggleFisikLock}
-                  disabled={isSaving}
-                  className={`btn ${fisikLocked ? 'btn-danger' : 'btn-orange'}`}
-                  style={{ width: '140px', fontWeight: 600 }}
-                >
-                  {isSaving ? (
-                    <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
-                  ) : fisikLocked ? (
-                    <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
-                  ) : (
-                    <><i className="fa-solid fa-lock mr-2"></i> Kunci Target</>
-                  )}
-                </button>
-              </div>
-            </div>
 
-          </div>
+              {/* Target Fisik Lock */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--glass-border)',
+                padding: '20px',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                    <i className={`fa-solid ${fisikLocked ? 'fa-lock text-orange' : 'fa-lock-open text-muted'}`}></i>
+                    Kunci Target Fisik (Capaian Fisik Paket Pekerjaan)
+                  </h4>
+                  <p className="text-muted" style={{ fontSize: '12px', margin: 0 }}>
+                    Jika diaktifkan, Admin Unit Kerja tidak dapat mengubah penyusunan target capaian fisik bulanan yang sudah disusun.
+                    Realisasi fisik bulanan tetap bisa diisi mengikuti jadwal pengisian kinerja.
+                  </p>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleToggleFisikLock}
+                    disabled={isSaving}
+                    className={`btn ${fisikLocked ? 'btn-danger' : 'btn-orange'}`}
+                    style={{ width: '140px', fontWeight: 600 }}
+                  >
+                    {isSaving ? (
+                      <><i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Proses...</>
+                    ) : fisikLocked ? (
+                      <><i className="fa-solid fa-lock-open mr-2"></i> Buka Kunci</>
+                    ) : (
+                      <><i className="fa-solid fa-lock mr-2"></i> Kunci Target</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'master' && (
+            <MasterUnitKerjaManager />
+          )}
         </div>
       </div>
     </section>

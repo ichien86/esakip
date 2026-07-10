@@ -214,6 +214,7 @@ class RenjaService {
         existingNode.tipeTarget = c5.tipeTarget || 'Kondisi Akhir Naik';
         existingNode.parentId = c5.parentId ? `${c5.parentId}_${yearNum}` : null;
         existingNode.bidangPengampu = c5.bidangPengampu || [];
+        existingNode.subUnitPengampu = c5.subUnitPengampu || [];
         existingNode.masterId = c5.masterId || null;
         existingNode.anggaran = (c5.level === 'subkegiatan' || c5.level === 'sasaran_subkegiatan') ? (parseFloat(c5[`anggaran${yearNum}`]) || 0) : 0;
         existingNode.sasaran = c5.sasaran || '';
@@ -238,6 +239,7 @@ class RenjaService {
           tipeTarget: c5.tipeTarget || 'Kondisi Akhir Naik',
           parentId: c5.parentId ? `${c5.parentId}_${yearNum}` : null,
           bidangPengampu: c5.bidangPengampu || [],
+          subUnitPengampu: c5.subUnitPengampu || [],
           crossCuttingType: c5.crossCuttingType === 'shared' ? 'bersama' : (c5.crossCuttingType === 'split' ? 'digabung' : (c5.crossCuttingType || 'bersama')),
           selectedBidang: c5.crossCuttingType === 'split' ? null : (c5.selectedBidang || null),
           splitTargets: c5.splitTargets || {},

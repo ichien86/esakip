@@ -163,10 +163,11 @@ class Cascading5YearsService {
       anggaran2025, anggaran2026, anggaran2027, anggaran2028, anggaran2029, anggaran2030, anggaranAkhir,
       requesterRole, requesterBidang,
       masterId, sasaranSubkegiatan, definisiOperasional, outputVariableAlias, metodePenghitungan, variabelJumlah, variabelPembilang, variabelPenyebut, variables,
-      sasaran, nomenklatur, indicators
+      sasaran, nomenklatur, indicators, subUnitPengampu
     } = body;
 
     const finalBidang = Array.isArray(bidangPengampu) ? bidangPengampu : (bidangPengampu ? [bidangPengampu] : []);
+    const finalSubUnit = Array.isArray(subUnitPengampu) ? subUnitPengampu : (subUnitPengampu ? [subUnitPengampu] : []);
 
     let resolvedBidang = finalBidang;
     
@@ -226,6 +227,7 @@ class Cascading5YearsService {
       tipeTarget: tipeTarget || 'Kondisi Akhir Naik',
       parentId: parentId || null,
       bidangPengampu: resolvedBidang,
+      subUnitPengampu: finalSubUnit,
       crossCuttingType: resolvedCrossCuttingType,
       selectedBidang: resolvedSelectedBidang,
       splitTargets: splitTargets || {},

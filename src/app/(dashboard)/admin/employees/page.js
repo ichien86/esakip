@@ -31,10 +31,19 @@ export default function AdminEmployeesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const searchInputRef = useRef(null);
 
-  // Replacement Flow State
   const [replacementPrompt, setReplacementPrompt] = useState(null);
   const [replacementTarget, setReplacementTarget] = useState('');
   const [replacementLoading, setReplacementLoading] = useState(false);
+
+  // Master Unit Kerja State
+  const [masterUnitKerja, setMasterUnitKerja] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/admin/settings/unit-kerja')
+      .then(res => res.json())
+      .then(data => setMasterUnitKerja(data.unitKerja || []))
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -89,14 +98,26 @@ export default function AdminEmployeesPage() {
     { value: 'staff', label: 'Pejabat Fungsional' }
   ];
 
-  const bidangOptions = [
-    { value: 'Badan', label: 'Badan' },
-    { value: 'Sekretariat', label: 'Sekretariat' },
-    { value: 'Tata Usaha', label: 'Tata Usaha' },
-    { value: 'Bidang Pencegahan dan Kesiapsiagaan', label: 'Bidang Pencegahan dan Kesiapsiagaan' },
-    { value: 'Bidang Kedaruratan dan Logistik', label: 'Bidang Kedaruratan dan Logistik' },
-    { value: 'Bidang Rehabilitasi dan Rekonstruksi', label: 'Bidang Rehabilitasi dan Rekonstruksi' }
-  ];
+  const renderUnitKerjaOptions = (onlyInduk = false) => {
+    const options = [];
+    options.push(<option key="Badan" value="Badan">Badan (Kepala Daerah / Kepala BPBD)</option>);
+    
+    masterUnitKerja.forEach(bidang => {
+      if (onlyInduk) {
+        options.push(<option key={bidang.id} value={bidang.name}>{bidang.name}</option>);
+      } else {
+        options.push(
+          <optgroup key={bidang.id} label={bidang.name}>
+            <option value={bidang.name}>{bidang.name} (Induk)</option>
+            {bidang.subUnits?.map(sub => (
+              <option key={sub.id} value={sub.name}>{sub.name}</option>
+            ))}
+          </optgroup>
+        );
+      }
+    });
+    return options;
+  };
 
   const handleRoleChange = (role) => {
     if (selectedRoles.includes(role)) {
@@ -727,7 +748,7 @@ export default function AdminEmployeesPage() {
 
                 {jenisJabatan === 'Administrator' && (
                   <div className="form-group mb-3">
-                    <label>Unit Kerja yang Dipimpin Definitif</label>
+                    <label>Unit Kerja yang Dipimpin Definitif (Induk)</label>
                     <select
                       className="select-sim"
                       value={selectedBidangs[0] || ''}
@@ -735,9 +756,22 @@ export default function AdminEmployeesPage() {
                       required
                     >
                       <option value="">-- Pilih Unit Kerja Definitif --</option>
-                      {bidangOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
+                      {renderUnitKerjaOptions(true)}
+                    </select>
+                  </div>
+                )}
+
+                {jenisJabatan !== 'Pimpinan Tinggi' && jenisJabatan !== 'Administrator' && (
+                  <div className="form-group mb-3">
+                    <label>Unit Kerja / Sub-Unit Definitif</label>
+                    <select
+                      className="select-sim"
+                      value={selectedBidangs[0] || ''}
+                      onChange={(e) => setSelectedBidangs(e.target.value ? [e.target.value] : [])}
+                      required
+                    >
+                      <option value="">-- Pilih Unit Kerja / Sub-Unit --</option>
+                      {renderUnitKerjaOptions(false)}
                     </select>
                   </div>
                 )}
@@ -804,27 +838,33 @@ export default function AdminEmployeesPage() {
                       Pilih Unit Kerja Plt
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(15, 23, 42, 0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                      {bidangOptions.filter(opt => opt.value !== (selectedBidangs[0] || '')).map(opt => {
-                        const isChecked = pltBidangs.includes(opt.value);
-                        const handleCheckboxChange = () => {
-                          if (isChecked) {
-                            setPltBidangs(pltBidangs.filter(b => b !== opt.value));
-                          } else {
-                            setPltBidangs([...pltBidangs, opt.value]);
+                      <select 
+                        className="select-sim"
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value && !pltBidangs.includes(e.target.value)) {
+                            setPltBidangs([...pltBidangs, e.target.value]);
                           }
-                        };
-                        return (
-                          <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0 }}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={handleCheckboxChange}
-                              style={{ cursor: 'pointer' }}
-                            />
-                            {opt.label}
-                          </label>
-                        );
-                      })}
+                        }}
+                      >
+                        <option value="">-- Tambah Unit Kerja Plt --</option>
+                        {renderUnitKerjaOptions(jenisJabatan === 'Administrator')}
+                      </select>
+                      
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                        {pltBidangs.map(b => (
+                          <div key={b} className="badge badge-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px' }}>
+                            {b}
+                            <button 
+                              type="button" 
+                              onClick={() => setPltBidangs(pltBidangs.filter(pb => pb !== b))}
+                              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

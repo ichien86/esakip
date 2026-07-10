@@ -36,7 +36,18 @@ export default function AdminCascading5YearsPage() {
   const [nomenklatur, setNomenklatur] = useState('');
   const [selectedMasterId, setSelectedMasterId] = useState(''); 
   const [selectedBidangs, setSelectedBidangs] = useState([]);
+  const [selectedSubUnits, setSelectedSubUnits] = useState([]);
   const [hasAktivitasPlan, setHasAktivitasPlan] = useState(false);
+  
+  // Master Unit Kerja State
+  const [masterUnitKerja, setMasterUnitKerja] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/admin/settings/unit-kerja')
+      .then(res => res.json())
+      .then(data => setMasterUnitKerja(data.unitKerja || []))
+      .catch(console.error);
+  }, []);
   
   // Cross-cutting states
   const [crossCuttingType, setCrossCuttingType] = useState('bersama');
@@ -622,6 +633,7 @@ export default function AdminCascading5YearsPage() {
       tipeTarget: level === 'sasaran_subkegiatan' ? subkegiatanTipeTarget : 'Kondisi Akhir Naik',
       parentId: level === 'tujuan' ? null : parentId,
       bidangPengampu: (level === 'sasaran_subkegiatan' && hasAktivitasPlan) ? [] : selectedBidangs,
+      subUnitPengampu: selectedSubUnits,
       crossCuttingType,
       selectedBidang,
       splitTargets,
@@ -801,13 +813,15 @@ export default function AdminCascading5YearsPage() {
     return [];
   };
 
-  const bidangOptions = [
-    'Pimpinan',
-    'Sekretariat',
-    'Pencegahan & Kesiapsiagaan',
-    'Kedaruratan & Logistik',
-    'Rehabilitasi & Rekonstruksi'
-  ];
+  const bidangOptions = masterUnitKerja.map(b => b.name);
+  
+  const handleSubUnitChange = (subUnitName) => {
+    if (selectedSubUnits.includes(subUnitName)) {
+      setSelectedSubUnits(selectedSubUnits.filter(b => b !== subUnitName));
+    } else {
+      setSelectedSubUnits([...selectedSubUnits, subUnitName]);
+    }
+  };
 
   const getChildButtonLabel = (lvl) => {
     if (lvl === 'sasaran') return 'Tambah Sasaran';
@@ -2448,46 +2462,67 @@ export default function AdminCascading5YearsPage() {
               )}
 
               {/* Multi Bidang Pengampu - Hanya tampil untuk Subkegiatan atau Aktivitas */}
-              {level === 'sasaran_subkegiatan' ? (
+              {(level === 'sasaran_subkegiatan' || level === 'sasaran_aktivitas') && (
                 <div className="form-group mb-3">
-                  <label>Pengaturan Aktivitas & Pengampu</label>
-                  <div style={{ background: 'rgba(15,23,42,0.4)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                    <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-muted)' }}>
-                        Apakah Subkegiatan ini akan memiliki rincian Aktivitas?
-                      </label>
-                      <div style={{ display: 'flex', gap: '16px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
-                          <input 
-                            type="radio" 
-                            checked={hasAktivitasPlan} 
-                            onChange={() => setHasAktivitasPlan(true)}
-                            disabled={formId && nodes.some(n => n.parentId === formId)}
-                          /> 
-                          Ya, rincikan Aktivitas nanti
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
-                          <input 
-                            type="radio" 
-                            checked={!hasAktivitasPlan} 
-                            onChange={() => setHasAktivitasPlan(false)}
-                            disabled={formId && nodes.some(n => n.parentId === formId)}
-                          /> 
-                          Tidak, ini sudah menjadi rincian terbawah
-                        </label>
+                  {level === 'sasaran_subkegiatan' ? (
+                    <>
+                      <label>Pengaturan Aktivitas & Pengampu</label>
+                      <div style={{ background: 'rgba(15,23,42,0.4)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                        <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-muted)' }}>
+                            Apakah Subkegiatan ini akan memiliki rincian Aktivitas?
+                          </label>
+                          <div style={{ display: 'flex', gap: '16px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
+                              <input 
+                                type="radio" 
+                                checked={hasAktivitasPlan} 
+                                onChange={() => setHasAktivitasPlan(true)}
+                                disabled={formId && nodes.some(n => n.parentId === formId)}
+                              /> 
+                              Ya, rincikan Aktivitas nanti
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: (formId && nodes.some(n => n.parentId === formId)) ? 'not-allowed' : 'pointer' }}>
+                              <input 
+                                type="radio" 
+                                checked={!hasAktivitasPlan} 
+                                onChange={() => setHasAktivitasPlan(false)}
+                                disabled={formId && nodes.some(n => n.parentId === formId)}
+                              /> 
+                              Tidak, ini sudah menjadi rincian terbawah
+                            </label>
+                          </div>
+                        </div>
+                        
+                        {hasAktivitasPlan ? (
+                          <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px', margin: 0 }}>
+                            <i className="fa-solid fa-diagram-project mr-2"></i>
+                            Bidang Pengampu akan otomatis dikalkulasi dari entri Aktivitas di bawahnya nanti.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--text-muted)' }}>
+                              Pilih Bidang Pengampu Subkegiatan <span style={{ color: '#ef4444' }}>*</span>
+                            </label>
+                            {bidangOptions.map(opt => (
+                              <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedBidangs.includes(opt)}
+                                  onChange={() => handleBidangChange(opt)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                {opt}
+                              </label>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    {hasAktivitasPlan ? (
-                      <div className="alert-sim info" style={{ padding: '10px', fontSize: '12px', margin: 0 }}>
-                        <i className="fa-solid fa-diagram-project mr-2"></i>
-                        Bidang Pengampu akan otomatis dikalkulasi dari entri Aktivitas di bawahnya nanti.
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: 'var(--text-muted)' }}>
-                          Pilih Bidang Pengampu Subkegiatan <span style={{ color: '#ef4444' }}>*</span>
-                        </label>
+                    </>
+                  ) : (
+                    <>
+                      <label>Bidang Pengampu Aktivitas <span style={{ color: '#ef4444' }}>*</span></label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
                         {bidangOptions.map(opt => (
                           <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
                             <input
@@ -2500,29 +2535,46 @@ export default function AdminCascading5YearsPage() {
                           </label>
                         ))}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="form-group mb-3">
-                  <label>Bidang Pengampu Aktivitas <span style={{ color: '#ef4444' }}>*</span></label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(15,23,42,0.4)', padding: '10px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                    {bidangOptions.map(opt => (
-                      <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer', margin: 0, color: selectedBidangs.includes(opt) ? 'white' : 'var(--text-muted)' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedBidangs.includes(opt)}
-                          onChange={() => handleBidangChange(opt)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                        {opt}
+                    </>
+                  )}
+
+                  {/* Tampilkan Sub-Unit Pengampu jika Bidang Induk yang dipilih memiliki Sub-Unit di Master Data dan bukan subkegiatan yang dirincikan */}
+                  {selectedBidangs.length > 0 && !(level === 'sasaran_subkegiatan' && hasAktivitasPlan) && (
+                    <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(245,158,11,0.05)', border: '1px dashed rgba(245,158,11,0.3)', borderRadius: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-orange)' }}>
+                        DELEGASI SUB-UNIT PENGAWAS (OPSIONAL)
                       </label>
-                    ))}
-                  </div>
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                        Centang sub-unit di bawah ini jika indikator ini secara spesifik menjadi tanggung jawab Pejabat Pengawas (Eselon 4) di bawah bidang terkait. 
+                        Bila tidak dicentang, indikator ini sepenuhnya ditanggungjawab oleh Administrator (Kabid).
+                      </p>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {masterUnitKerja
+                          .filter(b => selectedBidangs.includes(b.name) && b.subUnits && b.subUnits.length > 0)
+                          .map(b => (
+                            <div key={b.id} style={{ marginBottom: '8px' }}>
+                              <strong style={{ fontSize: '11px', color: 'var(--text-primary)' }}>{b.name}</strong>
+                              <div style={{ marginLeft: '12px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {b.subUnits.map(sub => (
+                                  <label key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', cursor: 'pointer', margin: 0, color: selectedSubUnits.includes(sub.name) ? 'white' : 'var(--text-muted)' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubUnits.includes(sub.name)}
+                                      onChange={() => handleSubUnitChange(sub.name)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                    {sub.name}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-
-
 
               {/* Target Kinerja & Anggaran per tahun untuk subkegiatan */}
               {level === 'sasaran_subkegiatan' && (

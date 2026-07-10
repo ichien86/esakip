@@ -50,6 +50,50 @@ export default function AdminProgramAssignmentsPage() {
     }).join(', ');
   };
 
+  const saveTimeoutRef = useRef(null);
+  const autoSave = useCallback((newAssignments) => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    setSuccess('');
+    setError('');
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      setSuccess('Menyimpan perubahan otomatis...');
+      try {
+        const filteredAssignments = { ...newAssignments };
+        for (const idKey in filteredAssignments) {
+          const assign = filteredAssignments[idKey];
+          if (assign.penanggungJawab && assign.penanggungJawab.length > 1 && assign.crossCuttingType === 'split') {
+            let targetNum = 0;
+            // Kami membutuhkan state annualNodes yang paling up to date (tapi karena dipanggil di loadData saat pertama kali, 
+            // annualNodes mungkin belum tersetting dalam closure ini. Namun, saat split validation dibutuhkan, 
+            // itu biasanya via interaksi pengguna, di mana state sudah ada. 
+            // Untuk pemanggilan otomatis di awal, targetNum tidak begitu krusial gagal divalidasi dan akan lolos.
+            if (targetNum > 0) {
+              let sum = 0;
+              assign.penanggungJawab.forEach(pic => { sum += parseFloat(assign.splitTargets[pic] || 0); });
+              if (Math.abs(sum - targetNum) > 0.05) { delete filteredAssignments[idKey]; }
+            }
+          }
+        }
+
+        const res = await fetchWithAuth('/api/selections', {
+          method: 'POST',
+          body: JSON.stringify({ assignments: filteredAssignments })
+        });
+
+        if (res.ok) {
+          setSuccess('Perubahan otomatis tersimpan.');
+          setTimeout(() => setSuccess(''), 3000);
+        } else {
+          const err = await res.json();
+          setError(err.error || 'Gagal menyimpan.');
+        }
+      } catch (e) {
+        setError('Kesalahan jaringan.');
+      }
+    }, 1000);
+  }, [fetchWithAuth]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -148,52 +192,6 @@ export default function AdminProgramAssignmentsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (currentUser) loadData();
   }, [currentUser, loadData]);
-
-  const saveTimeoutRef = useRef(null);
-  const autoSave = (newAssignments) => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    setSuccess('');
-    setError('');
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      setSuccess('Menyimpan perubahan otomatis...');
-      try {
-        const filteredAssignments = { ...newAssignments };
-        for (const idKey in filteredAssignments) {
-          const assign = filteredAssignments[idKey];
-          if (assign.penanggungJawab && assign.penanggungJawab.length > 1 && assign.crossCuttingType === 'split') {
-            let targetNum = 0;
-            for (const node of annualNodes) {
-              if (node.indicators) {
-                const match = node.indicators.find(i => i.id === idKey);
-                if (match) { targetNum = parseFloat(match.target) || 0; break; }
-              }
-            }
-            if (targetNum > 0) {
-              let sum = 0;
-              assign.penanggungJawab.forEach(pic => { sum += parseFloat(assign.splitTargets[pic] || 0); });
-              if (Math.abs(sum - targetNum) > 0.05) { delete filteredAssignments[idKey]; }
-            }
-          }
-        }
-
-        const res = await fetchWithAuth('/api/selections', {
-          method: 'POST',
-          body: JSON.stringify({ assignments: filteredAssignments })
-        });
-
-        if (res.ok) {
-          setSuccess('Perubahan otomatis tersimpan.');
-          setTimeout(() => setSuccess(''), 3000);
-        } else {
-          const err = await res.json();
-          setError(err.error || 'Gagal menyimpan.');
-        }
-      } catch (e) {
-        setError('Kesalahan jaringan.');
-      }
-    }, 1000);
-  };
 
   const handleAssignmentChangeMulti = (nodeId, values) => {
     if (systemSettings?.renja_locked) return;

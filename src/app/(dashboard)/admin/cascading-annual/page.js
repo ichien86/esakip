@@ -1698,6 +1698,18 @@ export default function AdminCascadingAnnualPage() {
                     ))}
                     {selectedBidangs.length === 0 && <span className="text-muted">-</span>}
                   </div>
+                  
+                  {/* Display inherited subUnitPengampu if available */}
+                  {formId && nodes.find(n => n.id === formId)?.subUnitPengampu?.length > 0 && (
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text-orange)' }}>SUB-UNIT PENGAWAS (Diwarisi)</label>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {nodes.find(n => n.id === formId).subUnitPengampu.map(sub => (
+                          <span key={sub} className="badge" style={{ background: 'rgba(245,158,11,0.2)', color: '#fcd34d', border: '1px solid rgba(245,158,11,0.4)' }}>{sub}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
